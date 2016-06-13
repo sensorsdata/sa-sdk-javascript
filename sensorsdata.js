@@ -25,7 +25,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     debug_mode: false,
     debug_mode_upload: false,
     vtrack_prefix: false,
-    session_time: 0
+    session_time: 0,
+    use_client_time: false
   };
   // 合并配置
   for (var i in sd.para_default){
@@ -601,7 +602,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , navigator = window.navigator
     , document = window.document
     , userAgent = navigator.userAgent
-    , LIB_VERSION = '1.4.1';
+    , LIB_VERSION = '1.4.2';
 
 // 提供错误日志
   var error_msg = [];
@@ -1433,7 +1434,15 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       // 传入的属性 > 当前页面的属性 > session的属性 > cookie的属性 > 预定义属性
       data.properties = _.extend({}, _.info.properties(), store.getProps(), store.getSessionProps(), _.info.currentProps, data.properties);
     }
-    data.time = new Date() * 1;
+    // 如果$time是传入的就用，否则使用服务端时间
+    if(data.properties.$time && _.isDate(data.properties.$time)){
+      data.time = data.properties.$time * 1;
+      delete data.properties.$time;
+    }else{
+      if(sd.para.use_client_time){
+        data.time = (new Date()) * 1;
+      }
+    }
     _.searchObjDate(data);
     
   if (sd.para.debug_mode === true){
