@@ -26,7 +26,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     debug_mode_upload: false,
     vtrack_prefix: false,
     session_time: 0,
-    use_client_time: false
+    use_client_time: false,
+    auto_init: true
   };
   // 合并配置
   for (var i in sd.para_default){
@@ -599,13 +600,11 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , navigator = window.navigator
-    , document = window.document
-    , userAgent = navigator.userAgent
-    , LIB_VERSION = '1.4.2';
+    , LIB_VERSION = '1.4.3';
 
 // 提供错误日志
   var error_msg = [];
+  var is_first_visitor = false;
 
   var logger = typeof logger === 'object' ? logger : {};
   logger.info = function() {
@@ -960,7 +959,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       return Math.random().toString(16).replace('.', '');
     };
     var UA = function(n) {
-      var ua = userAgent, i, ch, buffer = [], ret = 0;
+      var ua = navigator.userAgent, i, ch, buffer = [], ret = 0;
 
       function xor(result, byte_array) {
         var j, tmp = 0;
@@ -1321,6 +1320,32 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
    */
 
+// 检查是否是新用户（第一次种cookie，且在8个小时内的）
+   var saNewUser = {
+    checkIsAddSign: function(data){
+      if(data.type === 'track' && _.cookie.get('sensorsdata_is_new_user') !== null){
+        data.properties.$is_first_day = true;
+      }
+    },
+    storeInitCheck: function(){
+      // 如果是新用户，种cookie
+      if(is_first_visitor){
+        var date = new Date();
+        var obj = {
+          h: 23 - date.getHours(),
+          m: 59 - date.getMinutes(),
+          s: 59 - date.getSeconds()
+        };
+        _.cookie.set('sensorsdata_is_new_user','true',obj.h*3600+obj.m*60+obj.s+'s');
+      }else{
+        if(_.cookie.get('sensorsdata_is_new_user') === null){
+          this.checkIsAddSign = function(){};
+        }
+      }
+    }
+   };
+
+
   var saEvent = {};
 
   saEvent.checkOption = {
@@ -1347,7 +1372,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     str: function(s) {
       if (!_.isString(s)) {
         logger.info('请检查参数格式,必须是字符串');
-        return false;
+        //return false;
+        return true;
       } else {
         return true;
       }
@@ -1360,11 +1386,13 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
             return true;
           } else {
             logger.info('properties里的key必须是由字符串数字_组成，且不能是系统保留字');
-            return false;
+            //return false;
+            return true;
           }
         } else {
           logger.info('properties可以没有，但有的话必须是对象');
-          return false;
+          return true;
+          //return false;
         }
       } else {
         return true;
@@ -1374,13 +1402,15 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       _.strip_sa_properties(p);
       if (p === undefined || !_.isObject(p) || _.isEmptyObject(p)) {
         logger.info('properties必须是对象且有值');
-        return false;
+        return true;
+        //return false;
       } else {
         if (this.checkPropertiesKey(p)) {
           return true;
         } else {
           logger.info('properties里的key必须是由字符串数字_组成，且不能是系统保留字');
-          return false;
+          return true;
+          //return false;
         }
       }
     },
@@ -1388,7 +1418,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     event: function(s) {
       if (!_.isString(s) || !this['regChecks']['regName'].test(s)) {
         logger.info('请检查参数格式,必须是字符串,且eventName必须是字符串_开头,且不能是系统保留字');
-        return false;
+        //return false;
+        return true;
       } else {
         return true;
       }
@@ -1444,6 +1475,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       }
     }
     _.searchObjDate(data);
+    //判断是否要给数据增加新用户属性
+    saNewUser.checkIsAddSign(data);
     
   if (sd.para.debug_mode === true){
       logger.info(data);
@@ -1577,10 +1610,14 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       this.initSessionState();
       var cross = _.cookie.get(sd.para.cross_subdomain ? 'sensorsdata2015jssdkcross' : 'sensorsdata2015jssdk');
       if(cross === null){
+        // 判断是否是第一次载入sdk
+        is_first_visitor = true;
         this.set('distinct_id', _.UUID());
       }else{
         this.toState(cross);
       }
+      //判断新用户
+      saNewUser.storeInitCheck();
       // 如果初始化cookie失败，发送错误事件
       /*
       if(error_msg.length > 0 && sd.para.send_error_event){
@@ -1624,10 +1661,29 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       });
     },
 
-    cookie: function() {
-
-
+    autoTrack: function() {
+      var utms = _.info.campaignParams();
+      // setOnceProfile
+      if(is_first_visitor){
+        sd.setOnceProfile(_.extend({
+          $first_visit_time: new Date(),
+          $first_referrer: document.referrer,
+          $first_referrer_host: _.info.referringDomain(document.referrer)
+          },utms)
+        );
+      }
+      // trackpageview
+      sd.track('$pageview',_.extend({
+        $referrer: document.referrer,
+        $referrer_host: _.info.referringDomain(document.referrer),
+        $url: location.href,
+        $url_path: location.pathname,
+        $title: document.title,
+        $browser_language: navigator.language
+      },utms)
+      );      
     }
+
 
 
 
@@ -1635,7 +1691,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
   // 一些常见的方法
   sd.quick = function() {
-    var arg = Array.prototype.slice.call(arguments);
+    var arg = slice.call(arguments);
     var arg0 = arg[0];
     var arg1 = arg.slice(1);
     if (typeof arg0 === 'string' && commonWays[arg0]) {
@@ -1860,18 +1916,17 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     }
   };
 
+
   sd.init = function() {
     store.init();
-    /* 傻瓜模式，暂时注释掉
-     if (sd._mode) {
-     seniorProp.init();
-     }
-     */
     _.each(sd._q, function(content) {
       sd[content[0]].apply(sd, slice.call(content[1]));
     });
 
   };
+
+
+
 
 
 
