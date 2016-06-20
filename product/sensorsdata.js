@@ -600,7 +600,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.4.3';
+    , LIB_VERSION = '1.4.4';
 
 // 提供错误日志
   var error_msg = [];
@@ -986,7 +986,13 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     };
 
     return function() {
-      var se = (screen.height * screen.width).toString(16);
+      // 有些浏览器取个屏幕宽度都异常...
+      var s = String(screen.height * screen.width);
+      if(s && /\d{5,}/.test(s)){
+        se = s.toString(16);        
+      }else{
+        se = String(Math.random() * 31242).replace('.','').slice(0,8);
+      }
       return (T() + '-' + R() + '-' + UA() + '-' + se + '-' + T());
     };
   })();
@@ -1277,8 +1283,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
         $model: detector.device.name,
         _browser_engine: detector.engine.name,
         $os_version: String(detector.os.version),
-        $screen_height: screen.height,
-        $screen_width: screen.width,
+        $screen_height: Number(screen.height) || 0,
+        $screen_width: Number(screen.width) || 0,
         $lib: 'js',
         $lib_version: String(LIB_VERSION),
         $browser: detector.browser.name,
@@ -1447,7 +1453,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     return flag;
   };
 
-  saEvent.send = function(p) {
+  saEvent.send = function(p, callback) {
     var data = {
       distinct_id: store.getDistinctId(),
       properties: {}
@@ -1480,16 +1486,16 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     
   if (sd.para.debug_mode === true){
       logger.info(data);
-      this.debugPath(JSON.stringify(data));
+      this.debugPath(JSON.stringify(data),callback);
     }else{
       logger.info(data);
-      this.serverPath(JSON.stringify(data));
+      this.serverPath(JSON.stringify(data),callback);
     }
 
   };
 
   // 发送debug数据请求
-  saEvent.debugPath = function(data){
+  saEvent.debugPath = function(data,callback){
     var url = '';
     if (sd.para.debug_mode_url.indexOf('?') !== -1) {
       url = sd.para.debug_mode_url + '&data=' + encodeURIComponent(_.base64Encode(data));
@@ -1507,10 +1513,11 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   };
 
   // 发送请求
-  saEvent.serverPath = function(data) {
+  saEvent.serverPath = function(data,callback) {
     sd.requestImg = new Image();
     sd.requestImg.onload = sd.requestImg.onerror = function() {
       if (sd.requestImg) {
+        //callback && callback();        
         sd.requestImg.onload = null;
         sd.requestImg.onerror = null;
         sd.requestImg = null;  
@@ -1708,41 +1715,41 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
    * @param {string} event
    * @param {string} properties
    * */
-  sd.track = function(e, p) {
+  sd.track = function(e, p, c) {
     if (saEvent.check({event: e, properties: p})) {
       saEvent.send({
         type: 'track',
         event: e,
         properties: p
-      });
+      }, c);
     }
   };
 
   /*
    * @param {object} properties
    * */
-  sd.setProfile = function(p) {
+  sd.setProfile = function(p, c) {
     if (saEvent.check({propertiesMust: p})) {
       saEvent.send({
         type: 'profile_set',
         properties: p
-      });
+      }, c);
     }
   };
 
-  sd.setOnceProfile = function(p) {
+  sd.setOnceProfile = function(p, c) {
     if (saEvent.check({propertiesMust: p})) {
       saEvent.send({
         type: 'profile_set_once',
         properties: p
-      });
+      }, c);
     }
   };
 
   /*
    * @param {object} properties
    * */
-  sd.appendProfile = function(p) {
+  sd.appendProfile = function(p, c) {
     if (saEvent.check({propertiesMust: p})) {
       _.each(p, function(value, key){
         if (_.isString(value)) {
@@ -1758,14 +1765,14 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
         saEvent.send({
           type: 'profile_append',
           properties: p
-        });
+        }, c);
       }
     }
   };
   /*
    * @param {object} properties
    * */
-  sd.incrementProfile = function(p) {
+  sd.incrementProfile = function(p, c) {
     var str = p;
     if (_.isString(p)) {
       p = {}
@@ -1785,23 +1792,23 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
         saEvent.send({
           type: 'profile_increment',
           properties: p
-        });
+        }, c);
       } else {
         logger.info('profile_increment的值只能是数字');
       }
     }
   };
 
-  sd.deleteProfile = function() {
+  sd.deleteProfile = function(c) {
     saEvent.send({
       type: 'profile_delete'
-    });
+    }, c);
     store.set('distinct_id', _.UUID());
   };
   /*
    * @param {object} properties
    * */
-  sd.unsetProfile = function(p) {
+  sd.unsetProfile = function(p, c) {
     var str = p;
     var temp = {};
     if (_.isString(p)) {
@@ -1819,7 +1826,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       saEvent.send({
         type: 'profile_unset',
         properties: temp
-      });
+      }, c);
     } else {
       logger.info('profile_unset的参数是数组');
     }
@@ -1848,7 +1855,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
    * @param {string} event
    * @param {object} properties
    * */
-  sd.trackSignup = function(id, e, p) {
+  sd.trackSignup = function(id, e, p, c) {
     if (saEvent.check({distinct_id: id, event: e, properties: p})) {
       saEvent.send({
         original_id: store.getDistinctId(),
@@ -1856,7 +1863,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
         type: 'track_signup',
         event: e,
         properties: p
-      });
+      }, c);
       store.set('distinct_id', id);
     }
   };
