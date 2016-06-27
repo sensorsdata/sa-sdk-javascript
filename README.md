@@ -24,8 +24,8 @@ Sensors Analytics JavaScript SDK
 
 ##### 1.4.1  (稳定版)
 把$os 改成 iPhone OS 和 Android 为了跟安卓iphone兼容
-##### 1.4.4
-可视化埋点支持iframe，代码埋点的$screen_height，$screen_width强制转换成数值类型，某些手机奇葩浏览器对这两个值取值异常。
+##### 1.4.4  
+可视化埋点支持iframe，代码埋点的$screen_height，$screen_width强制转换成数值类型，某些手机奇葩浏览器对这两个值取值异常。  
 ##### 1.4.3  
 增加sa.quick('autoTrack')方法，可以自动追踪pv，增加是否是首日访问等预置属性，和设置首次来源,首次时间等。  
 同时对于属性的验证放宽，如果属性名错误，一样会发到后端。之前是会在前端抛掉。目前这样做可以方便在后端看到错误，方便debug错误原因。
