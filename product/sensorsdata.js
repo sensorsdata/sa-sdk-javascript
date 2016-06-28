@@ -25,8 +25,10 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     debug_mode: false,
     debug_mode_upload: false,
     vtrack_prefix: false,
+    // todo
     session_time: 0,
     use_client_time: false,
+    // todo 
     auto_init: true
   };
   // 合并配置
@@ -49,9 +51,6 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   }
 
   // 是否需要给可视化埋点加前缀
-
-
-
   
   var detector = {};
   (function() {
@@ -600,7 +599,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.4.4';
+    , LIB_VERSION = '1.4.5';
 
 // 提供错误日志
   var error_msg = [];
@@ -1326,6 +1325,33 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
    */
 
+  // 数据发送状态
+  sd.sendState = {}
+  //成功发送数
+  sd.sendState._complete = 0;
+  //接受发送数
+  sd.sendState._receive = 0;
+  sd.sendState.getSendCall = function(data,callback){
+    ++this._receive;
+    var state = '_state' + this._receive;
+    var me = this;
+    this[state] = document.createElement('img');
+    this[state].onload = this[state].onerror = function(e) {
+        me[state].onload = null;
+        me[state].onerror = null;
+        delete me[state];
+        ++me._complete;
+        (typeof callback === 'function') && callback();
+    };
+    if (sd.para.server_url.indexOf('?') !== -1) {
+      this[state].src = sd.para.server_url + '&data=' + encodeURIComponent(_.base64Encode(data));
+    } else {
+      this[state].src = sd.para.server_url + '?data=' + encodeURIComponent(_.base64Encode(data));
+    }
+  };
+
+
+
 // 检查是否是新用户（第一次种cookie，且在8个小时内的）
    var saNewUser = {
     checkIsAddSign: function(data){
@@ -1350,7 +1376,6 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       }
     }
    };
-
 
   var saEvent = {};
 
@@ -1489,7 +1514,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       this.debugPath(JSON.stringify(data),callback);
     }else{
       logger.info(data);
-      this.serverPath(JSON.stringify(data),callback);
+      sd.sendState.getSendCall(JSON.stringify(data),callback);
     }
 
   };
@@ -1509,26 +1534,6 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       cors: true,
       header:{'Dry-Run': String(sd.para.debug_mode_upload)}
     });
-
-  };
-
-  // 发送请求
-  saEvent.serverPath = function(data,callback) {
-    sd.requestImg = new Image();
-    sd.requestImg.onload = sd.requestImg.onerror = function() {
-      if (sd.requestImg) {
-        //callback && callback();        
-        sd.requestImg.onload = null;
-        sd.requestImg.onerror = null;
-        sd.requestImg = null;  
-      }
-    };
-    
-    if (sd.para.server_url.indexOf('?') !== -1) {
-      sd.requestImg.src = sd.para.server_url + '&data=' + encodeURIComponent(_.base64Encode(data));
-    } else {
-      sd.requestImg.src = sd.para.server_url + '?data=' + encodeURIComponent(_.base64Encode(data));
-    }
 
   };
 
