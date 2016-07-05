@@ -599,7 +599,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.4.5';
+    , LIB_VERSION = '1.5';
 
 // 提供错误日志
   var error_msg = [];
@@ -1031,14 +1031,22 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
           this._parse(a)
       }
     }; 
-    URLParser.prototype.setURL = function (a) {
+    URLParser.prototype.setUrl = function (a) {
         this._parse(a)
     }; 
     URLParser.prototype._initValues = function () {
         for (var a in this._fields) {
             this._values[a] = ''
         }
-    }; 
+    };
+    URLParser.prototype.getUrl = function () {
+        var url = '';
+        url += this._values.Origin;
+        url += this._values.Port ? ':' + this._values.Port : '';
+        url += this._values.Path;
+        url += this._values.QueryString ? '?' + this._values.QueryString : '';
+        return url;
+    };
     URLParser.prototype._parse = function (a) {
         this._initValues();
         var b = this._regex.exec(a);
@@ -1285,6 +1293,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
         $screen_height: Number(screen.height) || 0,
         $screen_width: Number(screen.width) || 0,
         $lib: 'js',
+        $lib_method: 'code',
+//        $lib_detail: '',
         $lib_version: String(LIB_VERSION),
         $browser: detector.browser.name,
         $browser_version: String(detector.browser.version)
@@ -1675,13 +1685,17 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
     autoTrack: function() {
       var utms = _.info.campaignParams();
+      var $utms = {};
+      for(var i in utms){
+        $utms['$'+i] = utms[i];
+      }
       // setOnceProfile
       if(is_first_visitor){
         sd.setOnceProfile(_.extend({
           $first_visit_time: new Date(),
           $first_referrer: document.referrer,
           $first_referrer_host: _.info.referringDomain(document.referrer)
-          },utms)
+          },$utms)
         );
       }
       // trackpageview
@@ -1692,7 +1706,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
         $url_path: location.pathname,
         $title: document.title,
         $browser_language: navigator.language
-      },utms)
+      },$utms)
       );      
     }
 
