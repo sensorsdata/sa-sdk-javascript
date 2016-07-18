@@ -38,8 +38,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     }
   }
   // 优化配置
-  if(!/sa\.gif/.test(sd.para.server_url)){
-    sd.para.server_url = sd.para.server_url.replace(/\/(sa)\\?/,'/$1.gif');
+  if(!/sa\.gif[^\/]*$/.test(sd.para.server_url)){
+    sd.para.server_url = sd.para.server_url.replace(/\/sa$/,'/sa.gif').replace(/(\/sa)(\?[^\/]+)$/,'/sa.gif$2');
   }
   sd.para.debug_mode_url = sd.para.debug_mode_url || sd.para.server_url.replace('sa.gif','debug');
   
@@ -599,7 +599,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.5';
+    , LIB_VERSION = '1.5.1';
 
 // 提供错误日志
   var error_msg = [];
