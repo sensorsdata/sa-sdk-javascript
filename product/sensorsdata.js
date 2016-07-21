@@ -24,12 +24,14 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     show_log: true,
     debug_mode: false,
     debug_mode_upload: false,
-    vtrack_prefix: false,
-    // todo
+
+    // todo 前端session时长
     session_time: 0,
+
     use_client_time: false,
-    // todo 
-    auto_init: true
+    // 七鱼过滤id
+    vtrack_ignore:{}
+
   };
   // 合并配置
   for (var i in sd.para_default){
@@ -599,7 +601,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.5.1';
+    , LIB_VERSION = '1.5.2';
 
 // 提供错误日志
   var error_msg = [];
@@ -996,9 +998,10 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     };
   })();
 
+
   _.getQueryParam = function(url, param) {
-    param = param.replace(/[\[]/, '\\\[').replace(/[\]]/, '\\\]');
-    var regexS = '[\\?&]' + param + '=([^&#]*)',
+    param = param.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+    var regexS = "[\\?&]" + param + "=([^&#]*)",
       regex = new RegExp(regexS),
       results = regex.exec(url);
     if (results === null || (results && typeof(results[1]) !== 'string' && results[1].length)) {
@@ -1161,18 +1164,6 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       return supported;
     }
 
-  };
-
-  _.getQueryParam = function(url, param) {
-    param = param.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
-    var regexS = "[\\?&]" + param + "=([^&#]*)",
-      regex = new RegExp(regexS),
-      results = regex.exec(url);
-    if (results === null || (results && typeof(results[1]) !== 'string' && results[1].length)) {
-      return '';
-    } else {
-      return decodeURIComponent(results[1]).replace(/\+/g, ' ');
-    }
   };
 
   _.xhr = function (cors) {
