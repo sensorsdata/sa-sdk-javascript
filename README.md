@@ -2,12 +2,16 @@
 
 Sensors Analytics JavaScript SDK  
 
-代码埋点参考 http://www.sensorsdata.cn/manual/js_sdk.html  
-可视化埋点参考 https://sensorsdata.cn/manual/vtrack_intro.html  
+# 代码埋点和可视化埋点介绍
 
-两个注意点:  
-1. 能用代码埋点就用代码埋点，尽量不要用可视化埋点！具体原因参考上面这个文档。  
-2. 可视化埋点代码里包含了代码埋点，所以使用可视化埋点的话，也可以使用代码埋点的功能。
+代码埋点参考 http://www.sensorsdata.cn/manual/js_sdk.html   
+代码埋点只需要把 sdk_url 设置成 sensorsdata.min.js  
+
+可视化埋点参考 https://sensorsdata.cn/manual/vtrack_intro.html    
+可视化埋点只需要把 sdk_url 设置成 vtrack.min.js 同时同级目录下必须包含这两个文件 vendor.min.js vendor.min.css   
+可视化埋点代码里包含了代码埋点的所有功能，所以使用可视化埋点的话，也可以使用代码埋点的功能。  
+***注意*** 能用代码埋点就用代码埋点，尽量不要用可视化埋点！具体原因参考可视化埋点文档。   
+
 如有疑问请联系邮箱 shengyonggen@sensorsdata.cn 比较着急的话可以QQ522370351
 
 # 代码埋点最佳实践
@@ -16,11 +20,12 @@ Sensors Analytics JavaScript SDK
 3. 数据导入辅助工具： 这里会汇总数据的错误。  
 
 # 使用说明
-1. /product下的是 代码埋点的最新源文件，欢迎提交修改。  
-2. /dist下的是 可视化埋点和代码埋点的可用发行版。  
-3. 使用 SDK 前，请将 /dist/版本号 下的文件都下载到你们自己网站目录下面!!!  
+1. /product下的是 代码埋点的最新源文件，欢迎提交修改。可视化埋点较为复杂，没有提供源文件，且不推荐使用。 
+2. /dist下的是 可视化埋点和代码埋点的可用发行版文件。请将 /dist/版本号 下的文件都下载到你们自己网站目录下面!!!  
 4. ***升级使用新版 SDK 前，请在微信群里先问下你们的神策分析系统版本是否支持!!!***
 
+#####1.5.2
+可视化埋点增加选择器过滤功能
 #####1.5.1
 修复如果后端地址是 sa.xx 开头时候，发送地址替换gif错误的问题。增加web_url应对客户自定义后端api地址的问题。修复页面iframe了非同源页面后的bug。
 #####1.5  
