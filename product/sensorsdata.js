@@ -601,7 +601,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.5.2';
+    , LIB_VERSION = '1.5.3';
 
 // 提供错误日志
   var error_msg = [];
@@ -652,6 +652,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
         }
       }
     };
+
+    _.logger = logger;
 
     _.extend = function(obj) {
       each(slice.call(arguments, 1), function(source) {
