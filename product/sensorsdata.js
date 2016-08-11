@@ -29,6 +29,9 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     session_time: 0,
 
     use_client_time: false,
+//来源参数名字
+    source_channel:[],
+
     // 七鱼过滤id
     vtrack_ignore:{}
 
@@ -601,11 +604,15 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.5.3';
+    , LIB_VERSION = '1.5.4';
 
 // 提供错误日志
   var error_msg = [];
   var is_first_visitor = false;
+
+// 标准广告系列来源
+  var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
+
 
   var logger = typeof logger === 'object' ? logger : {};
   logger.info = function() {
@@ -833,6 +840,19 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       });
     }
   };
+// 数组去重复
+  _.unique = function (ar){
+    var temp,n=[],o= {};
+    for(var i = 0; i < ar.length; i++){
+      temp = ar[i];
+      if(!(temp in o)){
+         o[temp] = true;
+         n.push(temp);        
+      }
+    }
+    return n;
+  };
+
 
   // 只能是sensors满足的数据格式
   _.strip_sa_properties = function(p) {
@@ -1256,9 +1276,13 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
   _.info = {
     campaignParams: function() {
-      var campaign_keywords = 'utm_source utm_medium utm_campaign utm_content utm_term'.split(' ')
+      var campaign_keywords = source_channel_standard.split(' ')
         , kw = ''
         , params = {};
+      if(_.isArray(sd.para.source_channel) && sd.para.source_channel.length >0 ){
+        campaign_keywords = campaign_keywords.concat(sd.para.source_channel);
+        campaign_keywords = _.unique(campaign_keywords);
+      }
       _.each(campaign_keywords, function(kwkey) {
         kw = _.getQueryParam(location.href, kwkey);
         if (kw.length) {
@@ -1358,8 +1382,23 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 // 检查是否是新用户（第一次种cookie，且在8个小时内的）
    var saNewUser = {
     checkIsAddSign: function(data){
-      if(data.type === 'track' && _.cookie.get('sensorsdata_is_new_user') !== null){
-        data.properties.$is_first_day = true;
+      if(data.type === 'track'){
+        if(_.cookie.get('sensorsdata_is_new_user') !== null){
+          data.properties.$is_first_day = true;
+        }else{
+          data.properties.$is_first_day = false;
+        }
+      }
+    },
+    is_first_visit_time: false,
+    checkIsFirstTime: function(data){
+      if(data.type === 'track'){
+        if(this.is_first_visit_time){
+          data.properties.$is_first_time = true;
+          this.is_first_visit_time = false;
+        }else{
+          data.properties.$is_first_time = false;          
+        }
       }
     },
     storeInitCheck: function(){
@@ -1372,9 +1411,20 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
           s: 59 - date.getSeconds()
         };
         _.cookie.set('sensorsdata_is_new_user','true',obj.h*3600+obj.m*60+obj.s+'s');
+        // 如果是is_first_visit_time，且第一次，那就发数据
+        this.is_first_visit_time = true;
       }else{
+        // 如果没有这个cookie，肯定不是首日
         if(_.cookie.get('sensorsdata_is_new_user') === null){
-          this.checkIsAddSign = function(){};
+          this.checkIsAddSign = function(data){
+            if(data.type === 'track'){
+              data.properties.$is_first_day = false;                
+            }
+          };
+        }
+        // 如果不是第一次打开的用户，肯定不是首次访问
+        this.checkIsFirstTime = function(data){
+          data.properties.$is_first_time = false;
         }
       }
     }
@@ -1486,11 +1536,52 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       distinct_id: store.getDistinctId(),
       properties: {}
     };
-    if(error_msg.length > 0){
-      data.jssdk_error = error_msg.join('--');
+
+    // 测试部分数据没有distinct_id的问题
+    if(typeof store.getDistinctId() !== 'string' || typeof store.getDistinctId() === ''){
+      var wrong_case = '';
+      switch (store.getDistinctId()) {
+        case null :
+        wrong_case = 'null';
+        break;
+        case (void 0) :
+        wrong_case = 'undefined';
+        break;        
+        case '':
+        wrong_case = '空';        
+        break;        
+        default:
+        wrong_case = String(store.getDistinctId());        
+      }
+      error_msg.push('distinct_id_wrong' + wrong_case + '-' + (new Date()).getTime());
     }
 
     _.extend(data, p);
+
+    // 测试部分数据没有distinct_id的问题
+    if(typeof data.distinct_id !== 'string' || typeof data.distinct_id === ''){
+      var wrong_case = '';
+      switch (data.distinct_id) {
+        case null :
+        wrong_case = 'null';
+        break;        
+        case (void 0) :
+        wrong_case = 'undefined';
+        break;        
+        case '':
+        wrong_case = '空';        
+        break;        
+        default:
+        wrong_case = String(data.distinct_id);        
+      }
+      error_msg.push('distinct_id_wrong' + wrong_case + '-' + (new Date()).getTime());
+    }
+
+    if(error_msg.length > 0){      
+      data.jssdk_error = error_msg.join('--');
+    }
+
+
     if (_.isObject(p.properties) && !_.isEmptyObject(p.properties)) {
       _.extend(data.properties, p.properties);
     }
@@ -1511,6 +1602,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     _.searchObjDate(data);
     //判断是否要给数据增加新用户属性
     saNewUser.checkIsAddSign(data);
+    saNewUser.checkIsFirstTime(data);
     
   if (sd.para.debug_mode === true){
       logger.info(data);
@@ -1680,13 +1772,18 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       var utms = _.info.campaignParams();
       var $utms = {};
       for(var i in utms){
-        $utms['$'+i] = utms[i];
+        if((' ' + source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1){
+          $utms['$'+i] = utms[i];
+        }else{
+          $utms[i] = utms[i];
+        }
       }
       // setOnceProfile
       if(is_first_visitor){
         sd.setOnceProfile(_.extend({
           $first_visit_time: new Date(),
           $first_referrer: document.referrer,
+          $first_browser_language: navigator.language,
           $first_referrer_host: _.info.referringDomain(document.referrer)
           },$utms)
         );
@@ -1697,8 +1794,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
         $referrer_host: _.info.referringDomain(document.referrer),
         $url: location.href,
         $url_path: location.pathname,
-        $title: document.title,
-        $browser_language: navigator.language
+        $title: document.title
       },$utms)
       );      
     }
