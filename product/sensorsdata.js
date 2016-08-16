@@ -2039,7 +2039,7 @@ var _ = sd._ = {};
 
   sd.registerOnce = function(props) {
     if (saEvent.check({properties: props})) {
-      store.setPropsOnce('props', props);
+      store.setPropsOnce(props);
     } else {
       logger.info('registerOnce输入的参数有误');
     }
