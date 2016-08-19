@@ -610,7 +610,7 @@ var _ = sd._ = {};
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.5.5';
+    , LIB_VERSION = '1.5.6';
 
 // 提供错误日志
   var error_msg = [];
@@ -1389,6 +1389,11 @@ var _ = sd._ = {};
         ++me._complete;
         (typeof callback === 'function') && callback();
     };
+    
+    data._nocache = String(new Date().getTime()) + String(Math.random());
+    logger.info(data);
+    data = JSON.stringify(data);
+
     if (sd.para.server_url.indexOf('?') !== -1) {
       this[state].src = sd.para.server_url + '&data=' + encodeURIComponent(_.base64Encode(data));
     } else {
@@ -1637,8 +1642,7 @@ var _ = sd._ = {};
       logger.info(data);
       this.debugPath(JSON.stringify(data),callback);
     }else{
-      logger.info(data);
-      sd.sendState.getSendCall(JSON.stringify(data),callback);
+      sd.sendState.getSendCall(data,callback);
     }
 
   };
