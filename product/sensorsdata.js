@@ -25,6 +25,10 @@ var _ = sd._ = {};
   // 默认配置
   sd.para = sd.para || {};
   sd.para_default = {
+    // referrer字符串截取
+    max_referrer_string_length:800,
+    //通用字符串截取，超过7000的字符串会导致url超长发不出去，所以限制长度
+    max_string_length: 1000,
 //    send_error_event: true,
     cross_subdomain: true,
     show_log: true,
@@ -610,7 +614,9 @@ var _ = sd._ = {};
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.5.6';
+    , LIB_VERSION = '1.5.7';
+
+  sd.lib_version = LIB_VERSION;
 
 // 提供错误日志
   var error_msg = [];
@@ -847,6 +853,7 @@ var _ = sd._ = {};
       + pad(d.getMilliseconds());
   };
 
+// 把日期格式全部转化成日期字符串
   _.searchObjDate = function(o) {
     if (_.isObject(o)) {
       _.each(o, function(a, b) {
@@ -860,6 +867,33 @@ var _ = sd._ = {};
       });
     }
   };
+  // 把字符串格式数据限制字符串长度
+  _.formatString = function(str){
+    if(str.length > sd.para.max_string_length){
+      logger.info('字符串长度超过限制，已经做截取--' + str);
+      return str.slice(0,sd.para.max_string_length);
+    }else{
+      return str;
+    }
+  };
+
+  // 把字符串格式数据限制字符串长度
+    _.searchObjString = function(o) {
+    if (_.isObject(o)) {
+      _.each(o, function(a, b) {
+        if (_.isObject(a)) {
+          _.searchObjString(o[b]);
+        } else {
+          if (_.isString(a)) {
+            o[b] = _.formatString(a);
+          }
+        }
+      });
+    }
+  };
+
+
+
 // 数组去重复
   _.unique = function (ar){
     var temp,n=[],o= {};
@@ -1634,6 +1668,7 @@ var _ = sd._ = {};
       }
     }
     _.searchObjDate(data);
+    _.searchObjString(data);
     //判断是否要给数据增加新用户属性
     saNewUser.checkIsAddSign(data);
     saNewUser.checkIsFirstTime(data);
@@ -1778,7 +1813,7 @@ var _ = sd._ = {};
     },
     //set init referrer
     setInitReferrer: function() {
-      var _referrer = document.referrer;
+      var _referrer = (document.referrer).slice(0,sd.para.max_referrer_string_length);
       sd.setOnceProfile({
         _init_referrer: _referrer,
         _init_referrer_domain: _.info.referringDomain(_referrer)
@@ -1786,7 +1821,7 @@ var _ = sd._ = {};
     },
     // set init sessionRegister cookie
     setSessionReferrer: function() {
-      var _referrer = document.referrer;
+      var _referrer = (document.referrer).slice(0,sd.para.max_referrer_string_length);
       store.setSessionPropsOnce({
         _session_referrer: _referrer,
         _session_referrer_domain: _.info.referringDomain(_referrer)
@@ -1796,7 +1831,7 @@ var _ = sd._ = {};
     setDefaultAttr: function() {
       _.info.register({
         _current_url: location.href,
-        _referrer: document.referrer,
+        _referrer: (document.referrer).slice(0,sd.para.max_referrer_string_length),
         _referring_domain: _.info.referringDomain(document.referrer)
       });
     },
@@ -1815,7 +1850,7 @@ var _ = sd._ = {};
       if(is_first_visitor){
         sd.setOnceProfile(_.extend({
           $first_visit_time: new Date(),
-          $first_referrer: document.referrer,
+          $first_referrer: (document.referrer).slice(0,sd.para.max_referrer_string_length),
           $first_browser_language: navigator.language,
           $first_referrer_host: _.info.referringDomain(document.referrer)
           },$utms)
@@ -1823,7 +1858,7 @@ var _ = sd._ = {};
       }
       // trackpageview
       sd.track('$pageview',_.extend({
-        $referrer: document.referrer,
+        $referrer: (document.referrer).slice(0,sd.para.max_referrer_string_length),
         $referrer_host: _.info.referringDomain(document.referrer),
         $url: location.href,
         $url_path: location.pathname,
