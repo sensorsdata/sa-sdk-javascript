@@ -614,7 +614,7 @@ var _ = sd._ = {};
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.5.7';
+    , LIB_VERSION = '1.5.8';
 
   sd.lib_version = LIB_VERSION;
 
@@ -1482,7 +1482,9 @@ var _ = sd._ = {};
         }
         // 如果不是第一次打开的用户，肯定不是首次访问
         this.checkIsFirstTime = function(data){
-          data.properties.$is_first_time = false;
+          if(data.type === 'track'){
+            data.properties.$is_first_time = false;
+          }
         }
       }
     }
