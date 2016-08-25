@@ -8,7 +8,7 @@
 // 防止重复引入
 sd = window[sd];
 
-if(typeof sd !== 'function' || sd.has_load_sdk){
+if((typeof sd !== 'function' && typeof sd !== 'object') || sd.has_load_sdk){
   return false;
 }
 sd.has_load_sdk = true;
