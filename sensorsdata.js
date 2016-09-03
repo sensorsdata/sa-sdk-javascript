@@ -614,7 +614,7 @@ var _ = sd._ = {};
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.5.8';
+    , LIB_VERSION = '1.5.9';
 
   sd.lib_version = LIB_VERSION;
 
@@ -1103,7 +1103,6 @@ var _ = sd._ = {};
       this._values = {
       };
       this._regex = null;
-      this.version = 0.1;
       this._regex = /^((\w+):\/\/)?((\w+):?(\w+)?@)?([^\/\?:]+):?(\d+)?(\/?[^\?#]+)?\??([^#]+)?#?(\w*)/;
 
       if (typeof a != 'undefined') {
@@ -1143,7 +1142,45 @@ var _ = sd._ = {};
     };
     return new URLParser(para);
   }
+// 取host
+  _.referringDomain = function(referrer) {
+    var split = referrer.split('/');
+    if (split.length >= 3) {
+      return split[2];
+    }
+    return '';
+  };
+// 取domain
+  _.getDomain = function(url){
+    if(typeof url === 'string' && url.split('.').length >= 2){
+      var temp = url.match(/[^\.]+\.[^.]+$/);
+      if(temp && temp[0]){
+        return temp[0];
+      }else{
+        return '';
+      }
+    }else{
+      return '';
+    }
+  }
 
+
+// 是否有标准的浏览器环境,如果不是发送$errorEnviroment:{$errorReson:'没有window'}
+  _.hasStandardBrowserEnviroment = function(){
+    if(!window){
+      return 'window';
+    }
+    if(!document){
+      return 'document';
+    }
+    if(!navigator){
+      return 'navigator';
+    }
+    if(!screen){
+      return 'screen';
+    }
+
+  };
 
   _.cookie = {
     get: function(name) {
@@ -1166,9 +1203,7 @@ var _ = sd._ = {};
       days = typeof days === 'undefined' ? 730 : days;
 
       if (cross_subdomain) {
-        var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i)
-          , domain = matches ? matches[0] : '';
-
+        var domain =  _.info.pageProp.url_domain || '';
         cdomain = ((domain) ? '; domain=.' + domain : '');
       }
       // 0 session
@@ -1329,6 +1364,25 @@ var _ = sd._ = {};
   };
 
   _.info = {
+    initPage: function(){
+      var referrer = document.referrer;
+      var referrer_host = referrer ? _.referringDomain(referrer) : referrer;
+      var referrer_domain = _.getDomainByHost(referrer_domain);
+      var url = location.href;
+      var url_host = url ? _.referringDomain(url) : url;
+      var url_domain = _.getDomainByHost(url_host);
+      this.pageProp = {
+        referrer: referrer,
+        referrer_host: referrer_host,
+        referrer_domain: referrer_domain,
+        url: url,
+        url_host: url_host,
+        url_domain: url_domain        
+      };
+    },
+    //当前页面的一些属性，在store初始化是生成
+    pageProp: {},
+
     campaignParams: function() {
       var campaign_keywords = source_channel_standard.split(' ')
         , kw = ''
@@ -1346,20 +1400,11 @@ var _ = sd._ = {};
 
       return params;
     },
-
-    referringDomain: function(referrer) {
-      var split = referrer.split('/');
-      if (split.length >= 3) {
-        return split[2];
-      }
-      return '';
-    },
-
+// 预置属性
     properties: function() {
       return {
         $os: detector.os.name,
         $model: detector.device.name,
-        _browser_engine: detector.engine.name,
         $os_version: String(detector.os.version),
         $screen_height: Number(screen.height) || 0,
         $screen_width: Number(screen.width) || 0,
@@ -1376,34 +1421,6 @@ var _ = sd._ = {};
       _.extend(_.info.currentProps, obj);
     }
   };
-
-  /* 如果设置为傻瓜模式时，自动去设置一些属性，目前看来并不没有强烈需求，先注释掉
-
-   var seniorProp = {
-   data: {},
-   init: function() {
-   var _referrer = document.referrer;
-   // set init register cookie
-   store.setPropsOnce({
-   _init_referrer: _referrer,
-   _init_referrer_domain: _.info.referringDomain(_referrer)
-   });
-   // set init sessionRegister cookie
-   store.setSessionPropsOnce({
-   _session_referrer: _referrer,
-   _session_referrer_domain: _.info.referringDomain(_referrer)
-   });
-   // set init props
-   var source = _.info.campaignParams();
-   this.data = {
-   _current_url: location.href
-   };
-   _.extend(this.data, source);
-
-   }
-   };
-
-   */
 
   // 数据发送状态
   sd.sendState = {}
@@ -1487,7 +1504,22 @@ var _ = sd._ = {};
           }
         }
       }
+    },
+    //检查是否是latest
+    checkIsFirstLatest: function(){
+      var url_domain = _.info.pageProp.url_domain;
+      var referrer_domain = _.info.pageProp.referrer_domain;
+      // 如果域名不一致，就register为latest
+      /* 1.6 todo
+      if(url_domain !== '' && url_domain !== referrer_domain){
+        sa.register({
+          $latest_referrer: _.info.pageProp.referrer,
+          $latest_referrer_domain: _.info.pageProp.referrer_domain
+        });
+      }
+      */
     }
+
    };
 
   var saEvent = {};
@@ -1622,25 +1654,6 @@ var _ = sd._ = {};
     }
 
     _.extend(data, p);
-
-    // 测试部分数据没有distinct_id的问题
-    if(typeof data.distinct_id !== 'string' || typeof data.distinct_id === ''){
-      var wrong_case = '';
-      switch (data.distinct_id) {
-        case null :
-        wrong_case = 'null';
-        break;        
-        case (void 0) :
-        wrong_case = 'undefined';
-        break;        
-        case '':
-        wrong_case = '空';        
-        break;        
-        default:
-        wrong_case = String(data.distinct_id);        
-      }
-      error_msg.push('distinct_id_wrong' + wrong_case + '-' + (new Date()).getTime());
-    }
 
     if(error_msg.length > 0){      
       data.jssdk_error = error_msg.join('--');
@@ -1795,6 +1808,7 @@ var _ = sd._ = {};
       }
       //判断新用户
       saNewUser.storeInitCheck();
+      saNewUser.checkIsFirstLatest();
       // 如果初始化cookie失败，发送错误事件
       /*
       if(error_msg.length > 0 && sd.para.send_error_event){
@@ -1818,7 +1832,7 @@ var _ = sd._ = {};
       var _referrer = (document.referrer).slice(0,sd.para.max_referrer_string_length);
       sd.setOnceProfile({
         _init_referrer: _referrer,
-        _init_referrer_domain: _.info.referringDomain(_referrer)
+        _init_referrer_domain: _.referringDomain(_referrer)
       });
     },
     // set init sessionRegister cookie
@@ -1826,7 +1840,7 @@ var _ = sd._ = {};
       var _referrer = (document.referrer).slice(0,sd.para.max_referrer_string_length);
       store.setSessionPropsOnce({
         _session_referrer: _referrer,
-        _session_referrer_domain: _.info.referringDomain(_referrer)
+        _session_referrer_domain: _.referringDomain(_referrer)
       });
     },
     // set default referrr and pageurl
@@ -1834,7 +1848,7 @@ var _ = sd._ = {};
       _.info.register({
         _current_url: location.href,
         _referrer: (document.referrer).slice(0,sd.para.max_referrer_string_length),
-        _referring_domain: _.info.referringDomain(document.referrer)
+        _referring_domain: _.referringDomain(document.referrer)
       });
     },
 
@@ -1854,14 +1868,14 @@ var _ = sd._ = {};
           $first_visit_time: new Date(),
           $first_referrer: (document.referrer).slice(0,sd.para.max_referrer_string_length),
           $first_browser_language: navigator.language,
-          $first_referrer_host: _.info.referringDomain(document.referrer)
+          $first_referrer_host: _.referringDomain(document.referrer)
           },$utms)
         );
       }
       // trackpageview
       sd.track('$pageview',_.extend({
         $referrer: (document.referrer).slice(0,sd.para.max_referrer_string_length),
-        $referrer_host: _.info.referringDomain(document.referrer),
+        $referrer_host: _.referringDomain(document.referrer),
         $url: location.href,
         $url_path: location.pathname,
         $title: document.title
@@ -2104,7 +2118,18 @@ var _ = sd._ = {};
 
 
   sd.init = function() {
+    // 防止爬虫等异常情况
+    /*
+    if(!_.hasStandardBrowserEnviroment()){
+      return false;
+    }*/
+    // 初始化referrer等页面属性 1.6
+    
+    //_.info.initPage();
+    
+    // 初始化distinct_id
     store.init();
+
     _.each(sd._q, function(content) {
       sd[content[0]].apply(sd, slice.call(content[1]));
     });
