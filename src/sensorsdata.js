@@ -1151,7 +1151,7 @@ var _ = sd._ = {};
     return '';
   };
 // 取domain
-  _.getDomain = function(url){
+  _.getDomainByHost = function(url){
     if(typeof url === 'string' && url.split('.').length >= 2){
       var temp = url.match(/[^\.]+\.[^.]+$/);
       if(temp && temp[0]){
@@ -1532,7 +1532,7 @@ var _ = sd._ = {};
         });
       }
       // utm
-      var $utm = _.info.campaignParamsStandard().$utms;
+      var $utms = _.info.campaignParamsStandard().$utms;
       if(!_.isEmptyObject($utms)){
         sd.register($utms);
       }
