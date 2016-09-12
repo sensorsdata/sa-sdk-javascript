@@ -1203,9 +1203,12 @@ var _ = sd._ = {};
       days = typeof days === 'undefined' ? 730 : days;
 
       if (cross_subdomain) {
-        var domain =  _.info.pageProp.url_domain || '';
+        var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i)
+          , domain = matches ? matches[0] : '';
+
         cdomain = ((domain) ? '; domain=.' + domain : '');
       }
+
       // 0 session
       // -1 马上过期
       // 
@@ -1367,7 +1370,7 @@ var _ = sd._ = {};
     initPage: function(){
       var referrer = document.referrer;
       var referrer_host = referrer ? _.referringDomain(referrer) : referrer;
-      var referrer_domain = _.getDomainByHost(referrer_domain);
+      var referrer_domain = _.getDomainByHost(referrer_host);
       var url = location.href;
       var url_host = url ? _.referringDomain(url) : url;
       var url_domain = _.getDomainByHost(url_host);
@@ -1528,7 +1531,7 @@ var _ = sd._ = {};
       if(url_domain !== '' && url_domain !== referrer_domain){
         sa.register({
           $latest_referrer: _.info.pageProp.referrer,
-          $latest_referrer_domain: _.info.pageProp.referrer_domain
+          $latest_referrer_host: _.info.pageProp.referrer_host
         });
       }
       // utm
