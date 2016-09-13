@@ -1829,7 +1829,7 @@ var _ = sd._ = {};
       }
       //判断新用户
       saNewUser.storeInitCheck();
-      saNewUser.checkIsFirstLatest();
+      //saNewUser.checkIsFirstLatest();
       // 如果初始化cookie失败，发送错误事件
       /*
       if(error_msg.length > 0 && sd.para.send_error_event){
