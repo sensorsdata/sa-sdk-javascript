@@ -614,7 +614,7 @@ var _ = sd._ = {};
     , slice = ArrayProto.slice
     , toString = ObjProto.toString
     , hasOwnProperty = ObjProto.hasOwnProperty
-    , LIB_VERSION = '1.6';
+    , LIB_VERSION = '1.5.11';
 
   sd.lib_version = LIB_VERSION;
 
