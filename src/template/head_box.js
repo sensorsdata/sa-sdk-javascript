@@ -1,0 +1,10 @@
+(function(){function head_box(it
+/**/) {
+var out='<div class="sensors-jssdk-head-out" sensors_ignore_tag="all"> <div class="sensors-jssdk-head-in"> <div class="sensors-jssdk-head-in-right">  <button class="sensors-jssdk-btn" data-sensors-action="define_url">切换已埋点页面</button> <button class="sensors-jssdk-btn" data-sensors-action="trigger_box">本页埋点</button> <button class="sensors-jssdk-btn" data-sensors-action="exit_login">退出</button> <button class="sensors-jssdk-btn" style="background:#097;font-weight:bold;" data-sensors-action="mini-right"> &gt; </button>  <!-- <button class="sensors-jssdk-btn" style="display:none;background:#097;font-weight:bold;" data-sensors-action="mini-right-2"> &lt; </button>           --> </div> <div class="sensors-jssdk-head-in-left"> <a href="javascript:;" style="cursor:move;background:url(https://www.sensorsdata.cn/img/logo-6a5f89d488.svg) no-repeat scroll center center / 120px 41px;display: inline-block;height:40px;text-decoration:none !important;width: 130px;"> </a> </div> <div class="sensors-jssdk-head-in-main"> <button data-sensors-action="define_mode" class="sensors-jssdk-btn';if(it.navStatus === 'defineMode'){out+=' sensors-jssdk-btn-success';}out+='" >埋点模式</button> <button data-sensors-action="test_mode" class="sensors-jssdk-btn';if(it.navStatus === 'testMode'){out+=' sensors-jssdk-btn-success';}out+='" >测试模式</button> </div>  </div> </div>';return out;
+}var itself=head_box, _encodeHTML=(function (doNotSkipEncoded) {
+		var encodeHTMLRules = { "&": "&#38;", "<": "&#60;", ">": "&#62;", '"': "&#34;", "'": "&#39;", "/": "&#47;" },
+			matchHTML = doNotSkipEncoded ? /[&<>"'\/]/g : /&(?!#?\w+;)|<|>|"|'|\//g;
+		return function(code) {
+			return code ? code.toString().replace(matchHTML, function(m) {return encodeHTMLRules[m] || m;}) : "";
+		};
+	}());doT.gtemplate = doT.gtemplate || {};doT.gtemplate['head_box'] = itself;}());
