@@ -30,7 +30,6 @@ logger.info = function() {
   }
 };
 
-
 (function() {
   var nativeBind = FuncProto.bind,
     nativeForEach = ArrayProto.forEach,
