@@ -16,17 +16,17 @@
   var SAS = sdkMain.SAS;
 
   var doT = {};
-@@include('src/template.js')
+@@include('sa-sdk-javascript/src/template.js')
   sd.template = doT.gtemplate;
 
   //json格式化
 
-  @@include('src/jsontree.js')
+  @@include('sa-sdk-javascript/src/jsontree.js')
   sd.JSONTree = JSONTree;
 
 
   // suggest
-  @@include('src/suggest.js')
+  @@include('sa-sdk-javascript/src/suggest.js')
 
   var Utils = {};
   Utils.Formatting = {
@@ -52,7 +52,7 @@
   };
 
 
-@@include('src/modal.js')
+@@include('sa-sdk-javascript/src/modal.js')
 
   $.fn.gSelectBox = function() {
     return $(this).each(function(a, b) {

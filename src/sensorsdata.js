@@ -7,22 +7,23 @@
 
   // 防止重复引入
   sd = window[sd];
+  sd._t = sd._t || 1 * new Date();
 
   if ((typeof sd !== 'function' && typeof sd !== 'object') || sd.has_load_sdk) {
     return false;
   }
   sd.has_load_sdk = true;
 
-@@include('src/json2.js')
+@@include('sa-sdk-javascript/src/json2.js')
 
 @@if (sensorsdata_mode === 'vtrack') {
-  @@include('src/promise.min.js')
+  @@include('sa-sdk-javascript/src/promise.min.js')
   }
 
   var _ = sd._ = {};
 
 @@if (sensorsdata_mode === 'vtrack') {
-  @@include('src/jquery.js')
+  @@include('sa-sdk-javascript/src/jquery.js')
     sd.$ = $;
 
     sd.customEv = $({});
@@ -71,12 +72,12 @@
   }
 
   // 是否需要给可视化埋点加前缀
-  @@include('src/detector.min.js')
+  @@include('sa-sdk-javascript/src/detector.min.js')
 
-  @@include('src/sdk.js')
+  @@include('sa-sdk-javascript/src/sdk.js')
 
 @@if (sensorsdata_mode === 'vtrack') {
-  @@include('src/vtrack.sdk.js')
+  @@include('sa-sdk-javascript/src/vtrack.sdk.js')
   }
 
 @@if (sensorsdata_mode !== 'vtrack') {

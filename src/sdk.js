@@ -1531,12 +1531,53 @@ saEvent.send = function(p, callback) {
   };
 
 
+  function app_js_bridge(){
+    var app_info = null;
+    var todo = null;
+    function setAppInfo(data){
+      app_info = data;
+      if(todo){
+        todo(data);
+      }
+    }
+    //android
+    function getAndroid(){
+      if(typeof window.SensorsData_APP_JS_Bridge === 'object' && window.SensorsData_APP_JS_Bridge.sensorsdata_call_app){
+        app_info = SensorsData_APP_JS_Bridge.sensorsdata_call_app();
+      }
+    }
+    //ios
+    window.sensorsdata_app_js_bridge_call_js = function(data){    
+      setAppInfo(data);
+    };
+    sd.getAppStatus = function(func){
+      //先获取能直接取到的安卓，ios是异步的不需要操作
+      getAndroid(); 
+      // 不传参数，直接返回数据
+      if(!func){
+        return app_info;
+      }else{
+        //如果传参数，保存参数。如果有数据直接执行，没数据时保存
+        if(app_info === null){
+          todo = func;
+        }else{
+          func(app_info);
+        }
+      }
+    };
+  };
+
+
+
   sd.init = function() {
+    
     // 防止爬虫等异常情况
     /*
      if(!_.hasStandardBrowserEnviroment()){
      return false;
      }*/
+    app_js_bridge();
+
     // 初始化referrer等页面属性 1.6
     _.info.initPage();
 
