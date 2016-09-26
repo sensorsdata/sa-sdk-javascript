@@ -4,10 +4,10 @@ Sensors Analytics JavaScript SDK
 
 完整文档请[点击这里](http://www.sensorsdata.cn/manual/js_sdk.html)，如有疑问请联系邮箱 shengyonggen@sensorsdata.cn，着急联系qq=522370351。
 
-目录说明：  
-/src  源码模块  
-/product 没有压缩的代码埋点文件，供大家修改，push   
-sensorsdata.min.js,vtrack.min.js等 可用的正式发行版文件
+目录说明：
+
+1. src 是源码目录 
+2. 根目录下的是可用的正式发行版文件
 
 ## 获取发行版
 
