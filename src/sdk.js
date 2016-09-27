@@ -1105,7 +1105,7 @@ var saNewUser = {
     var referrer_domain = _.info.pageProp.referrer_domain;
     // 如果域名不一致，就register为latest
     if (url_domain !== '' && url_domain !== referrer_domain) {
-      sa.register({
+      sd.register({
         $latest_referrer: _.info.pageProp.referrer,
         $latest_referrer_host: _.info.pageProp.referrer_host
       });

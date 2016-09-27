@@ -1715,7 +1715,7 @@ var saNewUser = {
     var referrer_domain = _.info.pageProp.referrer_domain;
     // 如果域名不一致，就register为latest
     if (url_domain !== '' && url_domain !== referrer_domain) {
-      sa.register({
+      sd.register({
         $latest_referrer: _.info.pageProp.referrer,
         $latest_referrer_host: _.info.pageProp.referrer_host
       });
@@ -2339,7 +2339,7 @@ saEvent.send = function(p, callback) {
     function setAppInfo(data){
       app_info = data;
       if(_.isJSONString(app_info)){
-        app_info = JSON.parse(app_info);
+        app_info = json.parse(app_info);
       }
       if(todo){
         todo(data);
@@ -2350,7 +2350,7 @@ saEvent.send = function(p, callback) {
       if(typeof window.SensorsData_APP_JS_Bridge === 'object' && window.SensorsData_APP_JS_Bridge.sensorsdata_call_app){
         app_info = SensorsData_APP_JS_Bridge.sensorsdata_call_app();
         if(_.isJSONString(app_info)){
-          app_info = JSON.parse(app_info);
+          app_info = json.parse(app_info);
         }
       }
     }
