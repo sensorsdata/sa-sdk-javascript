@@ -2339,7 +2339,7 @@ saEvent.send = function(p, callback) {
     function setAppInfo(data){
       app_info = data;
       if(_.isJSONString(app_info)){
-        app_info = json.parse(app_info);
+        app_info = JSON.parse(app_info);
       }
       if(todo){
         todo(data);
@@ -2350,7 +2350,7 @@ saEvent.send = function(p, callback) {
       if(typeof window.SensorsData_APP_JS_Bridge === 'object' && window.SensorsData_APP_JS_Bridge.sensorsdata_call_app){
         app_info = SensorsData_APP_JS_Bridge.sensorsdata_call_app();
         if(_.isJSONString(app_info)){
-          app_info = json.parse(app_info);
+          app_info = JSON.parse(app_info);
         }
       }
     }
