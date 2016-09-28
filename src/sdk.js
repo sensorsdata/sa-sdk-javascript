@@ -1738,7 +1738,7 @@ saEvent.send = function(p, callback) {
         app_info = JSON.parse(app_info);
       }
       if(todo){
-        todo(data);
+        todo(app_info);
       }
     }
     //android
