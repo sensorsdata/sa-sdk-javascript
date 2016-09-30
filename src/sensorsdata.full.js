@@ -2367,11 +2367,10 @@ saEvent.send = function(p, callback) {
         iframe.parentNode.removeChild(iframe);
         iframe = null;
       }
-    }
+    }    
     sd.getAppStatus = function(func){
-      // 通知iOS触发回调
       calliOS();
-      //先获取能直接取到的安卓
+      //先获取能直接取到的安卓，ios是异步的不需要操作
       getAndroid(); 
       // 不传参数，直接返回数据
       if(!func){

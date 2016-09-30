@@ -1754,7 +1754,18 @@ saEvent.send = function(p, callback) {
     window.sensorsdata_app_js_bridge_call_js = function(data){    
       setAppInfo(data);
     };
+    // 通知iOS
+    function calliOS() {
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
+        var iframe = document.createElement("iframe");
+        iframe.setAttribute("src", "sensorsanalytics://getAppInfo");
+        document.documentElement.appendChild(iframe);
+        iframe.parentNode.removeChild(iframe);
+        iframe = null;
+      }
+    }    
     sd.getAppStatus = function(func){
+      calliOS();
       //先获取能直接取到的安卓，ios是异步的不需要操作
       getAndroid(); 
       // 不传参数，直接返回数据
