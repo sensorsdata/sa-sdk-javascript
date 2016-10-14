@@ -1475,6 +1475,7 @@ saEvent.send = function(p, callback) {
       // setOnceProfile 如果是新用户，且允许设置profile
       if (is_first_visitor && !para.not_set_profile) {
         sd.setOnceProfile(_.extend({
+            // 暂时隐藏，等extractor都部署上去 $first_landing_page: _.info.pageProp.url.slice(0, sd.para.max_referrer_string_length),
             $first_visit_time: new Date(),
             $first_referrer: (document.referrer).slice(0, sd.para.max_referrer_string_length),
             $first_browser_language: navigator.language,
