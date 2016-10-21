@@ -980,14 +980,16 @@ _.info = {
 
     return params;
   },
-  campaignParamsStandard: function(prefix) {
+  campaignParamsStandard: function(prefix,prefix_add) {
+    prefix = prefix || '';
+    prefix_add = prefix_add || '';
     var utms = _.info.campaignParams();
     var $utms = {}, otherUtms = {};
     for (var i in utms) {
       if ((' ' + source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {
         $utms[prefix + i] = utms[i];
       } else {
-        otherUtms[i] = utms[i];
+        otherUtms[prefix_add + i] = utms[i];
       }
     }
     return {
@@ -1111,9 +1113,14 @@ var saNewUser = {
       });
     }
     // utm
-    var $utms = _.info.campaignParamsStandard('$latest_').$utms;
+    var allUtms = _.info.campaignParamsStandard('$latest_','_latest_');
+    var $utms = allUtms.$utms;
+    var otherUtms = allUtms.otherUtms;
     if (!_.isEmptyObject($utms)) {
       sd.register($utms);
+    }
+    if (!_.isEmptyObject(otherUtms)) {
+      sd.register(otherUtms);
     }
   }
 
@@ -1783,6 +1790,30 @@ saEvent.send = function(p, callback) {
     };
   };
 
+  function start_heatmap(){
+    /*
+    if(!_.isObject(sd.para.heatmap) || !sd.para.heatmap.collect_url || !sd.para.heatmap.collect_elements){
+      return false;
+    }
+    // 验证url，function成功就行，非function认为都是全部
+    if(_.isFunction(sd.para.heatmap.collect_url) && !sd.para.heatmap.collect_url()){
+      return false;
+    }
+    if(sd.para.heatmap.collect_elements === 'all'){
+      document.onclick = function(){
+
+      };
+    }else if(sd.para.heatmap.collect_elements === 'interact'){
+      document.onclick = function(e){
+        var ev = window.event || e;
+
+      }
+    }*/
+
+
+
+  }
+
 
   sd.init = function() {    
     // 防止爬虫等异常情况
@@ -1791,6 +1822,8 @@ saEvent.send = function(p, callback) {
      return false;
      }*/
     app_js_bridge();
+//    start_heatmap();
+
     // 初始化referrer等页面属性 1.6
     _.info.initPage();
 
