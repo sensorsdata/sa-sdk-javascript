@@ -622,6 +622,9 @@ sd.lib_version = LIB_VERSION;
 var error_msg = [];
 var is_first_visitor = false;
 
+var just_test_distinctid = 0;
+var just_test_distinctid_2 = 0;
+
 // 标准广告系列来源
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 
@@ -1020,6 +1023,7 @@ _.base64Encode = function(data) {
   return enc;
 };
 
+
 _.UUID = (function() {
   var T = function() {
     var d = 1 * new Date()
@@ -1067,7 +1071,15 @@ _.UUID = (function() {
     } else {
       se = String(Math.random() * 31242).replace('.', '').slice(0, 8);
     }
-    return (T() + '-' + R() + '-' + UA() + '-' + se + '-' + T());
+    var val = (T() + '-' + R() + '-' + UA() + '-' + se + '-' + T());
+    if(val){
+      just_test_distinctid_2 = 1;
+      return val; 
+    }else{
+      just_test_distinctid_2 = 2;
+      return (String(Math.random()) + String(Math.random()) + String(Math.random())).slice(2, 15);
+    }
+
   };
 })();
 
@@ -1864,7 +1876,7 @@ saEvent.send = function(p, callback) {
       default:
         wrong_case = String(store.getDistinctId());
     }
-    error_msg.push('distinct_id_wrong' + wrong_case + '-' + (new Date()).getTime());
+    error_msg.push('distinct_id-' + just_test_distinctid + '-' + just_test_distinctid_2 + '-' + wrong_case + '-' + (new Date()).getTime());
   }
 
   _.extend(data, p);
@@ -1932,6 +1944,8 @@ saEvent.send = function(p, callback) {
   };
 
   var store = sd.store = {
+    _sessionState: {},
+    _state: {},
     getProps: function() {
       return this._state.props;
     },
@@ -1948,11 +1962,11 @@ saEvent.send = function(p, callback) {
           this._state = state;
         } else {
           this.set('distinct_id', _.UUID());
-          error_msg.push('parseCookieDistinctJSSDKError');
+          error_msg.push('toStateParseDistinctError');
         }
       } else {
         this.set('distinct_id', _.UUID());
-        error_msg.push('parseCookieJSSDKError');
+        error_msg.push('toStateParseError');
       }
     },
     initSessionState: function() {
@@ -1969,6 +1983,7 @@ saEvent.send = function(p, callback) {
       }
     },
     set: function(name, value) {
+      this._state = this._state || {};
       this._state[name] = value;
       this.save();
     },
@@ -2003,8 +2018,6 @@ saEvent.send = function(p, callback) {
     save: function() {
       _.cookie.set('sensorsdata2015jssdkcross', JSON.stringify(this._state), 730, sd.para.cross_subdomain);
     },
-    _sessionState: {},
-    _state: {},
     init: function() {
       // 如果不支持cookie，设置新的id，并且带有error_msg
       if (!navigator.cookieEnabled) {
@@ -2018,8 +2031,14 @@ saEvent.send = function(p, callback) {
       if (cross === null) {
         // 判断是否是第一次载入sdk
         is_first_visitor = true;
+        
+        just_test_distinctid = 1;
+        
         this.set('distinct_id', _.UUID());
       } else {
+        
+        just_test_distinctid = 2;
+
         this.toState(cross);
       }
       //判断新用户
