@@ -614,7 +614,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.7';
+  , LIB_VERSION = '1.6.9';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1955,6 +1955,9 @@ saEvent.send = function(p, callback) {
     getDistinctId: function() {
       return this._state.distinct_id;
     },
+    getFirstId: function(){
+      return this._state.first_id;
+    },
     toState: function(ds) {
       var state = null;
       if (ds !== null && (typeof (state = JSON.parse(ds)) === 'object')) {
@@ -2270,14 +2273,26 @@ saEvent.send = function(p, callback) {
    * @param {string} distinct_id
    * */
   sd.identify = function(id, isSave) {
+    var firstId = store.getFirstId();
     if (typeof id === 'undefined') {
-      store.set('distinct_id', _.UUID());
+      if(firstId){      
+        store.set('first_id', _.UUID());
+      }else{
+        store.set('distinct_id', _.UUID());
+      }
     } else if (saEvent.check({distinct_id: id})) {
-
       if (isSave === true) {
-        store.set('distinct_id', id);
+        if(firstId){
+          store.set('first_id', id);
+        }else{
+          store.set('distinct_id', id);          
+        }
       } else {
-        store.change('distinct_id', id);
+        if(firstId){
+          store.change('first_id', id);
+        }else{
+          store.change('distinct_id', id);
+        }
       }
 
     } else {
@@ -2293,7 +2308,7 @@ saEvent.send = function(p, callback) {
   sd.trackSignup = function(id, e, p, c) {
     if (saEvent.check({distinct_id: id, event: e, properties: p})) {
       saEvent.send({
-        original_id: store.getDistinctId(),
+        original_id: store.getFirstId() || store.getDistinctId(),
         distinct_id: id,
         type: 'track_signup',
         event: e,
@@ -2302,6 +2317,7 @@ saEvent.send = function(p, callback) {
       store.set('distinct_id', id);
     }
   };
+
   /*
    * @param {string} testid
    * @param {string} groupid
@@ -2356,6 +2372,37 @@ saEvent.send = function(p, callback) {
       store.setSessionPropsOnce(props);
     } else {
       logger.info('registerSessionOnce输入的参数有误');
+    }
+  };
+
+  sd.login = function(id){
+    if (saEvent.check({distinct_id: id})) {
+      var firstId = store.getFirstId();
+      var distinctId = store.getDistinctId();
+      if(id !== distinctId){
+        if(firstId){
+          sd.trackSignup(id,'$SignUp');
+        }else{
+          store.set('first_id',distinctId);
+          sd.trackSignup(id,'$SignUp');
+        }
+      }
+    } else {
+      logger.info('login的参数必须是字符串');
+    }
+  };
+
+  sd.logout = function(isChangeId){
+    var firstId = store.getFirstId();
+    if(firstId){
+      store.set('first_id','');
+      if(isChangeId === true){
+        store.set('distinct_id',_.UUID());
+      }else{
+        store.set('distinct_id',firstId);
+      }
+    }else{
+      logger.info('没有first_id，logout失败');
     }
   };
 
