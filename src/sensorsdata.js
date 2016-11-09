@@ -7,11 +7,12 @@
 
   // 防止重复引入
   sd = window[sd];
-  sd._t = sd._t || 1 * new Date();
 
   if ((typeof sd !== 'function' && typeof sd !== 'object') || sd.has_load_sdk) {
     return false;
   }
+  sd._t = sd._t || 1 * new Date();
+
   sd.has_load_sdk = true;
 
 @@include('sa-sdk-javascript/src/json2.js')

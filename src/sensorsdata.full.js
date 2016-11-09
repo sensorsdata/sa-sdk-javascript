@@ -7,11 +7,12 @@
 
   // 防止重复引入
   sd = window[sd];
-  sd._t = sd._t || 1 * new Date();
 
   if ((typeof sd !== 'function' && typeof sd !== 'object') || sd.has_load_sdk) {
     return false;
   }
+  sd._t = sd._t || 1 * new Date();
+
   sd.has_load_sdk = true;
 
 // 压缩后的json库
@@ -614,7 +615,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.9';
+  , LIB_VERSION = '1.6.11';
 
 sd.lib_version = LIB_VERSION;
 
@@ -624,6 +625,8 @@ var is_first_visitor = false;
 
 var just_test_distinctid = 0;
 var just_test_distinctid_2 = 0;
+var just_test_distinctid_detail = 0;
+var just_test_distinctid_detail2 = 0;
 
 // 标准广告系列来源
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
@@ -1191,6 +1194,59 @@ _.hasStandardBrowserEnviroment = function() {
 
 };
 
+_.addEvent = (function() {
+    var register_event = function(element, type, handler) {
+        if (element.addEventListener) {
+            element.addEventListener(type, handler, false);
+        } else {
+            var ontype = 'on' + type;
+            var old_handler = element[ontype];
+            element[ontype] = makeHandler(element, handler, old_handler);
+        }
+    };
+
+    function makeHandler(element, new_handler, old_handlers) {
+        var handler = function(event) {
+            event = event || fixEvent(window.event);
+            if (!event) {
+                return undefined;
+            }
+
+            var ret = true;
+            var old_result, new_result;
+
+            if (_.isFunction(old_handlers)) {
+                old_result = old_handlers(event);
+            }
+            new_result = new_handler.call(element, event);
+
+            if ((false === old_result) || (false === new_result)) {
+                ret = false;
+            }
+
+            return ret;
+        };
+
+        return handler;
+    }
+
+    function fixEvent(event) {
+        if (event) {
+            event.preventDefault = fixEvent.preventDefault;
+            event.stopPropagation = fixEvent.stopPropagation;
+        }
+        return event;
+    }
+    fixEvent.preventDefault = function() {
+        this.returnValue = false;
+    };
+    fixEvent.stopPropagation = function() {
+        this.cancelBubble = true;
+    };
+
+    return register_event;
+})();
+
 _.cookie = {
   get: function(name) {
     var nameEQ = name + '=';
@@ -1583,7 +1639,7 @@ _.info = {
     };
   },
   //当前页面的一些属性，在store初始化是生成
-  pageProp: {},
+  pageProp: {}, 
 
   campaignParams: function() {
     var campaign_keywords = source_channel_standard.split(' ')
@@ -1876,7 +1932,7 @@ saEvent.send = function(p, callback) {
       default:
         wrong_case = String(store.getDistinctId());
     }
-    error_msg.push('distinct_id-' + just_test_distinctid + '-' + just_test_distinctid_2 + '-' + wrong_case + '-' + (new Date()).getTime());
+    error_msg.push('distinct_id-' + just_test_distinctid + '-' + just_test_distinctid_2 + '-' + wrong_case + '-' + just_test_distinctid_detail + '-' + just_test_distinctid_detail2);
   }
 
   _.extend(data, p);
@@ -2041,6 +2097,8 @@ saEvent.send = function(p, callback) {
       } else {
         
         just_test_distinctid = 2;
+        just_test_distinctid_detail = JSON.stringify(cross);
+        just_test_distinctid_detail2 = navigator.userAgent+'^_^'+document.cookie;                      
 
         this.toState(cross);
       }
@@ -2089,7 +2147,22 @@ saEvent.send = function(p, callback) {
         _referring_host: _.info.pageProp.referrer_host
       });
     },
+    allTrack: function(){
+      /*
+      _.addEvent('document','click',function(e){
+        var ev = e || window.event;
+        var target = ev.target || ev.srcElement;
+        var tagName = target.tagName.toLowerCase();
+        if( tagName === 'button' || tagName === 'a' || tagName === 'input' || tagName === 'textarea'){
+          
 
+        }
+
+
+      });
+      */
+
+    },
     autoTrackWithoutProfile:function(para){
       this.autoTrack(_.extend(para,{not_set_profile:true}));
     },
