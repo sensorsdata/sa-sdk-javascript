@@ -176,8 +176,12 @@ _.inherit = function(subclass, superclass) {
   return subclass;
 };
 
+_.trim = function(str){
+  return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
+};
+
 _.isObject = function(obj) {
-  return toString.call(obj) == '[object Object]';
+  return (toString.call(obj) == '[object Object]') && (obj != null);
 };
 
 _.isEmptyObject = function(obj) {
@@ -332,10 +336,11 @@ _.strip_sa_properties = function(p) {
   return p;
 };
 
+// 去掉undefined和null
 _.strip_empty_properties = function(p) {
   var ret = {};
   _.each(p, function(v, k) {
-    if (_.isString(v) && v.length > 0) {
+    if (v != null) {
       ret[k] = v;
     }
   });
@@ -583,7 +588,54 @@ _.hasStandardBrowserEnviroment = function() {
 
 };
 
-_.addEvent = (function() {
+_.bindReady = function(handler) {
+  var called = false
+  function ready() { 
+    if (called) {
+      return false;
+    }
+    called = true;
+    handler();
+  }
+  if ( document.addEventListener ) {
+    document.addEventListener( "DOMContentLoaded", ready, false );
+  } else if ( document.attachEvent ) {
+    try {
+      var isFrame = window.frameElement != null
+    } catch(e) {}
+    if ( document.documentElement.doScroll && !isFrame ) {
+      function tryScroll(){
+        if (called) return
+        try {
+          document.documentElement.doScroll("left")
+          ready()
+        } catch(e) {
+          setTimeout(tryScroll, 10)
+        }
+      }
+      tryScroll()
+    }
+    document.attachEvent("onreadystatechange", function(){
+      if ( document.readyState === "complete" ) {
+        ready()
+      }
+    })
+  }
+  if (window.addEventListener){
+    window.addEventListener('load', ready, false)
+  } else if (window.attachEvent) {
+    window.attachEvent('onload', ready)
+  } else {
+    var fn = window.onload;
+    window.onload = function() {
+      fn && fn();
+      ready();
+    }
+  }
+};
+
+
+_.addEvent = function() {
     var register_event = function(element, type, handler) {
         if (element.addEventListener) {
             element.addEventListener(type, handler, false);
@@ -593,13 +645,14 @@ _.addEvent = (function() {
             element[ontype] = makeHandler(element, handler, old_handler);
         }
     };
-
     function makeHandler(element, new_handler, old_handlers) {
         var handler = function(event) {
             event = event || fixEvent(window.event);
             if (!event) {
                 return undefined;
             }
+            event.target = event.srcElement;
+
             var ret = true;
             var old_result, new_result;
             if (_.isFunction(old_handlers)) {
@@ -621,14 +674,15 @@ _.addEvent = (function() {
         }
         return event;
     }
+
     fixEvent.preventDefault = function() {
         this.returnValue = false;
     };
     fixEvent.stopPropagation = function() {
         this.cancelBubble = true;
     };
-    return register_event;
-})();
+    register_event.apply(null,arguments);
+};
 
 _.cookie = {
   get: function(name) {
@@ -1405,7 +1459,8 @@ saEvent.send = function(p, callback) {
     },
     toState: function(ds) {
       var state = null;
-      if (ds !== null && (typeof (state = JSON.parse(ds)) === 'object')) {
+      if (ds != null && _.isJSONString(ds)) {
+        state = JSON.parse(ds);
         if (state.distinct_id) {
           this._state = state;
         } else {
@@ -1537,20 +1592,42 @@ saEvent.send = function(p, callback) {
       });
     },
     allTrack: function(){
-      /*
-      _.addEvent('document','click',function(e){
-        var ev = e || window.event;
-        var target = ev.target || ev.srcElement;
-        var tagName = target.tagName.toLowerCase();
-        if( tagName === 'button' || tagName === 'a' || tagName === 'input' || tagName === 'textarea'){
-          
+      // 避免没有ready
+      if(!document || !document.body){
+        setTimeout(this.allTrack,1000);
+        return false;
+      }
 
+      if(sd.allTrack === 'has_init'){
+        return false;
+      }
+      sd.allTrack = 'has_init';
+
+      _.addEvent(document,'click',function(e){
+
+        var props = {};
+        var target = e.target;
+        var tagName = target.tagName.toLowerCase();          
+        if(' button a select input textarea '.indexOf(' '+ tagName + ' ') !== -1){
+          props.$el_tagName = tagName;
+          props.$el_name = target.getAttribute('name');
+          props.$el_id = target.getAttribute('id');
+          props.$el_className = target.className;
+          props.$el_href = target.getAttribute('href');
+
+          // 获取内容
+          if (target.textContent) {
+            var textContent = _.trim(target.textContent);
+            if (textContent) {
+              textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+            }
+            props.$el_text = textContent;
+          }
+          props = _.strip_empty_properties(props);
+          console.log(props)
+          sd.track('$web_event',props);
         }
-
-
       });
-      */
-
     },
     autoTrackWithoutProfile:function(para){
       this.autoTrack(_.extend(para,{not_set_profile:true}));
@@ -1945,9 +2022,14 @@ saEvent.send = function(p, callback) {
 
 
   }
+  //可视化埋点的后初始化
+  sd.init = function(){
+    if(_.isObject(sd.sdkMain)){
+      sd.sdkMain._init();
+    } 
+  };
 
-
-  sd.init = function() {    
+  sd._init = function() {    
     // 防止爬虫等异常情况
     /*
      if(!_.hasStandardBrowserEnviroment()){
@@ -1961,10 +2043,12 @@ saEvent.send = function(p, callback) {
 
     // 初始化distinct_id
     store.init();
-
-    _.each(sd._q, function(content) {
-      sd[content[0]].apply(sd, slice.call(content[1]));
-    });
+    // 发送数据
+    if(sd._q && _.isArray(sd._q) && sd._q.length > 0 ){
+      _.each(sd._q, function(content) {
+        sd[content[0]].apply(sd, slice.call(content[1]));
+      });
+    }
 
   };
 

@@ -119,8 +119,9 @@ function SdkMain() {
   this.sdkCssUrl = sd.para.vtrack_css_file || (sdk_url + '/vendor' + sdk_version + 'css' + sd.para.noCache);
 
   this.deployData = null;
-
-  this.init();
+  if(sd.para.auto_init === true){
+    this._init();
+  }
 }
 
 SdkMain.prototype = {
@@ -301,7 +302,8 @@ SdkMain.prototype = {
       me.deployData = data.binding;
     };
   },
-  init: function() {
+  _init: function() {
+
     this.initJsonp();
     this.isShowVisual();
   },
@@ -450,7 +452,7 @@ SdkMain.prototype = {
   //--------------normal file
   sdkInit: function() {
 
-    sd.init();
+    sd._init();
 
   },
   // 检测url是否符合当前页面

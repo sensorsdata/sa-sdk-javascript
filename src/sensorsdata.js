@@ -50,7 +50,9 @@
     source_channel: [],
 
     // 七鱼过滤id
-    vtrack_ignore: {}
+    vtrack_ignore: {},
+
+    auto_init: true
 
   };
   // 合并配置
@@ -82,7 +84,7 @@
   }
 
 @@if (sensorsdata_mode !== 'vtrack') {
-    sd.init();
+    sd._init();
   }
 
 
