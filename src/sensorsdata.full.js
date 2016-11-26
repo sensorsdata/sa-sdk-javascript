@@ -617,7 +617,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.13';
+  , LIB_VERSION = '1.6.15';
 
 sd.lib_version = LIB_VERSION;
 
@@ -629,6 +629,7 @@ var just_test_distinctid = 0;
 var just_test_distinctid_2 = 0;
 var just_test_distinctid_detail = 0;
 var just_test_distinctid_detail2 = 0;
+
 
 // 标准广告系列来源
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
@@ -776,10 +777,6 @@ logger.info = function() {
     return found;
   };
 
-  _.includes = function(str, needle) {
-    return str.indexOf(needle) !== -1;
-  };
-
 })();
 
 _.inherit = function(subclass, superclass) {
@@ -836,6 +833,16 @@ _.isJSONString = function(str) {
     return false;
   }
   return true;
+};
+// gbk等编码decode会异常
+_.decodeURIComponent = function(val){
+  var result = '';
+  try{
+    result = decodeURIComponent(val);
+  }catch(e){
+    result = val;
+  };
+  return result;
 };
 
 _.encodeDates = function(obj) {
@@ -1102,7 +1109,7 @@ _.getQueryParam = function(url, param) {
   if (results === null || (results && typeof(results[1]) !== 'string' && results[1].length)) {
     return '';
   } else {
-    return decodeURIComponent(results[1]).replace(/\+/g, ' ');
+    return _.decodeURIComponent(results[1]).replace(/\+/g, ' ');
   }
 };
 
@@ -1307,7 +1314,7 @@ _.cookie = {
         c = c.substring(1, c.length);
       }
       if (c.indexOf(nameEQ) == 0) {
-        return decodeURIComponent(c.substring(nameEQ.length, c.length));
+        return _.decodeURIComponent(c.substring(nameEQ.length, c.length));
       }
     }
     return null;
@@ -1492,7 +1499,7 @@ _.url = (function() {
     }
 
     function _d(s) {
-      return decodeURIComponent(s.replace(/\+/g, ' '));
+      return _.decodeURIComponent(s.replace(/\+/g, ' '));
     }
 
     function _i(arg, str) {
@@ -1668,7 +1675,10 @@ _.url = (function() {
     };
 })();
 
+_.dom = {
 
+
+};
 
 
 _.info = {
@@ -2199,47 +2209,12 @@ saEvent.send = function(p, callback) {
       });
     },
     allTrack: function(){
-      // 避免没有ready
-      if(!document || !document.body){
-        setTimeout(this.allTrack,1000);
-        return false;
-      }
 
-      if(sd.allTrack === 'has_init'){
-        return false;
-      }
-      sd.allTrack = 'has_init';
-
-      _.addEvent(document,'click',function(e){
-
-        var props = {};
-        var target = e.target;
-        var tagName = target.tagName.toLowerCase();          
-        if(' button a select input textarea '.indexOf(' '+ tagName + ' ') !== -1){
-          props.$el_tagName = tagName;
-          props.$el_name = target.getAttribute('name');
-          props.$el_id = target.getAttribute('id');
-          props.$el_className = target.className;
-          props.$el_href = target.getAttribute('href');
-
-          // 获取内容
-          if (target.textContent) {
-            var textContent = _.trim(target.textContent);
-            if (textContent) {
-              textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
-            }
-            props.$el_text = textContent;
-          }
-          props = _.strip_empty_properties(props);
-          console.log(props)
-          sd.track('$web_event',props);
-        }
-      });
     },
     autoTrackWithoutProfile:function(para){
       this.autoTrack(_.extend(para,{not_set_profile:true}));
     },
-    autoTrack: function(para) {
+    autoTrack: function(para, callback) {
       para = _.isObject(para) ? para : {};
 
       var utms = _.info.campaignParams();
@@ -2273,7 +2248,7 @@ saEvent.send = function(p, callback) {
           $url: location.href,
           $url_path: location.pathname,
           $title: document.title
-        }, $utms,para)
+        }, $utms,para),callback
       );
     }
 
