@@ -303,7 +303,7 @@ SdkMain.prototype = {
     };
   },
   _init: function() {
-
+    this.sdkInit();
     this.initJsonp();
     this.isShowVisual();
   },
@@ -367,7 +367,6 @@ SdkMain.prototype = {
     this.getDeployFile().then(function() {
       me.parseDeployFile();
     });
-    this.sdkInit();
   },
   parseDeployFile: function() {
     this.requireData = this.checkUrl(this.deployData);
