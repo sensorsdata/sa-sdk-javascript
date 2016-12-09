@@ -2,6 +2,7 @@
  * @fileoverview sensors analytic javascript sdk
  * @author shengyonggen@sensorsdata.cn
  */
+try{
 
 (function(sd) {
 
@@ -617,7 +618,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.16';
+  , LIB_VERSION = '1.6.17';
 
 sd.lib_version = LIB_VERSION;
 
@@ -2209,6 +2210,58 @@ saEvent.send = function(p, callback) {
       });
     },
     allTrack: function(){
+ // 避免没有ready
+      if(!document || !document.body){
+        setTimeout(this.allTrack,1000);
+        return false;
+      }
+
+      if(sd.allTrack === 'has_init'){
+        return false;
+      }
+      sd.allTrack = 'has_init';
+
+
+      var trackAll = {
+        clickEvents: function(e){
+          var props = {};
+          var target = e.target;
+          var tagName = target.tagName.toLowerCase();          
+          if(' button a input '.indexOf(' '+ tagName + ' ') !== -1 ){
+            if(tagName === 'input'){
+              if(target.getAttribute('type') === 'button' || target.getAttribute('type') === 'submit'){
+                props.$el_value = target.value;                
+              }else{
+                return false;
+              }
+            }
+
+            props.$el_tagName = tagName;
+            props.$el_name = target.getAttribute('name');
+            props.$el_id = target.getAttribute('id');
+            props.$el_className = typeof target.className === 'string' ? target.className : null;
+            props.$el_href = target.getAttribute('href');
+
+            // 获取内容
+            if (target.textContent) {
+              var textContent = _.trim(target.textContent);
+              if (textContent) {
+                textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+              }
+              props.$el_text = textContent;
+            }
+            props = _.strip_empty_properties(props);
+
+            props.$url = location.href;
+            props.$url_path = location.pathname;
+
+            sd.track('$web_event',props);     
+          }
+        }
+      };
+
+
+      _.addEvent(document,'click',function(e){trackAll.clickEvents(e);});
 
     },
     autoTrackWithoutProfile:function(para){
@@ -2283,6 +2336,32 @@ saEvent.send = function(p, callback) {
       }, c);
     }
   };
+
+    // 跟踪链接
+  sd.trackLink = function(link,event_name,event_prop){
+    var ele = link;
+    event_prop = event_prop || {};
+    if(!link || (typeof link !== 'object')){
+      return false;
+    }
+    if (!link.href || /^javascript/.test(link.href) || link.target) {
+      return false;
+    }
+    _.addEvent(link,'click',function(e){
+      e.preventDefault();   // 阻止默认跳转
+      var hasCalled = false;
+      setTimeout(track_a_click, 1000);  //如果没有回调成功，设置超时回调
+      function track_a_click(){
+        if (!hasCalled) {
+          hasCalled = true;
+          location.href = link.href;  //把 A 链接的点击跳转,改成 location 的方式跳转
+        }
+      }
+      sd.track(event_name, event_prop, track_a_click); //把跳转操作加在callback里
+    });
+
+  };
+
 
   /*
    * @param {object} properties
@@ -2527,7 +2606,6 @@ saEvent.send = function(p, callback) {
     }
   };
 
-
   function app_js_bridge(){
     var app_info = null;
     var todo = null;
@@ -2645,3 +2723,20 @@ saEvent.send = function(p, callback) {
 
 
 })(window['sensorsDataAnalytic201505']);
+
+
+  
+}catch(err){
+  (function(){
+
+    var sd = window['sensorsDataAnalytic201505'];
+    if(typeof sd === 'string'){
+      sd = window[sd];
+      if((sd != null) && (typeof sd === 'function' || typeof sd === 'object')){
+        sd.track && sd.track('_js_sdk_error',{_js_sdk_error_msg:err,$url:location.href}); 
+      }
+    }
+
+
+  })();
+}
