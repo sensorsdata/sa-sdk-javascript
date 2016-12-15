@@ -1622,17 +1622,17 @@ saEvent.send = function(p, callback) {
           if(' button a input '.indexOf(' '+ tagName + ' ') !== -1 ){
             if(tagName === 'input'){
               if(target.getAttribute('type') === 'button' || target.getAttribute('type') === 'submit'){
-                props.$el_value = target.value;                
+                props._el_value = target.value;                
               }else{
                 return false;
               }
             }
 
-            props.$el_tagName = tagName;
-            props.$el_name = target.getAttribute('name');
-            props.$el_id = target.getAttribute('id');
-            props.$el_className = typeof target.className === 'string' ? target.className : null;
-            props.$el_href = target.getAttribute('href');
+            props._el_tagname = tagName;
+            props._el_name = target.getAttribute('name');
+            props._el_id = target.getAttribute('id');
+            props._el_classname = typeof target.className === 'string' ? target.className : null;
+            props._el_href = target.getAttribute('href');
 
             // 获取内容
             if (target.textContent) {
@@ -1640,14 +1640,14 @@ saEvent.send = function(p, callback) {
               if (textContent) {
                 textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
               }
-              props.$el_text = textContent;
+              props._el_value = textContent;
             }
             props = _.strip_empty_properties(props);
 
             props.$url = location.href;
             props.$url_path = location.pathname;
 
-            sd.track('$web_event',props);     
+            sd.track('_web_event',props);     
           }
         }
       };
