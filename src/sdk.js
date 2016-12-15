@@ -1613,13 +1613,39 @@ saEvent.send = function(p, callback) {
       }
       sd.allTrack = 'has_init';
 
-
       var trackAll = {
+        getProps: function(tagName,target){
+
+          var props = {};
+
+          props._el_tagname = tagName;
+          props._el_name = target.getAttribute('name');
+          props._el_id = target.getAttribute('id');
+          props._el_classname = typeof target.className === 'string' ? target.className : null;
+          props._el_href = target.getAttribute('href');
+
+          // 获取内容
+          if (target.textContent) {
+            var textContent = _.trim(target.textContent);
+            if (textContent) {
+              textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+            }
+            props._el_value = textContent;
+          }
+          props = _.strip_empty_properties(props);
+
+          props.$url = location.href;
+          props.$url_path = location.pathname;
+
+          return props;
+        },
         clickEvents: function(e){
           var props = {};
           var target = e.target;
-          var tagName = target.tagName.toLowerCase();          
+          var tagName = target.tagName.toLowerCase();         
+
           if(' button a input '.indexOf(' '+ tagName + ' ') !== -1 ){
+
             if(tagName === 'input'){
               if(target.getAttribute('type') === 'button' || target.getAttribute('type') === 'submit'){
                 props._el_value = target.value;                
@@ -1627,28 +1653,16 @@ saEvent.send = function(p, callback) {
                 return false;
               }
             }
+            
+            _.extend(props, this.getProps(tagName,target));
 
-            props._el_tagname = tagName;
-            props._el_name = target.getAttribute('name');
-            props._el_id = target.getAttribute('id');
-            props._el_classname = typeof target.className === 'string' ? target.className : null;
-            props._el_href = target.getAttribute('href');
-
-            // 获取内容
-            if (target.textContent) {
-              var textContent = _.trim(target.textContent);
-              if (textContent) {
-                textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
-              }
-              props._el_value = textContent;
+            if(tagName === 'a'){
+              _.trackLink({event:e},'_web_event',props);
+            }else{
+              sd.track('_web_event',props);     
             }
-            props = _.strip_empty_properties(props);
-
-            props.$url = location.href;
-            props.$url_path = location.pathname;
-
-            sd.track('_web_event',props);     
           }
+
         }
       };
 
@@ -1729,8 +1743,52 @@ saEvent.send = function(p, callback) {
     }
   };
 
-    // 跟踪链接
+  _.trackLink = function(obj,event_name,event_prop){
+    obj = obj || {};
+    var link = null;
+    if(obj.ele){
+      link = obj.ele;
+    }
+    if(obj.event){
+      link = obj.event.target;
+    }
+
+    event_prop = event_prop || {};
+    if(!link || (typeof link !== 'object')){
+      return false;
+    }
+    // 如果是非当前页面会跳转的链接，直接track
+    if (!link.href || /^javascript/.test(link.href) || link.target) {
+      sd.track(event_name, event_prop);
+      return false;
+    }
+    function linkFunc(e){
+      e.preventDefault();   // 阻止默认跳转
+      var hasCalled = false;
+      function track_a_click(){
+        if (!hasCalled) {
+          hasCalled = true;
+          location.href = link.href;  //把 A 链接的点击跳转,改成 location 的方式跳转
+        }
+      }
+      setTimeout(track_a_click, 1000);  //如果没有回调成功，设置超时回调      
+      sd.track(event_name, event_prop, track_a_click); //把跳转操作加在callback里
+    }
+    if(obj.event){
+      linkFunc(obj.event);
+    }
+    if(obj.ele){
+      _.addEvent(obj.ele,'click',function(e){
+        linkFunc(e);
+      });
+    }
+  };
+
   sd.trackLink = function(link,event_name,event_prop){
+    _.trackLink({ele:link},event_name,event_prop);
+  };
+    // 跟踪链接
+  sd.trackLinks = function(link,event_name,event_prop){
     var ele = link;
     event_prop = event_prop || {};
     if(!link || (typeof link !== 'object')){
