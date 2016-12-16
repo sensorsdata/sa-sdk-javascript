@@ -618,7 +618,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.18';
+  , LIB_VERSION = '1.6.19';
 
 sd.lib_version = LIB_VERSION;
 

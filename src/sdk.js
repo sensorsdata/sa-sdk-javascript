@@ -1067,10 +1067,13 @@ _.dom = {
 
 };
 
+_.getReferrer = function(){
+      return (typeof document.referrer === 'string' ? document.referrer : '' ); 
+}
 
 _.info = {
   initPage: function() {
-    var referrer = document.referrer;
+    var referrer = _.getReferrer();
     var referrer_host = referrer ? _.url('hostname',referrer) : referrer;
     var referrer_domain = referrer ? _.url('domain',referrer) : referrer;
     var url = location.href;
@@ -1579,7 +1582,7 @@ saEvent.send = function(p, callback) {
     },
     //set init referrer
     setInitReferrer: function() {
-      var _referrer = (document.referrer).slice(0, sd.para.max_referrer_string_length);
+      var _referrer = (_.getReferrer()).slice(0, sd.para.max_referrer_string_length);
       sd.setOnceProfile({
         _init_referrer: _referrer,
         _init_referrer_host: _.info.pageProp.referrer_host
@@ -1587,7 +1590,7 @@ saEvent.send = function(p, callback) {
     },
     // set init sessionRegister cookie
     setSessionReferrer: function() {
-      var _referrer = (document.referrer).slice(0, sd.para.max_referrer_string_length);
+      var _referrer = (_.getReferrer()).slice(0, sd.para.max_referrer_string_length);
       store.setSessionPropsOnce({
         _session_referrer: _referrer,
         _session_referrer_host: _.info.pageProp.referrer_host
@@ -1597,7 +1600,7 @@ saEvent.send = function(p, callback) {
     setDefaultAttr: function() {
       _.info.register({
         _current_url: location.href,
-        _referrer: (document.referrer).slice(0, sd.para.max_referrer_string_length),
+        _referrer: (_.getReferrer()).slice(0, sd.para.max_referrer_string_length),
         _referring_host: _.info.pageProp.referrer_host
       });
     },
@@ -1690,7 +1693,7 @@ saEvent.send = function(p, callback) {
         sd.setOnceProfile(_.extend({
             // 暂时隐藏，等extractor都部署上去 $first_landing_page: _.info.pageProp.url.slice(0, sd.para.max_referrer_string_length),
             $first_visit_time: new Date(),
-            $first_referrer: (document.referrer).slice(0, sd.para.max_referrer_string_length),
+            $first_referrer: (_.getReferrer()).slice(0, sd.para.max_referrer_string_length),
             $first_browser_language: navigator.language,
             $first_referrer_host: _.info.pageProp.referrer_host
           }, $utms)
@@ -1702,7 +1705,7 @@ saEvent.send = function(p, callback) {
 
 // trackpageview
       sd.track('$pageview', _.extend({
-          $referrer: (document.referrer).slice(0, sd.para.max_referrer_string_length),
+          $referrer: (_.getReferrer()).slice(0, sd.para.max_referrer_string_length),
           $referrer_host: _.info.pageProp.referrer_host,
           $url: location.href,
           $url_path: location.pathname,
