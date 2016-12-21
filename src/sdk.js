@@ -1068,7 +1068,15 @@ _.dom = {
 };
 
 _.getReferrer = function(){
-      return (typeof document.referrer === 'string' ? document.referrer : '' ); 
+
+      var referrer = document.referrer;
+      
+      if(referrer.indexOf("https://www.baidu.com/") === 0){
+        referrer =  referrer.split('?')[0]
+      }
+      referrer = referrer.slice(0, sd.para.max_referrer_string_length);
+
+      return (typeof referrer === 'string' ? referrer : '' );
 }
 
 _.info = {
@@ -1582,7 +1590,7 @@ saEvent.send = function(p, callback) {
     },
     //set init referrer
     setInitReferrer: function() {
-      var _referrer = (_.getReferrer()).slice(0, sd.para.max_referrer_string_length);
+      var _referrer = _.getReferrer();
       sd.setOnceProfile({
         _init_referrer: _referrer,
         _init_referrer_host: _.info.pageProp.referrer_host
@@ -1590,7 +1598,7 @@ saEvent.send = function(p, callback) {
     },
     // set init sessionRegister cookie
     setSessionReferrer: function() {
-      var _referrer = (_.getReferrer()).slice(0, sd.para.max_referrer_string_length);
+      var _referrer = _.getReferrer();
       store.setSessionPropsOnce({
         _session_referrer: _referrer,
         _session_referrer_host: _.info.pageProp.referrer_host
@@ -1600,7 +1608,7 @@ saEvent.send = function(p, callback) {
     setDefaultAttr: function() {
       _.info.register({
         _current_url: location.href,
-        _referrer: (_.getReferrer()).slice(0, sd.para.max_referrer_string_length),
+        _referrer: _.getReferrer(),
         _referring_host: _.info.pageProp.referrer_host
       });
     },
@@ -1693,7 +1701,7 @@ saEvent.send = function(p, callback) {
         sd.setOnceProfile(_.extend({
             // 暂时隐藏，等extractor都部署上去 $first_landing_page: _.info.pageProp.url.slice(0, sd.para.max_referrer_string_length),
             $first_visit_time: new Date(),
-            $first_referrer: (_.getReferrer()).slice(0, sd.para.max_referrer_string_length),
+            $first_referrer: _.getReferrer(),
             $first_browser_language: navigator.language,
             $first_referrer_host: _.info.pageProp.referrer_host
           }, $utms)
@@ -1705,7 +1713,7 @@ saEvent.send = function(p, callback) {
 
 // trackpageview
       sd.track('$pageview', _.extend({
-          $referrer: (_.getReferrer()).slice(0, sd.para.max_referrer_string_length),
+          $referrer: _.getReferrer(),
           $referrer_host: _.info.pageProp.referrer_host,
           $url: location.href,
           $url_path: location.pathname,
