@@ -29,9 +29,9 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   sd.para = sd.para || {};
   sd.para_default = {
     // referrer字符串截取
-    max_referrer_string_length: 500,
+    max_referrer_string_length: 200,
     //通用字符串截取，超过7000的字符串会导致url超长发不出去，所以限制长度
-    max_string_length: 1000,
+    max_string_length: 500,
     //    send_error_event: true,
     cross_subdomain: true,
     show_log: true,
@@ -618,7 +618,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.19';
+  , LIB_VERSION = '1.6.20';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1686,7 +1686,7 @@ _.getReferrer = function(){
       var referrer = document.referrer;
       
       if(referrer.indexOf("https://www.baidu.com/") === 0){
-        referrer =  referrer.split('?')[0]
+        referrer =  referrer.split('?')[0];
       }
       referrer = referrer.slice(0, sd.para.max_referrer_string_length);
 
@@ -2092,6 +2092,14 @@ saEvent.send = function(p, callback) {
         state = JSON.parse(ds);
         if (state.distinct_id) {
           this._state = state;
+
+          if(typeof(state.props) === 'object'){
+            for(var key in state.props){
+              state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
+            }
+            this.save;
+          }
+
         } else {
           this.set('distinct_id', _.UUID());
           error_msg.push('toStateParseDistinctError');

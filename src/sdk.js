@@ -1072,7 +1072,7 @@ _.getReferrer = function(){
       var referrer = document.referrer;
       
       if(referrer.indexOf("https://www.baidu.com/") === 0){
-        referrer =  referrer.split('?')[0]
+        referrer =  referrer.split('?')[0];
       }
       referrer = referrer.slice(0, sd.para.max_referrer_string_length);
 
@@ -1484,6 +1484,14 @@ saEvent.send = function(p, callback) {
         state = JSON.parse(ds);
         if (state.distinct_id) {
           this._state = state;
+
+          if(typeof(state.props) === 'object'){
+            for(var key in state.props){
+              state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
+            }
+            this.save;
+          }
+
         } else {
           this.set('distinct_id', _.UUID());
           error_msg.push('toStateParseDistinctError');

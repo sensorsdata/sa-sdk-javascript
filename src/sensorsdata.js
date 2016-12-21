@@ -34,9 +34,9 @@ try{
   sd.para = sd.para || {};
   sd.para_default = {
     // referrer字符串截取
-    max_referrer_string_length: 500,
+    max_referrer_string_length: 200,
     //通用字符串截取，超过7000的字符串会导致url超长发不出去，所以限制长度
-    max_string_length: 1000,
+    max_string_length: 500,
     //    send_error_event: true,
     cross_subdomain: true,
     show_log: true,
