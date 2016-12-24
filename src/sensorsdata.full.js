@@ -618,7 +618,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.20';
+  , LIB_VERSION = '1.6.22';
 
 sd.lib_version = LIB_VERSION;
 
@@ -2097,7 +2097,7 @@ saEvent.send = function(p, callback) {
             for(var key in state.props){
               state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
             }
-            this.save;
+            this.save();
           }
 
         } else {
@@ -2245,11 +2245,11 @@ saEvent.send = function(p, callback) {
 
           var props = {};
 
-          props._el_tagname = tagName;
-          props._el_name = target.getAttribute('name');
-          props._el_id = target.getAttribute('id');
-          props._el_classname = typeof target.className === 'string' ? target.className : null;
-          props._el_href = target.getAttribute('href');
+          props.$element_type = tagName;
+          props.$element_name = target.getAttribute('name');
+          props.$element_id = target.getAttribute('id');
+          props.$element_class_name = typeof target.className === 'string' ? target.className : null;
+          props.$element_target_url = target.getAttribute('href');
 
           // 获取内容
           if (target.textContent) {
@@ -2257,12 +2257,13 @@ saEvent.send = function(p, callback) {
             if (textContent) {
               textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
             }
-            props._el_value = textContent;
+            props.$element_content = textContent;
           }
           props = _.strip_empty_properties(props);
 
           props.$url = location.href;
           props.$url_path = location.pathname;
+          props.$tite = document.title;
 
           return props;
         },
@@ -2275,7 +2276,7 @@ saEvent.send = function(p, callback) {
 
             if(tagName === 'input'){
               if(target.getAttribute('type') === 'button' || target.getAttribute('type') === 'submit'){
-                props._el_value = target.value;                
+                props.$element_content = target.value;                
               }else{
                 return false;
               }
@@ -2284,9 +2285,9 @@ saEvent.send = function(p, callback) {
             _.extend(props, this.getProps(tagName,target));
 
             if(tagName === 'a'){
-              _.trackLink({event:e},'_web_event',props);
+              _.trackLink({event:e},'$webClick',props);
             }else{
-              sd.track('_web_event',props);     
+              sd.track('$webClick',props);     
             }
           }
 
