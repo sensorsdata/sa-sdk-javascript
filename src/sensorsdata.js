@@ -53,7 +53,9 @@ try{
     // 七鱼过滤id
     vtrack_ignore: {},
 
-    auto_init: true
+    auto_init: true,
+
+    is_single_page: false
 
   };
   // 合并配置

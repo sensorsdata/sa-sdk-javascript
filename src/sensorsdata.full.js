@@ -48,7 +48,9 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     // 七鱼过滤id
     vtrack_ignore: {},
 
-    auto_init: true
+    auto_init: true,
+
+    is_single_page: false
 
   };
   // 合并配置
@@ -1305,6 +1307,11 @@ _.addEvent = function() {
     register_event.apply(null,arguments);
 };
 
+_.addHashEvent = function(callback){
+  var hashEvent = ('pushState' in window.history ? 'popstate' : 'hashchange');
+  _.addEvent(window,hashEvent,callback);
+};
+
 _.cookie = {
   get: function(name) {
     var nameEQ = name + '=';
@@ -1681,9 +1688,9 @@ _.dom = {
 
 };
 
-_.getReferrer = function(){
+_.getReferrer = function(referrer){
 
-      var referrer = document.referrer;
+      var referrer = referrer || document.referrer;
       
       if(referrer.indexOf("https://www.baidu.com/") === 0){
         referrer =  referrer.split('?')[0];
@@ -2328,7 +2335,24 @@ saEvent.send = function(p, callback) {
         delete para.not_set_profile;
       }
 
-// trackpageview
+      // 解决单页面的referrer问题
+      var current_page_url = location.href;
+
+      if(sd.para.is_single_page){
+        _.addHashEvent(function(){
+          var referrer = _.getReferrer(current_page_url);
+          sd.track('$pageview', _.extend({
+              $referrer: referrer,
+              $referrer_host: _.url('hostname',referrer) || '',
+              $url: location.href,
+              $url_path: location.pathname,
+              $title: document.title
+            }, $utms,para),callback
+          );        
+          current_page_url = location.href;
+        });
+      }
+      
       sd.track('$pageview', _.extend({
           $referrer: _.getReferrer(),
           $referrer_host: _.info.pageProp.referrer_host,
@@ -2337,6 +2361,7 @@ saEvent.send = function(p, callback) {
           $title: document.title
         }, $utms,para),callback
       );
+
     }
 
 
