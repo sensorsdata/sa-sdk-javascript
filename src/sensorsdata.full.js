@@ -620,7 +620,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.51';
+  , LIB_VERSION = '1.6.53';
 
 sd.lib_version = LIB_VERSION;
 
@@ -2102,7 +2102,9 @@ saEvent.send = function(p, callback) {
 
           if(typeof(state.props) === 'object'){
             for(var key in state.props){
-              state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
+              if(typeof state.props[key] === 'string'){
+                state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
+              }
             }
             this.save();
           }
@@ -2120,7 +2122,7 @@ saEvent.send = function(p, callback) {
       var ds = _.cookie.get('sensorsdata2015session');
       var state = null;
       if (ds !== null && (typeof (state = JSON.parse(ds)) === 'object')) {
-        this._sessionState = state;
+        this._sessionState = state || {};
       }
     },
 
@@ -2157,6 +2159,16 @@ saEvent.send = function(p, callback) {
       var props = this._state.props || {};
       _.coverExtend(props, newp);
       this.set('props', props);
+    },
+    clearAllProps: function() {
+      this._sessionState = {};      
+      for(var i in this._state.props){
+        if(i.indexOf('latest_') !== 1){
+          delete this._state.props[i];
+        }
+      }
+      this.sessionSave({});
+      this.save();
     },
     sessionSave: function(props) {
       this._sessionState = props;
@@ -2644,6 +2656,10 @@ saEvent.send = function(p, callback) {
     } else {
       logger.info('register输入的参数有误');
     }
+  };
+
+  sd.clearAllRegister = function(){
+    store.clearAllProps();
   };
 
   sd.register = function(props) {
