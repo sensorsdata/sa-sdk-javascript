@@ -620,7 +620,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.53';
+  , LIB_VERSION = '1.6.54';
 
 sd.lib_version = LIB_VERSION;
 
@@ -2062,6 +2062,7 @@ saEvent.send = function(p, callback) {
 
   // 发送debug数据请求
   saEvent.debugPath = function(data, callback) {
+    var _data = data; //存数据
     var url = '';
     if (sd.para.debug_mode_url.indexOf('?') !== -1) {
       url = sd.para.debug_mode_url + '&data=' + encodeURIComponent(_.base64Encode(data));
@@ -2070,14 +2071,18 @@ saEvent.send = function(p, callback) {
     }
 
     _.ajax({
-      url: url,
-      type: 'GET',
-      cors: true,
-      header: {'Dry-Run': String(sd.para.debug_mode_upload)}
-    });
+         url: url,
+         type: 'GET',
+         cors: true,
+         header: {'Dry-Run': String(sd.para.debug_mode_upload)},
+         success:function(data){
+         // debug 模式下 提示框 
+          _.isEmptyObject(data) === true ? alert('debug数据发送成功' + _data) : alert('debug失败 错误原因' + JSON.stringify(data));
+         }
+       });
 
   };
-
+  
   var store = sd.store = {
     _sessionState: {},
     _state: {},
@@ -2282,7 +2287,7 @@ saEvent.send = function(p, callback) {
 
           props.$url = location.href;
           props.$url_path = location.pathname;
-          props.$tite = document.title;
+          props.$title = document.title;
 
           return props;
         },
