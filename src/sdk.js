@@ -1698,7 +1698,7 @@ saEvent.send = function(p, callback) {
             
             _.extend(props, this.getProps(tagName,target));
 
-            if(tagName === 'a'){
+            if(tagName === 'a' && sd.para.is_trackLink === true){
               _.trackLink({event:e},'$WebClick',props);
             }else{
               sd.track('$WebClick',props);     

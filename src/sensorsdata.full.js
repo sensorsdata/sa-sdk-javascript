@@ -50,7 +50,9 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
     auto_init: true,
 
-    is_single_page: false
+    is_single_page: false,
+
+    is_trackLink:true
 
   };
   // 合并配置
@@ -620,7 +622,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.6.54';
+  , LIB_VERSION = '1.6.55';
 
 sd.lib_version = LIB_VERSION;
 
@@ -2308,7 +2310,7 @@ saEvent.send = function(p, callback) {
             
             _.extend(props, this.getProps(tagName,target));
 
-            if(tagName === 'a'){
+            if(tagName === 'a' && sd.para.is_trackLink === true){
               _.trackLink({event:e},'$WebClick',props);
             }else{
               sd.track('$WebClick',props);     

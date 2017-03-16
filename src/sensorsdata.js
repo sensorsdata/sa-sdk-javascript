@@ -55,7 +55,9 @@ try{
 
     auto_init: true,
 
-    is_single_page: false
+    is_single_page: false,
+
+    is_trackLink:true
 
   };
   // 合并配置
