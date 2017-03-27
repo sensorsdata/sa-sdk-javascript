@@ -1474,141 +1474,155 @@ saEvent.send = function(p, callback) {
   };
   
   var store = sd.store = {
-    _sessionState: {},
-    _state: {},
-    getProps: function() {
-      return this._state.props;
-    },
-    getSessionProps: function() {
-      return this._sessionState;
-    },
-    getDistinctId: function() {
-      return this._state.distinct_id;
-    },
-    getFirstId: function(){
-      return this._state.first_id;
-    },
-    toState: function(ds) {
-      var state = null;
-      if (ds != null && _.isJSONString(ds)) {
-        state = JSON.parse(ds);
-        if (state.distinct_id) {
-          this._state = state;
+      _sessionState: {},
+      _state: {},
+      getProps: function() {
+        return this._state.props;
+      },
+      getSessionProps: function() {
+        return this._sessionState;
+      },
+      getDistinctId: function() {
+        return this._state.distinct_id;
+      },
+      getFirstId: function(){
+        return this._state.first_id;
+      },
+      toState: function(ds) {
+        var state = null;
+        if (ds != null && _.isJSONString(ds)) {
+          state = JSON.parse(ds);
+          if (state.distinct_id) {
+            this._state = state;
 
-          if(typeof(state.props) === 'object'){
-            for(var key in state.props){
-              if(typeof state.props[key] === 'string'){
-                state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
+            if(typeof(state.props) === 'object'){
+              for(var key in state.props){
+                if(typeof state.props[key] === 'string'){
+                  state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
+                }
               }
+              this.save();
             }
-            this.save();
-          }
 
+          } else {
+            this.set('distinct_id', _.UUID());
+            error_msg.push('toStateParseDistinctError');
+          }
         } else {
           this.set('distinct_id', _.UUID());
-          error_msg.push('toStateParseDistinctError');
+          error_msg.push('toStateParseError');
         }
-      } else {
-        this.set('distinct_id', _.UUID());
-        error_msg.push('toStateParseError');
-      }
-    },
-    initSessionState: function() {
-      var ds = _.cookie.get('sensorsdata2015session');
-      var state = null;
-      if (ds !== null && (typeof (state = JSON.parse(ds)) === 'object')) {
-        this._sessionState = state || {};
-      }
-    },
-
-    setOnce: function(a, b) {
-      if (!(a in this._state)) {
-        this.set(a, b);
-      }
-    },
-    set: function(name, value) {
-      this._state = this._state || {};
-      this._state[name] = value;
-      this.save();
-    },
-    // 针对当前页面修改
-    change: function(name, value) {
-      this._state[name] = value;
-    },
-    setSessionProps: function(newp) {
-      var props = this._sessionState;
-      _.extend(props, newp);
-      this.sessionSave(props);
-    },
-    setSessionPropsOnce: function(newp) {
-      var props = this._sessionState;
-      _.coverExtend(props, newp);
-      this.sessionSave(props);
-    },
-    setProps: function(newp) {
-      var props = this._state.props || {};
-      _.extend(props, newp);
-      this.set('props', props);
-    },
-    setPropsOnce: function(newp) {
-      var props = this._state.props || {};
-      _.coverExtend(props, newp);
-      this.set('props', props);
-    },
-    clearAllProps: function() {
-      this._sessionState = {};      
-      for(var i in this._state.props){
-        if(i.indexOf('latest_') !== 1){
-          delete this._state.props[i];
+      },
+      initSessionState: function() {
+        var ds = _.cookie.get('sensorsdata2015session');
+        var state = null;
+        if (ds !== null && (typeof (state = JSON.parse(ds)) === 'object')) {
+          this._sessionState = state || {};
         }
-      }
-      this.sessionSave({});
-      this.save();
-    },
-    sessionSave: function(props) {
-      this._sessionState = props;
-      _.cookie.set('sensorsdata2015session', JSON.stringify(this._sessionState), 0);
-    },
-    save: function() {
-      _.cookie.set('sensorsdata2015jssdkcross', JSON.stringify(this._state), 730, sd.para.cross_subdomain);
-    },
-    init: function() {
-      // 如果不支持cookie，设置新的id，并且带有error_msg
-      if (!navigator.cookieEnabled) {
-        error_msg.push('cookieNotEnable');
-        if (!_.localStorage.isSupport) {
-          error_msg.push('localStorageNotEnable');
+      },
+
+      setOnce: function(a, b) {
+        if (!(a in this._state)) {
+          this.set(a, b);
         }
+      },
+      set: function(name, value) {
+        this._state = this._state || {};
+        this._state[name] = value;
+        this.save();
+      },
+      // 针对当前页面修改
+      change: function(name, value) {
+        this._state[name] = value;
+      },
+      setSessionProps: function(newp) {
+        var props = this._sessionState;
+        _.extend(props, newp);
+        this.sessionSave(props);
+      },
+      setSessionPropsOnce: function(newp) {
+        var props = this._sessionState;
+        _.coverExtend(props, newp);
+        this.sessionSave(props);
+      },
+      setProps: function(newp) {
+        var props = this._state.props || {};
+        _.extend(props, newp);
+        this.set('props', props);
+      },
+      setPropsOnce: function(newp) {
+        var props = this._state.props || {};
+        _.coverExtend(props, newp);
+        this.set('props', props);
+      },
+      clearAllProps: function() {
+        this._sessionState = {};      
+        for(var i in this._state.props){
+          if(i.indexOf('latest_') !== 1){
+            delete this._state.props[i];
+          }
+        }
+        this.sessionSave({});
+        this.save();
+      },
+      sessionSave: function(props) {
+        this._sessionState = props;
+        _.cookie.set('sensorsdata2015session', JSON.stringify(this._sessionState), 0);
+      },
+      save: function() {
+        _.cookie.set(this.getCookieName(), JSON.stringify(this._state), 73000, sd.para.cross_subdomain);
+      },
+      getCookieName: function(){
+        var sub = '';      
+        if(sd.para.cross_subdomain === false){
+          sub = _.url('sub',location.href);
+          if(typeof sub === 'string' && sub !== ''){
+            sub = 'sa_jssdk_2015_' + sub;
+          }else{
+            sub = 'sa_jssdk_2015_root_' + sub;
+          }
+        }else{
+          sub = 'sensorsdata2015jssdkcross';
+        } 
+        return sub;
+      },
+      init: function() {
+        // 如果不支持cookie，设置新的id，并且带有error_msg
+        if (!navigator.cookieEnabled) {
+          error_msg.push('cookieNotEnable');
+          if (!_.localStorage.isSupport) {
+            error_msg.push('localStorageNotEnable');
+          }
+        }
+
+        this.initSessionState();
+        var cross = _.cookie.get(this.getCookieName());
+        if (cross === null) {
+          // 判断是否是第一次载入sdk
+          is_first_visitor = true;
+          
+          just_test_distinctid = 1;
+          
+          this.set('distinct_id', _.UUID());
+        } else {
+          
+          just_test_distinctid = 2;
+          just_test_distinctid_detail = JSON.stringify(cross);
+          just_test_distinctid_detail2 = navigator.userAgent+'^_^'+document.cookie;                      
+
+          this.toState(cross);
+        }
+        //判断新用户
+        saNewUser.storeInitCheck();
+        saNewUser.checkIsFirstLatest();
+        // 如果初始化cookie失败，发送错误事件
+        /*
+         if(error_msg.length > 0 && sd.para.send_error_event){
+         sd.track('jssdk_error_msg');
+         }*/
+
       }
-      this.initSessionState();
-      var cross = _.cookie.get(sd.para.cross_subdomain ? 'sensorsdata2015jssdkcross' : 'sensorsdata2015jssdk');
-      if (cross === null) {
-        // 判断是否是第一次载入sdk
-        is_first_visitor = true;
-        
-        just_test_distinctid = 1;
-        
-        this.set('distinct_id', _.UUID());
-      } else {
-        
-        just_test_distinctid = 2;
-        just_test_distinctid_detail = JSON.stringify(cross);
-        just_test_distinctid_detail2 = navigator.userAgent+'^_^'+document.cookie;                      
-
-        this.toState(cross);
-      }
-      //判断新用户
-      saNewUser.storeInitCheck();
-      saNewUser.checkIsFirstLatest();
-      // 如果初始化cookie失败，发送错误事件
-      /*
-       if(error_msg.length > 0 && sd.para.send_error_event){
-       sd.track('jssdk_error_msg');
-       }*/
-
-    }
-  };
-
+    };
   var commonWays = {
     // 获取谷歌标准参数
     getUtm: function() {
