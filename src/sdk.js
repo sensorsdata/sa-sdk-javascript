@@ -213,6 +213,10 @@ _.isNumber = function(obj) {
   return (toString.call(obj) == '[object Number]' && /[\d\.]+/.test(String(obj)));
 };
 
+_.isElement = function(obj) {
+    return !!(obj && obj.nodeType === 1);
+};
+
 _.isJSONString = function(str) {
   try {
     JSON.parse(str);
@@ -389,8 +393,6 @@ _.utf8Encode = function(string) {
 
   return utftext;
 };
-
-_.detector = detector;
 
 _.base64Encode = function(data) {
   var b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
@@ -578,6 +580,62 @@ _.getDomainByHost = function(url) {
 }
 */
 
+_.draggable = function(elementToDrag, event) {
+  function getScrollOffsets() {
+    var w = document;
+    if (w.pageXOffset != null) {
+      return {
+        x: w.pageXOffset,
+        y: w.pageYOffset
+      };
+    } else {
+      return {
+        x: w.documentElement.scrollLeft,
+        y: w.documentElement.scrollTop
+      };
+    }
+  }
+
+  var scroll = getScrollOffsets();
+  var startX = event.clientX + scroll.x;
+  var startY = event.clientY + scroll.y;
+  var origX = elementToDrag.offsetLeft;
+  var origY = elementToDrag.offsetTop;
+  var deltaX = startX - origX;
+  var deltaY = startY - origY;
+  if (document.addEventListener) {
+    document.addEventListener("mousemove", moveHandler);
+    document.addEventListener("mouseup", upHandler);
+  } else if (document.attachEvent) {
+    document.attachEvent("onmousemove", moveHandler);
+    document.attachEvent("onmouseup", upHandler);
+  }
+  if (event.stopPropagation) event.stopPropagation();
+  else event.cancelBubble = true; 
+  if (event.preventDefault) event.preventDefault(); 
+  else event.returnValue = false; 
+  function moveHandler(e) {
+    e = e || window.event; 
+    var scroll = getScrollOffsets();
+    elementToDrag.style.left = (e.clientX + scroll.x - deltaX) + "px";
+    elementToDrag.style.top = (e.clientY + scroll.y - deltaY) + "px";
+    if (e.stopPropagation) e.stopPropagation();
+    else e.cancelBubble = true; 
+  }
+  function upHandler(e) {
+    if (!e) e = window.event; 
+    if (document.removeEventListener) {
+      document.removeEventListener("mouseup", upHandler);
+      document.removeEventListener("mousemove", moveHandler);
+    } else if (document.detachEvent) {
+      document.detachEvent("onmouseup", upHandler);
+      document.detachEvent("onmousemove", moveHandler);
+    }
+    if (e.stopPropagation) e.stopPropagation();
+    else e.cancelBubble = true; 
+  }
+}
+
 // 是否有标准的浏览器环境,如果不是发送$errorEnviroment:{$errorReson:'没有window'}
 _.hasStandardBrowserEnviroment = function() {
   if (!window) {
@@ -644,7 +702,7 @@ _.bindReady = function(handler) {
 
 _.addEvent = function() {
     var register_event = function(element, type, handler) {
-        if (element.addEventListener) {
+        if (element && element.addEventListener) {
             element.addEventListener(type, handler, false);
         } else {
             var ontype = 'on' + type;
@@ -714,7 +772,7 @@ _.cookie = {
   set: function(name, value, days, cross_subdomain, is_secure) {
     cross_subdomain = typeof cross_subdomain === 'undefined' ? sd.para.cross_subdomain : cross_subdomain;
     var cdomain = '', expires = '', secure = '';
-    days = typeof days === 'undefined' ? 730 : days;
+    days = typeof days === 'undefined' ? 73000 : days;
 
     if (cross_subdomain) {
       var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i)
@@ -752,6 +810,43 @@ _.cookie = {
 
   }
 };
+
+// 获取元素的一些信息
+_.getEleInfo = function(obj){
+  if(!obj.target){
+    return false;
+  }
+
+  var target = obj.target;
+  var tagName = target.tagName.toLowerCase();
+
+
+  var props = {};
+
+  props.$element_type = tagName;
+  props.$element_name = target.getAttribute('name');
+  props.$element_id = target.getAttribute('id');
+  props.$element_class_name = typeof target.className === 'string' ? target.className : null;
+  props.$element_target_url = target.getAttribute('href');
+
+  // 获取内容
+  if (target.textContent) {
+    var textContent = _.trim(target.textContent);
+    if (textContent) {
+      textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+    }
+    props.$element_content = textContent || '';
+  }
+  props = _.strip_empty_properties(props);
+
+  props.$url = location.href;
+  props.$url_path = location.pathname;
+  props.$title = document.title;
+
+  return props;
+
+};
+
 
 // _.localStorage
 _.localStorage = {
@@ -1067,10 +1162,231 @@ _.url = (function() {
     };
 })();
 
-_.dom = {
+_.dom_query = (function() {
+    function getAllChildren(e) {
+      return e.all ? e.all : e.getElementsByTagName('*');
+    }
+    var bad_whitespace = /[\t\r\n]/g;
+    function hasClass(elem, selector) {
+        var className = ' ' + selector + ' ';
+        return ((' ' + elem.className + ' ').replace(bad_whitespace, ' ').indexOf(className) >= 0);
+    }
+    function getElementsBySelector(selector) {
+        if (!document.getElementsByTagName) {
+            return [];
+        }
+        var tokens = selector.split(' ');
+        var token, bits, tagName, found, foundCount, i, j, k, elements, currentContextIndex;
+        var currentContext = [document];
+        for (i = 0; i < tokens.length; i++) {
+            token = tokens[i].replace(/^\s+/, '').replace(/\s+$/, '');
+            if (token.indexOf('#') > -1) {
+                bits = token.split('#');
+                tagName = bits[0];
+                var id = bits[1];
+                var element = document.getElementById(id);
+                if (!element || (tagName && element.nodeName.toLowerCase() != tagName)) {
+                    return [];
+                }
+                currentContext = [element];
+                continue;
+            }
+            if (token.indexOf('.') > -1) {
+                bits = token.split('.');
+                tagName = bits[0];
+                var className = bits[1];
+                if (!tagName) {
+                    tagName = '*';
+                }
+                found = [];
+                foundCount = 0;
+                for (j = 0; j < currentContext.length; j++) {
+                    if (tagName == '*') {
+                        elements = getAllChildren(currentContext[j]);
+                    } else {
+                        elements = currentContext[j].getElementsByTagName(tagName);
+                    }
+                    for (k = 0; k < elements.length; k++) {
+                        found[foundCount++] = elements[k];
+                    }
+                }
+                currentContext = [];
+                currentContextIndex = 0;
+                for (j = 0; j < found.length; j++) {
+                    if (found[j].className &&
+                        _.isString(found[j].className) && // some SVG elements have classNames which are not strings
+                        hasClass(found[j], className)
+                    ) {
+                        currentContext[currentContextIndex++] = found[j];
+                    }
+                }
+                continue;
+            }
+            var token_match = token.match(/^(\w*)\[(\w+)([=~\|\^\$\*]?)=?"?([^\]"]*)"?\]$/);
+            if (token_match) {
+                tagName = token_match[1];
+                var attrName = token_match[2];
+                var attrOperator = token_match[3];
+                var attrValue = token_match[4];
+                if (!tagName) {
+                    tagName = '*';
+                }
+                found = [];
+                foundCount = 0;
+                for (j = 0; j < currentContext.length; j++) {
+                    if (tagName == '*') {
+                        elements = getAllChildren(currentContext[j]);
+                    } else {
+                        elements = currentContext[j].getElementsByTagName(tagName);
+                    }
+                    for (k = 0; k < elements.length; k++) {
+                        found[foundCount++] = elements[k];
+                    }
+                }
+                currentContext = [];
+                currentContextIndex = 0;
+                var checkFunction;
+                switch (attrOperator) {
+                    case '=': // Equality
+                        checkFunction = function(e) {
+                            return (e.getAttribute(attrName) == attrValue);
+                        };
+                        break;
+                    case '~': // Match one of space seperated words
+                        checkFunction = function(e) {
+                            return (e.getAttribute(attrName).match(new RegExp('\\b' + attrValue + '\\b')));
+                        };
+                        break;
+                    case '|': // Match start with value followed by optional hyphen
+                        checkFunction = function(e) {
+                            return (e.getAttribute(attrName).match(new RegExp('^' + attrValue + '-?')));
+                        };
+                        break;
+                    case '^': // Match starts with value
+                        checkFunction = function(e) {
+                            return (e.getAttribute(attrName).indexOf(attrValue) === 0);
+                        };
+                        break;
+                    case '$': // Match ends with value - fails with "Warning" in Opera 7
+                        checkFunction = function(e) {
+                            return (e.getAttribute(attrName).lastIndexOf(attrValue) == e.getAttribute(attrName).length - attrValue.length);
+                        };
+                        break;
+                    case '*': // Match ends with value
+                        checkFunction = function(e) {
+                            return (e.getAttribute(attrName).indexOf(attrValue) > -1);
+                        };
+                        break;
+                    default:
+                        checkFunction = function(e) {
+                            return e.getAttribute(attrName);
+                        };
+                }
+                currentContext = [];
+                currentContextIndex = 0;
+                for (j = 0; j < found.length; j++) {
+                    if (checkFunction(found[j])) {
+                        currentContext[currentContextIndex++] = found[j];
+                    }
+                }
+                continue; // Skip to next token
+            }
+            tagName = token;
+            found = [];
+            foundCount = 0;
+            for (j = 0; j < currentContext.length; j++) {
+                elements = currentContext[j].getElementsByTagName(tagName);
+                for (k = 0; k < elements.length; k++) {
+                    found[foundCount++] = elements[k];
+                }
+            }
+            currentContext = found;
+        }
+        return currentContext;
+    }
+    return function(query) {
+        if (_.isElement(query)) {
+            return [query];
+        } else if (_.isObject(query) && !_.isUndefined(query.length)) {
+            return query;
+        } else {
+            return getElementsBySelector.call(this, query);
+        }
+    };
+})();
 
-
+_.ry = function(dom){  
+  return new _.ry.init(dom);
 };
+_.ry.init = function(dom){
+  this.ele = dom;
+};
+_.ry.init.prototype = {
+  addClass: function(para){
+    var classes = ' ' + this.ele.className + ' ';
+    if(classes.indexOf(' ' + para + ' ') === -1){
+      this.ele.className = this.ele.className + (this.ele.className === '' ? '' : ' ') + para;
+    }
+    return this;
+  },
+  removeClass: function(para){
+    var classes = ' ' + this.ele.className + ' ';
+    if(classes.indexOf(' ' + para + ' ') !== -1){
+      this.ele.className = classes.replace(' ' + para + ' ', '').slice(1,-1);
+    }
+    return this;
+  },
+  hasClass: function(para){
+    var classes = ' ' + this.ele.className + ' ';    
+    if(classes.indexOf(' ' + para + ' ') !== -1){
+      return true;
+    }else{
+      return false;
+    }
+  },
+  attr: function(key,value){
+    if(typeof key === 'string' && _.isUndefined(value)){
+      return this.ele.getAttribute(key);
+    }
+    if(typeof key === 'string'){
+      value = String(value);
+      this.ele.setAttribute(key,value);
+    }
+    return this;
+  },
+  offset: function(){
+      var rect = this.ele.getBoundingClientRect();
+      if ( rect.width || rect.height ) {
+        var doc = this.ele.ownerDocument;
+        var docElem = doc.documentElement;
+
+        return {
+          top: rect.top + window.pageYOffset - docElem.clientTop,
+          left: rect.left + window.pageXOffset - docElem.clientLeft
+        };
+      }
+
+  },
+  getSize: function(){
+    if (!window.getComputedStyle) {
+      return {width: this.ele.offsetWidth, height: this.ele.offsetHeight};
+    }
+    try {
+      var bounds = this.ele.getBoundingClientRect();
+      return {width: bounds.width, height: bounds.height};
+    } catch (e){
+      return {width: 0, height: 0};
+    }
+  },
+  getStyle: function(value){
+    if(this.ele.currentStyle){
+      return this.ele.currentStyle[value];
+    }else{
+      return this.ele.ownerDocument.defaultView.getComputedStyle(this.ele, null).getPropertyValue(value);
+    }
+  }
+};
+
 
 _.getReferrer = function(referrer){
 
@@ -1141,16 +1457,11 @@ _.info = {
   // 预置属性
   properties: function() {
     return {
-      $os: detector.os.name,
-      $model: detector.device.name,
-      $os_version: String(detector.os.version),
       $screen_height: Number(screen.height) || 0,
       $screen_width: Number(screen.width) || 0,
       // 我说两遍写的重复，佳捷说就写两遍
       $lib: 'js',
-      $lib_version: String(LIB_VERSION),
-      $browser: detector.browser.name,
-      $browser_version: String(detector.browser.version)
+      $lib_version: String(LIB_VERSION)
     };
   },
   // 保存临时的一些变量，只针对当前页面有效
@@ -1179,11 +1490,13 @@ sd.sendState.getSendCall = function(data, callback) {
     (typeof callback === 'function') && callback();
   };
   // 加cache防止缓存
-  data._nocache = (String(Math.random()) + String(Math.random()) + String(Math.random())).slice(2, 15);
+  data._nocache = (String(Math.random()) + String(Math.random()) + String(Math.random())).replace(/\./g,'').slice(0,15);
   logger.info(data);
   data = JSON.stringify(data);
 
-  if (sd.para.server_url.indexOf('?') !== -1) {
+  if(sd.is_heatmap_render_mode){
+    this[state].src = sd.para.server_url;
+  }else if (sd.para.server_url.indexOf('?') !== -1) {
     this[state].src = sd.para.server_url + '&data=' + encodeURIComponent(_.base64Encode(data));
   } else {
     this[state].src = sd.para.server_url + '?data=' + encodeURIComponent(_.base64Encode(data));
@@ -1447,8 +1760,7 @@ saEvent.send = function(p, callback) {
       sd.sendState.getSendCall(data, callback);
     }
 
-  }
-  ;
+  };
 
   // 发送debug数据请求
   saEvent.debugPath = function(data, callback) {
@@ -1565,50 +1877,50 @@ saEvent.send = function(p, callback) {
         this.sessionSave({});
         this.save();
       },
-      sessionSave: function(props) {
-        this._sessionState = props;
-        _.cookie.set('sensorsdata2015session', JSON.stringify(this._sessionState), 0);
-      },
-      save: function() {
-        _.cookie.set(this.getCookieName(), JSON.stringify(this._state), 73000, sd.para.cross_subdomain);
-      },
-      getCookieName: function(){
-        var sub = '';      
-        if(sd.para.cross_subdomain === false){
-          sub = _.url('sub',location.href);
-          if(typeof sub === 'string' && sub !== ''){
-            sub = 'sa_jssdk_2015_' + sub;
-          }else{
-            sub = 'sa_jssdk_2015_root_' + sub;
-          }
+    sessionSave: function(props) {
+      this._sessionState = props;
+      _.cookie.set('sensorsdata2015session', JSON.stringify(this._sessionState), 0);
+    },
+    save: function() {
+      _.cookie.set(this.getCookieName(), JSON.stringify(this._state), 73000, sd.para.cross_subdomain);
+    },
+    getCookieName: function(){
+      var sub = '';      
+      if(sd.para.cross_subdomain === false){
+        sub = _.url('sub',location.href);
+        if(typeof sub === 'string' && sub !== ''){
+          sub = 'sa_jssdk_2015_' + sub;
         }else{
-          sub = 'sensorsdata2015jssdkcross';
-        } 
-        return sub;
-      },
-      init: function() {
-        // 如果不支持cookie，设置新的id，并且带有error_msg
-        if (!navigator.cookieEnabled) {
-          error_msg.push('cookieNotEnable');
-          if (!_.localStorage.isSupport) {
-            error_msg.push('localStorageNotEnable');
-          }
+          sub = 'sa_jssdk_2015_root_' + sub;
         }
+      }else{
+        sub = 'sensorsdata2015jssdkcross';
+      } 
+      return sub;
+    },
+    init: function() {
+      // 如果不支持cookie，设置新的id，并且带有error_msg
+      if (!navigator.cookieEnabled) {
+        error_msg.push('cookieNotEnable');
+        if (!_.localStorage.isSupport) {
+          error_msg.push('localStorageNotEnable');
+        }
+      }
 
-        this.initSessionState();
-        var cross = _.cookie.get(this.getCookieName());
-        if (cross === null) {
-          // 判断是否是第一次载入sdk
-          is_first_visitor = true;
-          
-          just_test_distinctid = 1;
-          
-          this.set('distinct_id', _.UUID());
-        } else {
-          
-          just_test_distinctid = 2;
-          just_test_distinctid_detail = JSON.stringify(cross);
-          just_test_distinctid_detail2 = navigator.userAgent+'^_^'+document.cookie;                      
+      this.initSessionState();
+      var cross = _.cookie.get(this.getCookieName());
+      if (cross === null) {
+        // 判断是否是第一次载入sdk
+        is_first_visitor = true;
+        
+        just_test_distinctid = 1;
+        
+        this.set('distinct_id', _.UUID());
+      } else {
+        
+        just_test_distinctid = 2;
+        just_test_distinctid_detail = JSON.stringify(cross);
+        just_test_distinctid_detail2 = navigator.userAgent+'^_^'+document.cookie;                                           
 
           this.toState(cross);
         }
@@ -1623,6 +1935,8 @@ saEvent.send = function(p, callback) {
 
       }
     };
+
+
   var commonWays = {
     // 获取谷歌标准参数
     getUtm: function() {
@@ -1663,38 +1977,17 @@ saEvent.send = function(p, callback) {
         return false;
       }
 
+      if(sd.para.heatmap){
+        return false;
+      }
+
       if(sd.allTrack === 'has_init'){
         return false;
       }
       sd.allTrack = 'has_init';
 
       var trackAll = {
-        getProps: function(tagName,target){
 
-          var props = {};
-
-          props.$element_type = tagName;
-          props.$element_name = target.getAttribute('name');
-          props.$element_id = target.getAttribute('id');
-          props.$element_class_name = typeof target.className === 'string' ? target.className : null;
-          props.$element_target_url = target.getAttribute('href');
-
-          // 获取内容
-          if (target.textContent) {
-            var textContent = _.trim(target.textContent);
-            if (textContent) {
-              textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
-            }
-            props.$element_content = textContent;
-          }
-          props = _.strip_empty_properties(props);
-
-          props.$url = location.href;
-          props.$url_path = location.pathname;
-          props.$title = document.title;
-
-          return props;
-        },
         clickEvents: function(e){
           var props = {};
           var target = e.target;
@@ -1710,7 +2003,7 @@ saEvent.send = function(p, callback) {
               }
             }
             
-            _.extend(props, this.getProps(tagName,target));
+            _.extend(props, _.getEleInfo({target:target}));
 
             if(tagName === 'a' && sd.para.is_trackLink === true){
               _.trackLink({event:e},'$WebClick',props);
@@ -2187,33 +2480,653 @@ saEvent.send = function(p, callback) {
     };
   };
 
-  function start_heatmap(){
-    /*
-    if(!_.isObject(sd.para.heatmap) || !sd.para.heatmap.collect_url || !sd.para.heatmap.collect_elements){
-      return false;
-    }
-    // 验证url，function成功就行，非function认为都是全部
-    if(_.isFunction(sd.para.heatmap.collect_url) && !sd.para.heatmap.collect_url()){
-      return false;
-    }
-    if(sd.para.heatmap.collect_elements === 'all'){
-      document.onclick = function(){
 
-      };
-    }else if(sd.para.heatmap.collect_elements === 'interact'){
-      document.onclick = function(e){
-        var ev = window.event || e;
-
+var heatmap_render = {
+  showErrorInfo: function(error_type,error_msg){
+    var div = document.createElement('div');
+    div.setAttribute('style','background:#e55b41;border:none;border-radius:8px;color:#fff;font-size:18px;left:50%;margin-left:-300px;padding:15px;position: fixed;text-align: center;top: 0;width:600px;z-index:9999;');
+    if(error_type === 1){
+      div.innerHTML = '当前页面在所选时间段内暂时没有点击数据';     
+    }else if(error_type === 2){
+      if(error_msg.error){
+        div.innerHTML = error_msg.error;     
+      }else{
+        div.innerHTML = '请求数据异常或者缓存超时';
       }
-    }*/
+    }else if(error_type === 3){
+      div.innerHTML = '当前页面在所选时间段内暂时没有点击数据';
+    }else if(error_type === 4){
+      if(error_msg.error){
+        div.innerHTML = error_msg.error;     
+      }else{
+        div.innerHTML = '请求数据异常或者缓存超时';
+      }      
+    }
+    document.body.appendChild(div);
+    setTimeout(function(){
+      document.body.removeChild(div);
+    },5000)
+
+/*4中错误类型
+    带id的正常请求，没有数据
+    带id的错误请求
+    session里的正常请求，没有数据
+    session里的错误请求
+*/
+
+  },
+  requestType: 1,
+  getRequestInfo: function(id,url){
+
+    var me = this;
+    if(typeof id === 'string' && sd.para.web_url){
+
+      var urlParse = new _.urlParse(sd.para.web_url);
+      urlParse._values.Path = '/api/heat_map/report/' + id;
+
+      var urlParse2 = new _.urlParse(sd.para.web_url);
+      urlParse2._values.Path = '/api/heat_map/report/path/' + id;
+
+      if(url){
+        this.requestType = 3;
+        _.ajax({
+          url: urlParse2.getUrl() + '?pathUrl=' + url,
+          type: 'POST',
+          cors: true,
+          header: {cors: "true"},
+          success: function(data) {
+            me.bindEffect();
+            me.calculateHeatData(data);
+          },
+          error: function(res){
+            me.showErrorInfo(2,res);
+            sessionStorage.removeItem('sensors_heatmap_id');
+
+            if(location.href.indexOf('http://www.notrack.com:8080/sdk_test.html') === 0){
+              me.bindEffect();
+              me.calculateHeatData(window.data_sa_heat_test_data_test_201703130440 || {});  
+            }
+          }
+        });
+      }else{
+        this.requestType = 1;
+        _.ajax({
+          url: urlParse.getUrl(),
+          type: 'POST',
+          cors: true,
+          header: {cors: "true"},
+          success: function(data) {
+            me.bindEffect();
+            me.calculateHeatData(data);
+          },
+          error: function(res){
+            me.showErrorInfo(4,res);            
+            sessionStorage.removeItem('sensors_heatmap_id');
+
+            if(location.href.indexOf('http://www.notrack.com:8080/sdk_test.html') === 0){
+              me.bindEffect();
+              me.calculateHeatData(window.data_sa_heat_test_data_test_201703130440 || {});  
+            }
+          }
+        });
+      }
+    }else{
+      _.logger.info('缺少web_url');
+    }
+  },
+  calculateHeatData: function(data){
+    var me = this;
+
+    if(!_.isObject(data) || !_.isArray(data.rows) || !_.isObject(data.rows[0])){
+      me.showErrorInfo(me.requestType);
+      return false;
+    }
+    var pv = parseInt(data.page_view,10);
+    var heat_map_id = data.heat_map_id;
+    data = data.rows;
+
+    var dataPageTotal = 0;
+    var usableData = [];
+    
+    _.each(data,function(obj){
+      if( obj.by_values[0] && document.querySelectorAll(obj.by_values[0])[0] ){
+        usableData.push(obj);
+      }
+    });
+
+    if(usableData.length === 0){
+      me.showErrorInfo(me.requestType);
+    }
+
+    data = usableData;
+
+    _.each(data,function(obj,key){
+      obj.value_fix = obj.values[0][0];
+      dataPageTotal += obj.value_fix;
+    });
+
+    me.data_render = data;
+
+    _.each(data,function(obj,key){
+      if(obj.by_values[0]){
+        obj.data_page_percent = Number(obj.value_fix/dataPageTotal*100).toFixed(2) + '%';
+
+        obj.data_click_percent = Number(obj.value_fix/pv*100).toFixed(2) + '%';
+
+        obj.data_click = Number(obj.value_fix/pv);
+        obj.data_page = Number(obj.value_fix/dataPageTotal);
 
 
+        var urlParse = new _.urlParse(sd.para.web_url);
+        urlParse._values.Path = '/web-click/users/#heat_map_id=' + heat_map_id + '&element_selector=' + encodeURIComponent(obj.by_values[0]);
+        obj.data_user_link = urlParse.getUrl();
+
+        if(String(obj.top_values[0]) === 'null'){
+          obj.data_top_value = '没有值';          
+        } else {
+          obj.data_top_value = String(obj.top_values[0]);
+        }
+
+        var selector = document.querySelectorAll(obj.by_values[0]);
+        if(typeof selector === 'object' && selector.length > 0){
+          me.renderHeatData(selector,obj,key);
+        }
+      }
+    });
+
+
+
+  },
+  heatData:function(data){
+    var heat = [0.005,0.01,0.05,0.1];
+    for(var i=0; i<heat.length; i++){
+      if(data < heat[i]){
+        return 4-i;
+      }
+    }
+    return 0;
+  },
+  heatDataTitle: function(data){
+    return ('点击次数 ' + data.value_fix 
+      + '\r\n点击概率 ' + data.data_click_percent 
+      + '\r\n点击占比 ' + data.data_page_percent + '\r\n历史数据 ' + String(data.top_values[0]).slice(0,30) );
+  },
+  renderHeatData: function(selector,data,key){
+    var allowElements = {
+      'input':true,
+      'a':true,
+      'button':true
+    };
+    var dom =  _.ry(selector[0]);
+    dom.attr('data-heat-place',String(key))
+    .addClass('sa-click-area')
+//    .attr('title',this.heatDataTitle(data))
+    .attr('data-click',data.data_click_percent)
+    .addClass('sa-click-area' + this.heatData(data.data_click));
+    if(dom.getStyle('display') === 'inline'){
+      selector[0].style.display = 'inline-block';
+    }
+    /*
+    if(selector[0] && (selector[0].tagName.toLowerCase() in allowElements)){
+      dom.addClass('sa-click-area' + this.heatData(data.data_click));
+    }
+    */
+
+    // 判断外层或者内层是否有class。
+
+  },
+  is_fix_state : null,
+  showEffectBox: function(e,div,isShow){
+    if(this.is_fix_state === 'fixslidedown'){
+
+      div.style.position = 'fixed';
+      div.style.left = 'auto';
+      div.style.right = 0;
+      div.style.top = 0;
+      
+      if(isShow){
+        div.className = 'sa-heat-box-effect-2017314';
+      }
+
+    }else if(this.is_fix_state === 'notfix'){
+
+      var width = heatmap.getBrowserWidth();
+
+      var target = e.target;
+      var offset = _.ry(target).offset();
+      var size = _.ry(target).getSize();
+      var x = offset.left + size.width + 2;
+      var y = offset.top+1;
+
+      if(width < (x + 220)){
+        x = offset.left - 220;
+        if(offset.left < 220){
+          x = e.pageX;
+        }
+      }
+
+      
+      div.style.position = 'absolute';
+      div.style.left = x + 'px';
+      div.style.top = y + 'px';
+
+    }
+
+    if(div.style.display !== 'block'){
+      div.style.display = 'block';
+    }
+
+  },
+  bindEffect: function(){
+    // 浮动层的内容的初始化
+    var mouseoverEvent = null;
+
+    var me = this;
+    var str = '<div style="padding: 8px;"><div style="color: #757575">当前元素内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div>点击次数: {{value_fix}}</div><div>点击率: {{data_click_percent}}</div><div>点击占比: {{data_page_percent}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div style="color: #757575">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看点击用户列表</a ></div>';
+
+    var newStr = '';
+    var isShow = true;
+    var div = document.createElement('div');
+    document.body.appendChild(div);
+    div.setAttribute('style','display:none;border:1px solid #ccc;position: fixed; right:0; top:0; background: #F4F5F7;line-height:24px;font-size:13px;width:220px;color: #333;font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;box-shadow: 0 2px 4px rgba(0,0,0,0.24);z-index:99999;');
+
+    div.innerHTML = '<div id="sa_heat_float_right_box_slidedown" class="sa-heat-box-head-2017322">'
+    + '<div id="sa_heat_float_right_box_close_btn" style="cursor:pointer;display: inline-block;float: left;padding: 4px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g id="Artboard-4" fill="#000000"><polygon id="Combined-Shape" points="9.77297077 8.7123106 6.06066017 5 5 6.06066017 8.7123106 9.77297077 5 13.4852814 6.06066017 14.5459415 9.77297077 10.8336309 13.4852814 14.5459415 14.5459415 13.4852814 10.8336309 9.77297077 14.5459415 6.06066017 13.4852814 5"></polygon></g></g></svg></div>'
+    + '<div id="sa_heat_float_right_box_right_btn" style="cursor:pointer;display: inline-block;float: right;padding: 4px 2px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g id="Artboard-4" fill="#000000"><polygon id="Combined-Shape" points="12.1923882 9.65685425 7.59619408 14.2530483 8.65685425 15.3137085 14.3137085 9.65685425 8.65685425 4 7.59619408 5.06066017"></polygon></g></g></svg></div></div>'
+    
+    + '<div id="sa_heat_float_right_box_slidedownRight" class="sa-heat-box-head-2017322">'
+    + '<div id="sa_heat_float_right_box_left_btn" style="cursor:pointer;display: inline-block;float: left;padding: 4px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g id="Artboard-4" fill="#000000"><polygon id="Combined-Shape" points="8.12132034 9.65685425 12.7175144 14.2530483 11.6568542 15.3137085 6 9.65685425 11.6568542 4 12.7175144 5.06066017"></polygon></g></g></svg></div>'
+    + '<div id="sa_heat_float_right_box_btn_slidedown" style="cursor:pointer;display: inline-block;float: right;margin-right:10px;padding: 4px 2px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g fill="#000000"><path d="M6.8,7 L6,7 L6,15 L7.6,15 L7.6,8.6 L14,8.6 L14,7 L6.8,7 Z" transform="translate(10.000000, 11.000000) rotate(-315.000000) translate(-10.000000, -11.000000) "></path></g></g></svg></div></div>'
+
+    + '<div id="sa_heat_float_right_box_slideup" class="sa-heat-box-head-2017322" style="cursor:pointer;">'
+    + '<div style="line-height: 30px;display: inline-block;float:right;padding-right: 10px;">展开</div><div style="padding:2px;display: inline-block;float: right;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g fill="#000000"><path d="M6.8,4 L6,4 L6,12 L7.6,12 L7.6,5.6 L14,5.6 L14,4 L6.8,4 Z" transform="translate(10.000000, 8.000000) rotate(-135.000000) translate(-10.000000, -8.000000) "></path></g></g></svg></div></div>'
+
+    + '<div id="sa_heat_float_right_box_content" style="clear:both;"></div>';
+
+
+
+    var eleSlideDown = document.getElementById('sa_heat_float_right_box_slidedown');
+    var eleSlideUp = document.getElementById('sa_heat_float_right_box_slideup');
+    var eleSlideDownRight = document.getElementById('sa_heat_float_right_box_slidedownRight');    
+
+    var eleContent = document.getElementById('sa_heat_float_right_box_content'); 
+
+    var eleBtnSlideDown = document.getElementById('sa_heat_float_right_box_btn_slidedown');
+    var eleBtnSlideUp = document.getElementById('sa_heat_float_right_box_btn_slideup');
+
+    var eleBtnClose = document.getElementById('sa_heat_float_right_box_close_btn');
+    var eleBtnRight = document.getElementById('sa_heat_float_right_box_right_btn');
+    var eleBtnLeft = document.getElementById('sa_heat_float_right_box_left_btn');
+    
+    _.addEvent(eleSlideDown,'mousedown',function(e){
+        if(e.target.id === 'sa_heat_float_right_box_slidedown'){
+          _.draggable(div,e);          
+        }
+    });
+
+    _.addEvent(eleSlideDownRight,'mousedown',function(e){
+        if(e.target.id === 'sa_heat_float_right_box_slidedownRight'){
+          _.draggable(div,e);          
+        }
+    });
+
+    _.addEvent(eleBtnClose,'click',function(e){
+      div.style.display = 'none';
+    });
+
+    _.addEvent(eleBtnLeft,'click',function(e){
+      eleSlideDown.style.display = 'block';
+      eleSlideDownRight.style.display = 'none';
+      me.is_fix_state = 'notfix';
+      _.cookie.set('sensorsdata_heatmap_float_fix_state','notfix'); 
+      me.showEffectBox(mouseoverEvent,div,isShow);
+    });
+
+    _.addEvent(eleBtnRight,'click',function(e){
+      eleSlideDownRight.style.display = 'block';
+      eleSlideDown.style.display = 'none';
+      me.is_fix_state = 'fixslidedown';
+      _.cookie.set('sensorsdata_heatmap_float_fix_state','fixslidedown'); 
+      me.showEffectBox(mouseoverEvent,div,isShow);
+    });
+
+    _.addEvent(eleBtnSlideDown,'click',function(){
+      isShow = false;
+      eleSlideDownRight.style.display = 'none';
+      eleSlideUp.style.display = 'block';
+      eleContent.style.display = 'none';   
+      div.style.width = '70px'; 
+      div.style.height = '30px';
+      me.is_fix_state = 'fixslideup';
+      _.cookie.set('sensorsdata_heatmap_float_fix_state','fixslideup'); 
+    });
+
+    _.addEvent(eleSlideUp,'click',function(){
+      isShow = true;
+      eleSlideDownRight.style.display = 'block';
+      eleSlideUp.style.display = 'none';
+      eleContent.style.display = 'block';   
+      div.style.width = '220px'; 
+      div.style.height = 'auto';       
+      me.is_fix_state = 'fixslidedown';
+      _.cookie.set('sensorsdata_heatmap_float_fix_state','fixslidedown');
+    });
+
+
+
+    _.addEvent(div, 'animationend', function(){
+      div.className = '';
+    });
+
+/*
+    _.addEvent(eleIsFixed, 'click', function(e){
+      var target = e.target;
+      
+      if(_.ry(target).hasClass('sensorsdata-heatmap-head-fix-btn')){      }
+
+    });
+*/
+/*
+    eleSlideUp.onmousedown = function(e){
+      e = e || window.event;
+      _.draggable(div,e);
+    }
+    eleSlideDown.onmousedown = function(e){
+      e = e || window.event;
+      _.draggable(div,e);
+    }
+*/
+
+
+
+    //浮动层效果的事件和初始化
+    var fix_state = _.cookie.get('sensorsdata_heatmap_float_fix_state');
+    if( fix_state === null){
+      this.is_fix_state = 'notfix';
+    }else{
+      this.is_fix_state = fix_state;      
+    }
+    
+    if(this.is_fix_state === 'notfix'){      
+      eleSlideDown.style.display = 'block';
+      eleSlideDownRight.style.display = 'none';
+      eleSlideUp.style.display = 'none';
+    }else if(this.is_fix_state === 'fixslidedown'){
+
+      eleSlideUp.style.display = 'none'; 
+      eleSlideDown.style.display = 'none';
+
+      eleSlideDownRight.style.display = 'block';
+    }else if(this.is_fix_state === 'fixslideup'){
+      isShow = false;
+      div.style.width = '70px'; 
+      div.style.height = '30px';
+      eleContent.style.display = 'none';   
+      eleSlideUp.style.display = 'block';
+      eleSlideDown.style.display = 'none';
+      eleSlideDownRight.style.display = 'none';
+    }
+
+
+
+
+    // 绑定浮动层的显示
+    var timeEle = 600;
+    function showBoxDetailContent(e){
+      mouseoverEvent = e;
+      var target = e.target;
+      var pos = target.getAttribute('data-heat-place');
+      var data = me.data_render[pos];
+      if(!data){
+        return false;
+      }
+
+      var textContent = _.trim(target.textContent);
+      if (textContent) {
+        textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+      }
+
+      data.data_current_content = textContent || '没有值';
+
+      newStr = str.replace(/\{\{[^\{\{]+\}\}/g,function(a){
+        a = a.slice(2,-2);
+        if(typeof a === 'string' && typeof data === 'object'){
+          return data[a];
+        }
+      });
+      eleContent.innerHTML = newStr;
+      me.showEffectBox(e,div,isShow);
+    }
+    function showBoxDetail(e){
+      var target = e.target;
+      setTimeout(function(){
+        if(target === current_over){
+          showBoxDetailContent(e);
+        }
+      },timeEle);
+
+    }
+
+    var current_over = null;
+    _.addEvent(document,'mouseover',function(e){
+      var target = e.target;
+      var className = target.className;
+      current_over = target;
+      if(typeof className !== 'string' || (' ' + className + ' ').indexOf(' sa-click-area ') === -1){
+        return false;
+      } 
+      showBoxDetail(e);
+
+    });
+
+  },
+  setCssStyle: function(){
+    var css = '.sa-heat-box-head-2017322{border-bottom:1px solid rgba(0,0,0,0.06);cursor:move;height:30px;background:#E1E1E1;color: #999;clear:both;}.sa-heat-box-effect-2017314{animation-duration:0.5s;animation-fill-mode:both;animation-iteration-count:1;animation-name:sa-heat-box-effect-2017314;}@keyframes sa-heat-box-effect-2017314{0%{opacity:0.6}100%{opacity:1}}.sa-click-area{position:relative;box-shadow:inset 0 0 0 2px #ffa500}.sa-click-area:before{content:"";width:100%;position:absolute;left:0;top:0;bottom:0}.sa-click-area.sa-click-area0:before{cursor:pointer;background:rgba(255,0,0,.5);box-shadow:inset 0 0 0 2px #f00}.sa-click-area.sa-click-area1:before{background:rgba(255,165,0,.5);box-shadow:inset 0 0 0 2px #ffa500}.sa-click-area.sa-click-area2:before{background:rgba(255,255,0,.5);box-shadow:inset 0 0 0 2px #ff0}.sa-click-area.sa-click-area3:before{background:rgba(64,224,208,.5);box-shadow:inset 0 0 0 2px #40e0d0}.sa-click-area.sa-click-area4:before{box-shadow:inset 0 0 0 2px #00f;background:rgba(0,0,255,.5)}.sa-click-area.sa-click-area0:hover::before{background:rgba(255,0,0,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area1:hover::before{background:rgba(255,165,0,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area2:hover::before{background:rgba(255,255,0,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area3:hover::before{background:rgba(64,224,208,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area4:hover::before{background:rgba(0,0,255,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area0:hover{box-shadow:0 0 0 3px #f00 inset}.sa-click-area.sa-click-area1:hover{box-shadow:0 0 0 3px #ffa500 inset}.sa-click-area.sa-click-area2:hover{box-shadow:0 0 0 3px #ff0 inset}.sa-click-area.sa-click-area3:hover{box-shadow:0 0 0 3px #40e0d0 inset}.sa-click-area.sa-click-area4:hover{box-shadow:0 0 0 3px #00f inset}.sa-click-area .sa-click-area:before{background:none!important}.sa-click-area:after{height:14px;line-height:14px;margin:-7px 0 0 -28px;width:56px;color:#fff;content:attr(data-click);font-size:14px;font-weight:bold;left:50%;line-height:1em;position:absolute;text-align:center;text-indent:0;text-shadow:1px 1px 2px #000;top:50%;z-index:10}';
+
+    var style = document.createElement('style');
+    style.type = 'text/css';
+    try{
+        style.appendChild(document.createTextNode(css))
+    }catch(e){
+        style.styleSheet.cssText = css;
+    }
+    document.getElementsByTagName('head')[0].appendChild(style);
 
   }
+
+
+};
+
+
+var heatmap = {
+  getDomIndex: function (el){
+    var indexof = [].indexOf;
+    if (!el.parentNode) return -1;
+    var list = el.parentNode.children;
+
+    if (!list) return -1;
+    var len = list.length;
+
+    if (indexof) return indexof.call(list, el);
+    for (var i = 0; i < len; ++i) {
+      if (el == list[i]) return i;
+    }
+    return -1;
+  },
+   selector:function (el){
+    var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
+    var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
+    return el.tagName.toLowerCase()
+      + (el.id ? '#' + el.id : '')
+      + (classname ? classname.replace(/^| +/g, '.') : '')
+      + (~i ? ':nth-child(' + (i + 1) + ')' : '');
+  },
+  getDomSelector : function(el,arr) {
+    if(!el || !el.parentNode || !el.parentNode.children){
+      return false;
+    }
+    arr = arr && arr.join ? arr : [];
+    var name = el.nodeName.toLowerCase();
+    if (!el || name === 'body' || 1 != el.nodeType) {
+      arr.unshift('body');
+      return arr.join(' > ');
+    }
+    arr.unshift(this.selector(el));
+    if (el.id) return arr.join(' > ');
+    return this.getDomSelector(el.parentNode, arr);    
+  },
+  na : function() {
+    var a = document.documentElement.scrollLeft || window.pageXOffset;
+    return parseInt(isNaN(a) ? 0 : a, 10);
+  },
+  i : function() {
+    var a = 0;
+    try {
+      a = o.documentElement.scrollTop || m.pageYOffset,
+      a = isNaN(a) ? 0 : a;
+    } catch (b) {
+      a = 0;
+    }
+    return parseInt(a, 10);
+  },
+  getBrowserWidth : function() {
+    var a = window.innerWidth || document.body.clientWidth;
+    return isNaN(a) ? 0 : parseInt(a, 10);
+  },
+  getBrowserHeight : function() {
+    var a = window.innerHeight || document.body.clientHeight;
+    return isNaN(a) ? 0 : parseInt(a, 10);
+  },
+  getScrollWidth : function() {
+    var a = parseInt(document.body.scrollWidth, 10);
+    return isNaN(a) ? 0 : a;
+  },
+  getScrollHeight: function() {
+    var a = parseInt(document.body.scrollHeight, 10);
+    return isNaN(a) ? 0 : a;
+  },
+  W : function(a) {
+    var b = parseInt(+a.clientX + +this.na(), 10);
+    var a = parseInt(+a.clientY + +this.i(), 10);
+    return {
+      x : isNaN(b) ? 0 : b,
+      y : isNaN(a) ? 0 : a
+    }
+  },
+  start : function(ev, target) {
+    var selector = this.getDomSelector(target);
+    var prop = _.getEleInfo({target:target});
+
+    prop.$element_selector = selector ? selector : '';
+    sd.track('$WebClick',prop);
+  },
+  sendIframeData: function(){
+    var me = this;
+    window.onload = function(){
+      if (window && window.parent && window.parent.window && (window !== window.parent.window)) {
+        window.parent.window.postMessage({
+          method: 'setHeight',
+          params: {
+            height: me.getScrollHeight() > 1200 ? 1200 : me.getScrollHeight()
+          }
+        },sd.para.web_url); 
+
+        window.parent.window.postMessage({
+          method: 'setUrl',
+          params: {
+            url: location.href
+          }
+        },sd.para.web_url); 
+      }
+    };
+  },
+  prepare: function(todo){
+    var match = location.search.match(/sa-request-id=([^&]+)/);
+    var me = this;
+    function isReady(data,url){
+      if(!document.querySelectorAll){
+        alert('请更新到最新版浏览器,建议用chrome或者firefox');
+        return false;
+      }
+      //进入渲染模式
+      heatmap_render.setCssStyle();
+      heatmap_render.getRequestInfo(data,url);
+      me.sendIframeData();
+    }
+    if(match && match[0] && match[1]){
+      sd.is_heatmap_render_mode = true;
+      if(typeof window.sessionStorage === 'object' && sessionStorage.setItem){
+        sessionStorage.setItem('sensors_heatmap_id',match[1]);
+      }
+      isReady(match[1]);
+    } else if(typeof window.sessionStorage === 'object' && sessionStorage.setItem && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string'){
+      sd.is_heatmap_render_mode = true;
+      isReady(sessionStorage.getItem('sensors_heatmap_id'),location.href);
+    }else{
+      todo();
+      //进入热力图采集模式
+      this.init();
+    }
+  },
+  init : function() {
+    var that = this;
+    if (!_.isObject(sd.para.heatmap)) {
+      return false;
+    }
+
+    // 验证url，function成功就行，非function认为都是全部
+    if (_.isFunction(sd.para.heatmap.collect_url) && !sd.para.heatmap.collect_url()) {
+      return false;
+    }
+
+    if (sd.para.heatmap.collect_elements === 'all') {
+      sd.para.heatmap.collect_elements = 'all';
+    } else if (sd.para.heatmap.collect_elements === 'interact') {
+      sd.para.heatmap.collect_elements = 'interact';
+    } else {
+      sd.para.heatmap.collect_elements = 'interact';
+    }
+
+    if (sd.para.heatmap.collect_elements === 'all') {
+      _.addEvent(document, 'click', function(e) {
+        var ev = e || window.event;
+        var target = ev.target || ev.srcElement;
+        var tagName = target.tagName.toLowerCase();
+        if(tagName.toLowerCase() === 'body' || tagName.toLowerCase() === 'html'){
+          return false;
+        }
+        if(!target || !target.parentNode || !target.parentNode.children){
+          return false;
+        }
+        that.start(ev, target);
+      });
+
+    } else {
+      _.addEvent(document, 'click', function(e) {
+        var ev = e || window.event;
+        var target = ev.target || ev.srcElement;
+        var tagName = target.tagName.toLowerCase();
+        if(tagName.toLowerCase() === 'body' || tagName.toLowerCase() === 'html'){
+          return false;
+        }
+        if(!target || !target.parentNode || !target.parentNode.children){
+          return false;
+        }        
+        if (tagName === 'button' || tagName === 'a' || tagName === 'input' || tagName === 'textarea') {
+          that.start(ev, target);
+        }
+      });
+    }
+
+  }
+};
+    
+
+ 
   //可视化埋点的后初始化
   sd.init = function(){
     if(_.isObject(sd.sdkMain)){
-      sd.sdkMain._init();
+     sd.sdkMain._init();
     } 
   };
 
@@ -2223,20 +3136,20 @@ saEvent.send = function(p, callback) {
      if(!_.hasStandardBrowserEnviroment()){
      return false;
      }*/
-    app_js_bridge();
-//    start_heatmap();
+    heatmap.prepare(function(){
+      app_js_bridge();
+      // 初始化referrer等页面属性 1.6
+      _.info.initPage();
 
-    // 初始化referrer等页面属性 1.6
-    _.info.initPage();
-
-    // 初始化distinct_id
-    store.init();
-    // 发送数据
-    if(sd._q && _.isArray(sd._q) && sd._q.length > 0 ){
-      _.each(sd._q, function(content) {
-        sd[content[0]].apply(sd, slice.call(content[1]));
-      });
-    }
+      // 初始化distinct_id
+      store.init();
+      // 发送数据
+      if(sd._q && _.isArray(sd._q) && sd._q.length > 0 ){
+        _.each(sd._q, function(content) {
+          sd[content[0]].apply(sd, slice.call(content[1]));
+        });
+      }
+    });
 
   };
 

@@ -79,9 +79,6 @@ try{
     sd.para.noCache = '';
   }
 
-  // 是否需要给可视化埋点加前缀
-  @@include('sa-sdk-javascript/src/detector.min.js')
-
   @@include('sa-sdk-javascript/src/sdk.js')
 
 @@if (sensorsdata_mode === 'vtrack') {
@@ -98,6 +95,10 @@ try{
 
   
 }catch(err){
+  if (typeof console === 'object' && console.log) {
+    try {console.log(err)} catch (e) {};
+  }
+/*
   (function(){
 
     var sd = window['sensorsDataAnalytic201505'];
@@ -110,4 +111,5 @@ try{
 
 
   })();
+*/
 }

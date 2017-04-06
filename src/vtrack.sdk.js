@@ -303,11 +303,14 @@ SdkMain.prototype = {
     };
   },
   _init: function() {
-    this.sdkInit();
-    this.initJsonp();
-    this.isShowVisual();
-  },
 
+    sd._init();
+    this.initJsonp();
+    if(!sd.is_heatmap_render_mode){
+      this.isShowVisual();
+    }
+
+  },
   //------------visible mode
   enterVisibleMode: function() {
     var me = this;
@@ -447,12 +450,6 @@ SdkMain.prototype = {
         $lib_detail: String(data.trigger_id)
       }
     );
-  },
-  //--------------normal file
-  sdkInit: function() {
-
-    sd._init();
-
   },
   // 检测url是否符合当前页面
   checkUrl: function(data) {
