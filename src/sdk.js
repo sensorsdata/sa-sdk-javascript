@@ -1162,159 +1162,6 @@ _.url = (function() {
     };
 })();
 
-_.dom_query = (function() {
-    function getAllChildren(e) {
-      return e.all ? e.all : e.getElementsByTagName('*');
-    }
-    var bad_whitespace = /[\t\r\n]/g;
-    function hasClass(elem, selector) {
-        var className = ' ' + selector + ' ';
-        return ((' ' + elem.className + ' ').replace(bad_whitespace, ' ').indexOf(className) >= 0);
-    }
-    function getElementsBySelector(selector) {
-        if (!document.getElementsByTagName) {
-            return [];
-        }
-        var tokens = selector.split(' ');
-        var token, bits, tagName, found, foundCount, i, j, k, elements, currentContextIndex;
-        var currentContext = [document];
-        for (i = 0; i < tokens.length; i++) {
-            token = tokens[i].replace(/^\s+/, '').replace(/\s+$/, '');
-            if (token.indexOf('#') > -1) {
-                bits = token.split('#');
-                tagName = bits[0];
-                var id = bits[1];
-                var element = document.getElementById(id);
-                if (!element || (tagName && element.nodeName.toLowerCase() != tagName)) {
-                    return [];
-                }
-                currentContext = [element];
-                continue;
-            }
-            if (token.indexOf('.') > -1) {
-                bits = token.split('.');
-                tagName = bits[0];
-                var className = bits[1];
-                if (!tagName) {
-                    tagName = '*';
-                }
-                found = [];
-                foundCount = 0;
-                for (j = 0; j < currentContext.length; j++) {
-                    if (tagName == '*') {
-                        elements = getAllChildren(currentContext[j]);
-                    } else {
-                        elements = currentContext[j].getElementsByTagName(tagName);
-                    }
-                    for (k = 0; k < elements.length; k++) {
-                        found[foundCount++] = elements[k];
-                    }
-                }
-                currentContext = [];
-                currentContextIndex = 0;
-                for (j = 0; j < found.length; j++) {
-                    if (found[j].className &&
-                        _.isString(found[j].className) && // some SVG elements have classNames which are not strings
-                        hasClass(found[j], className)
-                    ) {
-                        currentContext[currentContextIndex++] = found[j];
-                    }
-                }
-                continue;
-            }
-            var token_match = token.match(/^(\w*)\[(\w+)([=~\|\^\$\*]?)=?"?([^\]"]*)"?\]$/);
-            if (token_match) {
-                tagName = token_match[1];
-                var attrName = token_match[2];
-                var attrOperator = token_match[3];
-                var attrValue = token_match[4];
-                if (!tagName) {
-                    tagName = '*';
-                }
-                found = [];
-                foundCount = 0;
-                for (j = 0; j < currentContext.length; j++) {
-                    if (tagName == '*') {
-                        elements = getAllChildren(currentContext[j]);
-                    } else {
-                        elements = currentContext[j].getElementsByTagName(tagName);
-                    }
-                    for (k = 0; k < elements.length; k++) {
-                        found[foundCount++] = elements[k];
-                    }
-                }
-                currentContext = [];
-                currentContextIndex = 0;
-                var checkFunction;
-                switch (attrOperator) {
-                    case '=': // Equality
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName) == attrValue);
-                        };
-                        break;
-                    case '~': // Match one of space seperated words
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).match(new RegExp('\\b' + attrValue + '\\b')));
-                        };
-                        break;
-                    case '|': // Match start with value followed by optional hyphen
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).match(new RegExp('^' + attrValue + '-?')));
-                        };
-                        break;
-                    case '^': // Match starts with value
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).indexOf(attrValue) === 0);
-                        };
-                        break;
-                    case '$': // Match ends with value - fails with "Warning" in Opera 7
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).lastIndexOf(attrValue) == e.getAttribute(attrName).length - attrValue.length);
-                        };
-                        break;
-                    case '*': // Match ends with value
-                        checkFunction = function(e) {
-                            return (e.getAttribute(attrName).indexOf(attrValue) > -1);
-                        };
-                        break;
-                    default:
-                        checkFunction = function(e) {
-                            return e.getAttribute(attrName);
-                        };
-                }
-                currentContext = [];
-                currentContextIndex = 0;
-                for (j = 0; j < found.length; j++) {
-                    if (checkFunction(found[j])) {
-                        currentContext[currentContextIndex++] = found[j];
-                    }
-                }
-                continue; // Skip to next token
-            }
-            tagName = token;
-            found = [];
-            foundCount = 0;
-            for (j = 0; j < currentContext.length; j++) {
-                elements = currentContext[j].getElementsByTagName(tagName);
-                for (k = 0; k < elements.length; k++) {
-                    found[foundCount++] = elements[k];
-                }
-            }
-            currentContext = found;
-        }
-        return currentContext;
-    }
-    return function(query) {
-        if (_.isElement(query)) {
-            return [query];
-        } else if (_.isObject(query) && !_.isUndefined(query.length)) {
-            return query;
-        } else {
-            return getElementsBySelector.call(this, query);
-        }
-    };
-})();
-
 _.ry = function(dom){  
   return new _.ry.init(dom);
 };
@@ -1976,6 +1823,10 @@ saEvent.send = function(p, callback) {
         setTimeout(this.allTrack,1000);
         return false;
       }
+
+      sd.para.heatmap = {};
+      heatmap.init();
+      return false;
 
       if(sd.para.heatmap){
         return false;
@@ -3065,7 +2916,9 @@ var heatmap = {
     }else{
       todo();
       //进入热力图采集模式
-      this.init();
+      if (_.isObject(sd.para.heatmap)) {
+        this.init();
+      }
     }
   },
   init : function() {
