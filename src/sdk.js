@@ -1364,7 +1364,7 @@ var saNewUser = {
   },
   is_first_visit_time: false,
   checkIsFirstTime: function(data) {
-    if (data.type === 'track') {
+    if (data.type === 'track' && data.event === '$pageview') {
       if (this.is_first_visit_time) {
         data.properties.$is_first_time = true;
         this.is_first_visit_time = false;
@@ -1396,7 +1396,7 @@ var saNewUser = {
       }
       // 如果不是第一次打开的用户，肯定不是首次访问
       this.checkIsFirstTime = function(data) {
-        if (data.type === 'track') {
+        if (data.type === 'track' && data.event === '$pageview') {
           data.properties.$is_first_time = false;
         }
       }
@@ -1824,13 +1824,14 @@ saEvent.send = function(p, callback) {
         return false;
       }
 
+      if(sd.para.heatmap){
+        return false;
+      }
+
       sd.para.heatmap = {};
       heatmap.init();
       return false;
 
-      if(sd.para.heatmap){
-        return false;
-      }
 
       if(sd.allTrack === 'has_init'){
         return false;
@@ -2573,7 +2574,7 @@ var heatmap_render = {
     var mouseoverEvent = null;
 
     var me = this;
-    var str = '<div style="padding: 8px;"><div style="color: #757575">当前元素内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div>点击次数: {{value_fix}}</div><div>点击率: {{data_click_percent}}</div><div>点击占比: {{data_page_percent}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div style="color: #757575">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看点击用户列表</a ></div>';
+    var str = '<div style="padding: 8px;"><div style="color: #757575">当前元素内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div>点击次数: {{value_fix}}</div><div title="点击次数/当前页面的浏览次数">点击率: {{data_click_percent}}</div><div title="点击次数/当前页面的点击总次数">点击占比: {{data_page_percent}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div style="color: #757575">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看点击用户列表</a ></div>';
 
     var newStr = '';
     var isShow = true;
@@ -2864,12 +2865,18 @@ var heatmap = {
       y : isNaN(a) ? 0 : a
     }
   },
-  start : function(ev, target) {
+  start : function(ev, target, tagName) {
     var selector = this.getDomSelector(target);
     var prop = _.getEleInfo({target:target});
 
     prop.$element_selector = selector ? selector : '';
-    sd.track('$WebClick',prop);
+
+    if(tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true){
+      _.trackLink({event:ev},'$WebClick',prop);
+    }else{
+      sd.track('$WebClick',prop);     
+    }
+
   },
   sendIframeData: function(){
     var me = this;
@@ -2878,7 +2885,7 @@ var heatmap = {
         window.parent.window.postMessage({
           method: 'setHeight',
           params: {
-            height: me.getScrollHeight() > 1200 ? 1200 : me.getScrollHeight()
+            height: me.getScrollHeight()
           }
         },sd.para.web_url); 
 
@@ -2951,7 +2958,7 @@ var heatmap = {
         if(!target || !target.parentNode || !target.parentNode.children){
           return false;
         }
-        that.start(ev, target);
+        that.start(ev, target, tagName);
       });
 
     } else {
@@ -2966,7 +2973,7 @@ var heatmap = {
           return false;
         }        
         if (tagName === 'button' || tagName === 'a' || tagName === 'input' || tagName === 'textarea') {
-          that.start(ev, target);
+          that.start(ev, target, tagName);
         }
       });
     }
