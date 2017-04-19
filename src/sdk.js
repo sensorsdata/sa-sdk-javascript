@@ -2490,13 +2490,13 @@ var heatmap_render = {
 
   },
   heatData:function(data){
-    var heat = [0.005,0.01,0.05,0.1];
+    var heat = [0.005,0.01,0.025,0.05,0.1,0.5];
     for(var i=0; i<heat.length; i++){
       if(data < heat[i]){
-        return 4-i;
+        return i;
       }
     }
-    return 0;
+    return 8;
   },
   heatDataTitle: function(data){
     return ('点击次数 ' + data.value_fix 
@@ -2572,6 +2572,7 @@ var heatmap_render = {
   bindEffect: function(){
     // 浮动层的内容的初始化
     var mouseoverEvent = null;
+    var target_is_on_float = false;
 
     var me = this;
     var str = '<div style="padding: 8px;"><div style="color: #757575">当前元素内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div>点击次数: {{value_fix}}</div><div title="点击次数/当前页面的浏览次数">点击率: {{data_click_percent}}</div><div title="点击次数/当前页面的点击总次数">点击占比: {{data_page_percent}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div style="color: #757575">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看点击用户列表</a ></div>';
@@ -2610,6 +2611,16 @@ var heatmap_render = {
     var eleBtnRight = document.getElementById('sa_heat_float_right_box_right_btn');
     var eleBtnLeft = document.getElementById('sa_heat_float_right_box_left_btn');
     
+
+    _.addEvent(div,'mouseleave',function(){
+      target_is_on_float = false;
+      div.style.display = 'none';
+    });
+
+    _.addEvent(div,'mouseenter',function(){
+      target_is_on_float = true;
+    });
+
     _.addEvent(eleSlideDown,'mousedown',function(e){
         if(e.target.id === 'sa_heat_float_right_box_slidedown'){
           _.draggable(div,e);          
@@ -2724,6 +2735,7 @@ var heatmap_render = {
 
     // 绑定浮动层的显示
     var timeEle = 600;
+
     function showBoxDetailContent(e){
       mouseoverEvent = e;
       var target = e.target;
@@ -2767,13 +2779,23 @@ var heatmap_render = {
       if(typeof className !== 'string' || (' ' + className + ' ').indexOf(' sa-click-area ') === -1){
         return false;
       } 
+      target.onmouseleave = function(){
+        setTimeout(function(){
+          if(!target_is_on_float){
+            target_is_on_float = false;
+            div.style.display = 'none';     
+          }
+        },timeEle);
+      }
+
       showBoxDetail(e);
 
     });
 
+
   },
   setCssStyle: function(){
-    var css = '.sa-heat-box-head-2017322{border-bottom:1px solid rgba(0,0,0,0.06);cursor:move;height:30px;background:#E1E1E1;color: #999;clear:both;}.sa-heat-box-effect-2017314{animation-duration:0.5s;animation-fill-mode:both;animation-iteration-count:1;animation-name:sa-heat-box-effect-2017314;}@keyframes sa-heat-box-effect-2017314{0%{opacity:0.6}100%{opacity:1}}.sa-click-area{position:relative;box-shadow:inset 0 0 0 2px #ffa500}.sa-click-area:before{content:"";width:100%;position:absolute;left:0;top:0;bottom:0}.sa-click-area.sa-click-area0:before{cursor:pointer;background:rgba(255,0,0,.5);box-shadow:inset 0 0 0 2px #f00}.sa-click-area.sa-click-area1:before{background:rgba(255,165,0,.5);box-shadow:inset 0 0 0 2px #ffa500}.sa-click-area.sa-click-area2:before{background:rgba(255,255,0,.5);box-shadow:inset 0 0 0 2px #ff0}.sa-click-area.sa-click-area3:before{background:rgba(64,224,208,.5);box-shadow:inset 0 0 0 2px #40e0d0}.sa-click-area.sa-click-area4:before{box-shadow:inset 0 0 0 2px #00f;background:rgba(0,0,255,.5)}.sa-click-area.sa-click-area0:hover::before{background:rgba(255,0,0,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area1:hover::before{background:rgba(255,165,0,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area2:hover::before{background:rgba(255,255,0,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area3:hover::before{background:rgba(64,224,208,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area4:hover::before{background:rgba(0,0,255,0.8) none repeat scroll 0 0}.sa-click-area.sa-click-area0:hover{box-shadow:0 0 0 3px #f00 inset}.sa-click-area.sa-click-area1:hover{box-shadow:0 0 0 3px #ffa500 inset}.sa-click-area.sa-click-area2:hover{box-shadow:0 0 0 3px #ff0 inset}.sa-click-area.sa-click-area3:hover{box-shadow:0 0 0 3px #40e0d0 inset}.sa-click-area.sa-click-area4:hover{box-shadow:0 0 0 3px #00f inset}.sa-click-area .sa-click-area:before{background:none!important}.sa-click-area:after{height:14px;line-height:14px;margin:-7px 0 0 -28px;width:56px;color:#fff;content:attr(data-click);font-size:14px;font-weight:bold;left:50%;line-height:1em;position:absolute;text-align:center;text-indent:0;text-shadow:1px 1px 2px #000;top:50%;z-index:10}';
+    var css = '.sa-heat-box-head-2017322{border-bottom:1px solid rgba(0,0,0,.06);cursor:move;height:30px;background:#E1E1E1;color:#999;clear:both}.sa-heat-box-effect-2017314{animation-duration:.5s;animation-fill-mode:both;animation-iteration-count:1;animation-name:sa-heat-box-effect-2017314}@keyframes sa-heat-box-effect-2017314{0%{opacity:.6}100%{opacity:1}}.sa-click-area{position:relative}.sa-click-area:before{cursor:pointer;content:"";width:100%;position:absolute;left:0;top:0;bottom:0}.sa-click-area.sa-click-area0:before{background:rgba(254,254,155,.75);box-shadow:0 0 0 2px rgba(254,254,155,1) inset}.sa-click-area.sa-click-area0:hover::before{background:rgba(254,254,155,.85)}.sa-click-area.sa-click-area1:before{background:rgba(255,236,142,.75);box-shadow:0 0 0 2px rgba(255,236,142,1) inset}.sa-click-area.sa-click-area1:hover::before{background:rgba(255,236,142,.85)}.sa-click-area.sa-click-area2:before{background:rgba(255,188,113,.75);box-shadow:0 0 0 2px rgba(255,188,113,1) inset}.sa-click-area.sa-click-area2:hover::before{background:rgba(255,188,113,.85)}.sa-click-area.sa-click-area3:before{background:rgba(255,120,82,.75);box-shadow:0 0 0 2px rgba(255,120,82,1) inset}.sa-click-area.sa-click-area3:hover::before{background:rgba(255,120,82,.85)}.sa-click-area.sa-click-area4:before{background:rgba(255,65,90,.75);box-shadow:0 0 0 2px rgba(255,65,90,1) inset}.sa-click-area.sa-click-area4:hover::before{background:rgba(255,65,90,.85)}.sa-click-area.sa-click-area5:before{background:rgba(199,0,18,.75);box-shadow:0 0 0 2px rgba(199,0,18,1) inset}.sa-click-area.sa-click-area5:hover::before{background:rgba(199,0,18,.85)}.sa-click-area.sa-click-area6:before{background:rgba(127,0,79,.75);box-shadow:0 0 0 3px rgba(127,0,79,1) inset}.sa-click-area.sa-click-area6:hover::before{background:rgba(127,0,79,.85)}.sa-click-area .sa-click-area:before{background:0 0!important}.sa-click-area:after{height:14px;line-height:14px;margin:-7px 0 0 -28px;width:56px;color:#fff;content:attr(data-click);font-size:14px;font-weight:700;left:50%;line-height:1em;position:absolute;text-align:center;text-indent:0;text-shadow:1px 1px 2px #000;top:50%;z-index:10}';
 
     var style = document.createElement('style');
     style.type = 'text/css';
@@ -2806,11 +2828,11 @@ var heatmap = {
     return -1;
   },
    selector:function (el){
-    var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
+    //var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
     var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
     return el.tagName.toLowerCase()
       + (el.id ? '#' + el.id : '')
-      + (classname ? classname.replace(/^| +/g, '.') : '')
+      //+ (classname ? classname.replace(/^| +/g, '.') : '')
       + (~i ? ':nth-child(' + (i + 1) + ')' : '');
   },
   getDomSelector : function(el,arr) {
