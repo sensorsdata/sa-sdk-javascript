@@ -80,7 +80,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.2';
+  , LIB_VERSION = '1.7.3';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1234,7 +1234,7 @@ _.url = (function() {
         if (arg === '{}') { return _l; }
 
         // Default to undefined for no match.
-        return undefined;
+        return '';
     };
 })();
 
@@ -1808,7 +1808,7 @@ saEvent.send = function(p, callback) {
         if(typeof sub === 'string' && sub !== ''){
           sub = 'sa_jssdk_2015_' + sub;
         }else{
-          sub = 'sa_jssdk_2015_root_' + sub;
+          sub = 'sa_jssdk_2015_root';
         }
       }else{
         sub = 'sensorsdata2015jssdkcross';

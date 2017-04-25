@@ -1158,7 +1158,7 @@ _.url = (function() {
         if (arg === '{}') { return _l; }
 
         // Default to undefined for no match.
-        return undefined;
+        return '';
     };
 })();
 
@@ -1738,7 +1738,7 @@ saEvent.send = function(p, callback) {
         if(typeof sub === 'string' && sub !== ''){
           sub = 'sa_jssdk_2015_' + sub;
         }else{
-          sub = 'sa_jssdk_2015_root_' + sub;
+          sub = 'sa_jssdk_2015_root';
         }
       }else{
         sub = 'sensorsdata2015jssdkcross';
