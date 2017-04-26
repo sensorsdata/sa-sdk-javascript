@@ -80,7 +80,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.3';
+  , LIB_VERSION = '1.7.4';
 
 sd.lib_version = LIB_VERSION;
 
@@ -851,8 +851,7 @@ _.cookie = {
     days = typeof days === 'undefined' ? 73000 : days;
 
     if (cross_subdomain) {
-      var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i)
-        , domain = matches ? matches[0] : '';
+      var domain = _.url('domain',location.href);
 
       cdomain = ((domain) ? '; domain=.' + domain : '');
     }
