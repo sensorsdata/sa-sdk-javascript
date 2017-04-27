@@ -851,8 +851,7 @@ _.cookie = {
     days = typeof days === 'undefined' ? 73000 : days;
 
     if (cross_subdomain) {
-      var matches = document.location.hostname.match(/[a-z0-9][a-z0-9\-]+\.[a-z\.]{2,6}$/i)
-        , domain = matches ? matches[0] : '';
+      var matches = _.url('domain',location.href);
 
       cdomain = ((domain) ? '; domain=.' + domain : '');
     }
@@ -2039,7 +2038,11 @@ saEvent.send = function(p, callback) {
       link = obj.ele;
     }
     if(obj.event){
-      link = obj.event.target;
+      if(obj.target){
+         link = obj.target;
+       }else{
+         link = obj.event.target;
+       }
     }
 
     event_prop = event_prop || {};
@@ -2566,7 +2569,7 @@ var heatmap_render = {
         return i;
       }
     }
-    return 8;
+    return 6;
   },
   heatDataTitle: function(data){
     return ('点击次数 ' + data.value_fix 
@@ -2964,7 +2967,7 @@ var heatmap = {
     prop.$element_selector = selector ? selector : '';
 
     if(tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true){
-      _.trackLink({event:ev},'$WebClick',prop);
+      _.trackLink({event:ev,target:target},'$WebClick',prop);
     }else{
       sd.track('$WebClick',prop);     
     }
@@ -3051,7 +3054,7 @@ var heatmap = {
           return false;
         }
         if(target.parentNode.tagName.toLowerCase() === 'a'){
-          that.start(ev, target.parentNode, target.parentNode.tagName);
+          that.start(ev, target.parentNode, target.parentNode.tagName.toLowerCase());
         }else{
           that.start(ev, target, tagName);
         } 
@@ -3070,7 +3073,7 @@ var heatmap = {
         }        
         if (tagName === 'button' || tagName === 'a' || target.parentNode.tagName.toLowerCase() === 'a' || tagName === 'input' || tagName === 'textarea') {
           if(target.parentNode.tagName.toLowerCase() === 'a'){
-            that.start(ev, target.parentNode, target.parentNode.tagName);
+            that.start(ev, target.parentNode, target.parentNode.tagName.toLowerCase());
           }else{
             that.start(ev, target, tagName);
           }         
