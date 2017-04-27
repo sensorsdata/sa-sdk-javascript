@@ -775,7 +775,7 @@ _.cookie = {
     days = typeof days === 'undefined' ? 73000 : days;
 
     if (cross_subdomain) {
-      var matches = _.url('domain',location.href);
+      var domain = _.url('domain',location.href);
 
       cdomain = ((domain) ? '; domain=.' + domain : '');
     }
