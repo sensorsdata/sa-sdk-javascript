@@ -80,7 +80,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.4';
+  , LIB_VERSION = '1.7.5';
 
 sd.lib_version = LIB_VERSION;
 
@@ -891,7 +891,7 @@ _.getEleInfo = function(obj){
   if(!obj.target){
     return false;
   }
-
+console.log(obj);
   var target = obj.target;
   var tagName = target.tagName.toLowerCase();
 
@@ -2038,7 +2038,11 @@ saEvent.send = function(p, callback) {
       link = obj.ele;
     }
     if(obj.event){
-      link = obj.event.target;
+      if(obj.targetA){
+        link = obj.target;
+      }else{
+        link = obj.target.parentNode.target;
+      }
     }
 
     event_prop = event_prop || {};
@@ -2565,7 +2569,7 @@ var heatmap_render = {
         return i;
       }
     }
-    return 8;
+    return 6;
   },
   heatDataTitle: function(data){
     return ('点击次数 ' + data.value_fix 
@@ -2963,7 +2967,9 @@ var heatmap = {
     prop.$element_selector = selector ? selector : '';
 
     if(tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true){
-      _.trackLink({event:ev},'$WebClick',prop);
+      _.trackLink({event:ev,targetA:target},'$WebClick',prop);
+    }else if(target.parentNode.tagName.toLowerCase() === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true){
+      _.trackLink({event:ev,target:target.parentNode},'$WebClick',prop);
     }else{
       sd.track('$WebClick',prop);     
     }
@@ -3049,7 +3055,11 @@ var heatmap = {
         if(!target || !target.parentNode || !target.parentNode.children){
           return false;
         }
-        that.start(ev, target, tagName);
+        if(target.parentNode.tagName.toLowerCase() === 'a'){
+          that.start(ev, target.parentNode, target.parentNode.tagName);
+        }else{
+          that.start(ev, target, tagName);
+        }      
       });
 
     } else {
@@ -3062,9 +3072,14 @@ var heatmap = {
         }
         if(!target || !target.parentNode || !target.parentNode.children){
           return false;
-        }        
-        if (tagName === 'button' || tagName === 'a' || tagName === 'input' || tagName === 'textarea') {
-          that.start(ev, target, tagName);
+        }
+        //console.log(e.target.tagName)        
+        if (tagName === 'button' || tagName === 'a' || target.parentNode.tagName.toLowerCase() === 'a' || tagName === 'input' || tagName === 'textarea') {
+          if(target.parentNode.tagName.toLowerCase() === 'a'){
+            that.start(ev, target.parentNode, target.parentNode.tagName);
+          }else{
+            that.start(ev, target, tagName);
+          }         
         }
       });
     }
