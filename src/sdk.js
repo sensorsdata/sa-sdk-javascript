@@ -807,6 +807,30 @@ _.cookie = {
     cross_subdomain = typeof cross_subdomain === 'undefined' ? sd.para.cross_subdomain : cross_subdomain;
     _.cookie.set(name, '', -1, cross_subdomain);
 
+  },
+
+  getCookieName: function(name_prefix){
+    var sub = '';
+    if(sd.para.cross_subdomain === false){
+      sub = _.url('sub',location.href);
+      if(typeof sub === 'string' && sub !== ''){
+        sub = 'sajssdk_2015_' + name_prefix + sub;
+      }else{
+        sub = 'sajssdk_2015_root_' + name_prefix;
+      }
+    }else{
+      sub = 'sajssdk_2015_cross_' + name_prefix;
+    } 
+    return sub;
+  },
+// 针对新用户的兼容性判断,兼容子域名
+  getNewUser: function(){
+    var prefix = 'new_user';
+    if(this.get('sensorsdata_is_new_user') !== null || this.get(this.getCookieName(prefix)) !== null){
+      return true;
+    }else{
+      return false;
+    }
   }
 };
 
@@ -1354,7 +1378,7 @@ sd.sendState.getSendCall = function(data, callback) {
 var saNewUser = {
   checkIsAddSign: function(data) {
     if (data.type === 'track') {
-      if (_.cookie.get('sensorsdata_is_new_user') !== null) {
+      if (_.cookie.getNewUser()) {
         data.properties.$is_first_day = true;
       } else {
         data.properties.$is_first_day = false;
@@ -1372,21 +1396,46 @@ var saNewUser = {
       }
     }
   },
+  setDeviceId: function(uuid){
+    // deviceid必须跨子域
+    var device_id = null;
+    var ds = _.cookie.get('sensorsdata2015jssdkcross');
+    if (ds != null && _.isJSONString(ds)) {
+      var state = JSON.parse(ds);
+      if(state.$device_id) {
+        device_id = state.$device_id;
+      }
+    }
+
+    device_id = device_id || uuid;
+
+    if(sd.para.cross_subdomain === true){
+      store.set('$device_id',device_id);
+    }else{
+      _.cookie.set('sensorsdata2015jssdkcross',JSON.stringify({$device_id:device_id}));
+    }
+
+    if(sd.para.is_track_device_id){
+      _.info.currentProps.$device_id = device_id;
+    }
+
+  },
   storeInitCheck: function() {
     // 如果是新用户，种cookie
     if (is_first_visitor) {
+
       var date = new Date();
       var obj = {
         h: 23 - date.getHours(),
         m: 59 - date.getMinutes(),
         s: 59 - date.getSeconds()
       };
-      _.cookie.set('sensorsdata_is_new_user', 'true', obj.h * 3600 + obj.m * 60 + obj.s + 's');
+      _.cookie.set(_.cookie.getCookieName('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
       // 如果是is_first_visit_time，且第一次，那就发数据
       this.is_first_visit_time = true;
     } else {
       // 如果没有这个cookie，肯定不是首日
-      if (_.cookie.get('sensorsdata_is_new_user') === null) {
+      if (_.cookie.getNewUser()) {
         this.checkIsAddSign = function(data) {
           if (data.type === 'track') {
             data.properties.$is_first_day = false;
@@ -1651,7 +1700,7 @@ saEvent.send = function(p, callback) {
         if (ds != null && _.isJSONString(ds)) {
           state = JSON.parse(ds);
           if (state.distinct_id) {
-            this._state = state;
+            this._state = _.extend(state);
 
             if(typeof(state.props) === 'object'){
               for(var key in state.props){
@@ -1731,7 +1780,7 @@ saEvent.send = function(p, callback) {
       _.cookie.set(this.getCookieName(), JSON.stringify(this._state), 73000, sd.para.cross_subdomain);
     },
     getCookieName: function(){
-      var sub = '';      
+      var sub = '';
       if(sd.para.cross_subdomain === false){
         sub = _.url('sub',location.href);
         if(typeof sub === 'string' && sub !== ''){
@@ -1754,6 +1803,7 @@ saEvent.send = function(p, callback) {
       }
 
       this.initSessionState();
+      var uuid = _.UUID();
       var cross = _.cookie.get(this.getCookieName());
       if (cross === null) {
         // 判断是否是第一次载入sdk
@@ -1761,7 +1811,7 @@ saEvent.send = function(p, callback) {
         
         just_test_distinctid = 1;
         
-        this.set('distinct_id', _.UUID());
+        this.set('distinct_id', uuid);
       } else {
         
         just_test_distinctid = 2;
@@ -1770,6 +1820,11 @@ saEvent.send = function(p, callback) {
 
           this.toState(cross);
         }
+
+
+              // 如果没有跨域的cookie，且没有当前域cookie，那当前域的cookie和跨域cookie一致
+        saNewUser.setDeviceId(uuid);
+
         //判断新用户
         saNewUser.storeInitCheck();
         saNewUser.checkIsFirstLatest();
@@ -2573,6 +2628,7 @@ var heatmap_render = {
 
   },
   bindEffect: function(){
+    var me = this;
     // 浮动层的内容的初始化
     var mouseoverEvent = null;
     var target_is_on_float = false;
@@ -2616,12 +2672,16 @@ var heatmap_render = {
     
 
     _.addEvent(div,'mouseleave',function(){
-      target_is_on_float = false;
-      div.style.display = 'none';
+      if(me.is_fix_state === 'notfix'){
+        target_is_on_float = false;
+        div.style.display = 'none';        
+      }
     });
 
     _.addEvent(div,'mouseenter',function(){
-      target_is_on_float = true;
+      if(me.is_fix_state === 'notfix'){
+        target_is_on_float = true;
+      }
     });
 
     _.addEvent(eleSlideDown,'mousedown',function(e){
@@ -2775,26 +2835,32 @@ var heatmap_render = {
     }
 
     var current_over = null;
-    _.addEvent(document,'mouseover',function(e){
-      var target = e.target;
-      var className = target.className;
-      current_over = target;
-      if(typeof className !== 'string' || (' ' + className + ' ').indexOf(' sa-click-area ') === -1){
-        return false;
-      } 
-      target.onmouseleave = function(){
-        setTimeout(function(){
-          if(!target_is_on_float){
-            target_is_on_float = false;
-            div.style.display = 'none';     
+
+    if(/iPhone|Android/i.test(navigator.userAgent)){
+
+      _.addEvent(document,'mouseover',function(e){
+        var target = e.target;
+        var className = target.className;
+        current_over = target;
+        if(typeof className !== 'string' || (' ' + className + ' ').indexOf(' sa-click-area ') === -1){
+          return false;
+        } 
+        target.onmouseleave = function(){
+          if(me.is_fix_state === 'notfix'){
+            setTimeout(function(){
+              if(!target_is_on_float){
+                target_is_on_float = false;
+                div.style.display = 'none';     
+              }
+            },timeEle);
           }
-        },timeEle);
-      }
+        }
 
-      showBoxDetail(e);
+        showBoxDetail(e);
 
-    });
+      });
 
+    }
 
   },
   setCssStyle: function(){

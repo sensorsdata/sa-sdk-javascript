@@ -57,7 +57,9 @@ try{
 
     is_single_page: false,
 
-    is_trackLink:true
+    is_trackLink:true,
+
+    is_track_device_id: false
 
   };
   // 合并配置
