@@ -82,7 +82,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.5';
+  , LIB_VERSION = '1.7.6';
 
 sd.lib_version = LIB_VERSION;
 
@@ -850,7 +850,7 @@ _.cookie = {
   set: function(name, value, days, cross_subdomain, is_secure) {
     cross_subdomain = typeof cross_subdomain === 'undefined' ? sd.para.cross_subdomain : cross_subdomain;
     var cdomain = '', expires = '', secure = '';
-    days = typeof days === 'undefined' ? 73000 : days;
+    days = days == null ? 73000 : days;
 
     if (cross_subdomain) {
       var domain = _.url('domain',location.href);
@@ -892,7 +892,7 @@ _.cookie = {
     if(sd.para.cross_subdomain === false){
       sub = _.url('sub',location.href);
       if(typeof sub === 'string' && sub !== ''){
-        sub = 'sajssdk_2015_' + name_prefix + sub;
+        sub = 'sajssdk_2015_' + name_prefix + '_' + sub;
       }else{
         sub = 'sajssdk_2015_root_' + name_prefix;
       }
@@ -1478,8 +1478,9 @@ var saNewUser = {
     // deviceid必须跨子域
     var device_id = null;
     var ds = _.cookie.get('sensorsdata2015jssdkcross');
+    var state = {};
     if (ds != null && _.isJSONString(ds)) {
-      var state = JSON.parse(ds);
+      state = JSON.parse(ds);
       if(state.$device_id) {
         device_id = state.$device_id;
       }
@@ -1490,7 +1491,8 @@ var saNewUser = {
     if(sd.para.cross_subdomain === true){
       store.set('$device_id',device_id);
     }else{
-      _.cookie.set('sensorsdata2015jssdkcross',JSON.stringify({$device_id:device_id}));
+      state.$device_id = device_id;
+      _.cookie.set('sensorsdata2015jssdkcross',JSON.stringify(state),null,true);
     }
 
     if(sd.para.is_track_device_id){
@@ -1771,9 +1773,8 @@ saEvent.send = function(p, callback) {
         var state = null;
         if (ds != null && _.isJSONString(ds)) {
           state = JSON.parse(ds);
+          this._state = _.extend(state);
           if (state.distinct_id) {
-            this._state = _.extend(state);
-
             if(typeof(state.props) === 'object'){
               for(var key in state.props){
                 if(typeof state.props[key] === 'string'){
@@ -1878,7 +1879,7 @@ saEvent.send = function(p, callback) {
       var uuid = _.UUID();
       var cross = _.cookie.get(this.getCookieName());
       if (cross === null) {
-        // 判断是否是第一次载入sdk
+        // null肯定是首次，非null，看是否有distinct_id
         is_first_visitor = true;
         
         just_test_distinctid = 1;
@@ -1890,11 +1891,15 @@ saEvent.send = function(p, callback) {
         just_test_distinctid_detail = JSON.stringify(cross);
         just_test_distinctid_detail2 = navigator.userAgent+'^_^'+document.cookie;                                           
 
-          this.toState(cross);
+        if (!_.isJSONString(cross) || !(JSON.parse(cross)).distinct_id){
+          is_first_visitor = true;
         }
 
+        this.toState(cross);
+      }
 
-              // 如果没有跨域的cookie，且没有当前域cookie，那当前域的cookie和跨域cookie一致
+
+      // 如果没有跨域的cookie，且没有当前域cookie，那当前域的cookie和跨域cookie一致
         saNewUser.setDeviceId(uuid);
 
         //判断新用户
