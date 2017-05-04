@@ -2865,6 +2865,17 @@ var heatmap_render = {
 
       });
 
+    }else{
+      _.addEvent(document,'mouseover',function(e){
+        var target = e.target;
+        var className = target.className;
+        current_over = target;
+        if(typeof className !== 'string' || (' ' + className + ' ').indexOf(' sa-click-area ') === -1){
+          return false;
+        } 
+        showBoxDetail(e);
+
+      });
     }
 
   },
