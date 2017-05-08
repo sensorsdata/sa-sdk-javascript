@@ -82,7 +82,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.6';
+  , LIB_VERSION = '1.7.7';
 
 sd.lib_version = LIB_VERSION;
 
@@ -3059,23 +3059,25 @@ var heatmap = {
   },
   sendIframeData: function(){
     var me = this;
-    window.onload = function(){
-      if (window && window.parent && window.parent.window && (window !== window.parent.window)) {
-        window.parent.window.postMessage({
-          method: 'setHeight',
-          params: {
-            height: me.getScrollHeight()
-          }
-        },sd.para.web_url); 
+    _.bindReady(
+      function(){
+        if (window && window.parent && window.parent.window && (window !== window.parent.window)) {
+          window.parent.window.postMessage({
+            method: 'setHeight',
+            params: {
+              height: me.getScrollHeight()
+            }
+          },sd.para.web_url); 
 
-        window.parent.window.postMessage({
-          method: 'setUrl',
-          params: {
-            url: location.href
-          }
-        },sd.para.web_url); 
+          window.parent.window.postMessage({
+            method: 'setUrl',
+            params: {
+              url: location.href
+            }
+          },sd.para.web_url); 
+        }
       }
-    };
+    );
   },
   prepare: function(todo){
     var match = location.search.match(/sa-request-id=([^&]+)/);

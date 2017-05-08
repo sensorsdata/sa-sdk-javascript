@@ -2987,23 +2987,25 @@ var heatmap = {
   },
   sendIframeData: function(){
     var me = this;
-    window.onload = function(){
-      if (window && window.parent && window.parent.window && (window !== window.parent.window)) {
-        window.parent.window.postMessage({
-          method: 'setHeight',
-          params: {
-            height: me.getScrollHeight()
-          }
-        },sd.para.web_url); 
+    _.bindReady(
+      function(){
+        if (window && window.parent && window.parent.window && (window !== window.parent.window)) {
+          window.parent.window.postMessage({
+            method: 'setHeight',
+            params: {
+              height: me.getScrollHeight()
+            }
+          },sd.para.web_url); 
 
-        window.parent.window.postMessage({
-          method: 'setUrl',
-          params: {
-            url: location.href
-          }
-        },sd.para.web_url); 
+          window.parent.window.postMessage({
+            method: 'setUrl',
+            params: {
+              url: location.href
+            }
+          },sd.para.web_url); 
+        }
       }
-    };
+    );
   },
   prepare: function(todo){
     var match = location.search.match(/sa-request-id=([^&]+)/);
