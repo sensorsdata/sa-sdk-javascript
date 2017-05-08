@@ -1335,6 +1335,18 @@ _.ry.init.prototype = {
   }
 };
 
+_.querySelectorAll = function(val){
+  if(typeof val !== 'string'){
+    logger.info('错误',val);
+    return [];    
+  }
+  try{
+     return document.querySelectorAll(val);
+  }catch(e){
+    logger.info('错误',val);
+    return [];
+  }
+};
 
 _.getReferrer = function(referrer){
 
@@ -2576,7 +2588,7 @@ var heatmap_render = {
     var usableData = [];
     
     _.each(data,function(obj){
-      if( obj.by_values[0] && document.querySelectorAll(obj.by_values[0])[0] ){
+      if( obj.by_values[0] && _.querySelectorAll(obj.by_values[0])[0] ){
         usableData.push(obj);
       }
     });
@@ -2614,7 +2626,7 @@ var heatmap_render = {
           obj.data_top_value = String(obj.top_values[0]);
         }
 
-        var selector = document.querySelectorAll(obj.by_values[0]);
+        var selector = _.querySelectorAll(obj.by_values[0]);
         if(typeof selector === 'object' && selector.length > 0){
           me.renderHeatData(selector,obj,key);
         }
