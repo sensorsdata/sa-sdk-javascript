@@ -54,7 +54,9 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
     is_trackLink:true,
 
-    is_track_device_id: false
+    is_track_device_id: false,
+
+    use_app_track: false
 
   };
   // 合并配置
@@ -82,7 +84,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.7';
+  , LIB_VERSION = '1.7.8';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1527,7 +1529,7 @@ var saNewUser = {
       this.is_first_visit_time = true;
     } else {
       // 如果没有这个cookie，肯定不是首日
-      if (_.cookie.getNewUser()) {
+      if (!_.cookie.getNewUser()) {
         this.checkIsAddSign = function(data) {
           if (data.type === 'track') {
             data.properties.$is_first_day = false;
@@ -2490,7 +2492,7 @@ var heatmap_render = {
       if(error_msg.error){
         div.innerHTML = error_msg.error;     
       }else{
-        div.innerHTML = '请求数据异常或者缓存超时';
+        div.innerHTML = '请求数据异常';
       }
     }else if(error_type === 3){
       div.innerHTML = '当前页面在所选时间段内暂时没有点击数据';
@@ -2498,7 +2500,7 @@ var heatmap_render = {
       if(error_msg.error){
         div.innerHTML = error_msg.error;     
       }else{
-        div.innerHTML = '请求数据异常或者缓存超时';
+        div.innerHTML = '请求数据异常';
       }      
     }
     document.body.appendChild(div);
@@ -2617,8 +2619,8 @@ var heatmap_render = {
 
 
         var urlParse = new _.urlParse(sd.para.web_url);
-        urlParse._values.Path = '/web-click/users/#heat_map_id=' + heat_map_id + '&element_selector=' + encodeURIComponent(obj.by_values[0]);
-        obj.data_user_link = urlParse.getUrl();
+        urlParse._values.Path = '/web-click/users';
+        obj.data_user_link = urlParse.getUrl() + '#heat_map_id=' + heat_map_id + '&element_selector=' + encodeURIComponent(obj.by_values[0]);
 
         if(String(obj.top_values[0]) === 'null'){
           obj.data_top_value = '没有值';          
@@ -2723,7 +2725,7 @@ var heatmap_render = {
     var target_is_on_float = false;
 
     var me = this;
-    var str = '<div style="padding: 8px;"><div style="color: #757575">当前元素内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div>点击次数: {{value_fix}}</div><div title="点击次数/当前页面的浏览次数">点击率: {{data_click_percent}}</div><div title="点击次数/当前页面的点击总次数">点击占比: {{data_page_percent}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div style="color: #757575">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看点击用户列表</a ></div>';
+    var str = '<div style="padding: 8px;"><div style="color: #757575">当前元素内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div>点击次数: {{value_fix}}</div><div style="cursor:pointer;" title="点击次数/当前页面的浏览次数">点击率(?): {{data_click_percent}}</div><div style="cursor:pointer;" title="点击次数/当前页面的点击总次数">点击占比(?): {{data_page_percent}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div style="color: #757575">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看点击用户列表</a ></div>';
 
     var newStr = '';
     var isShow = true;
@@ -3136,6 +3138,8 @@ var heatmap = {
       sd.para.heatmap.collect_elements = 'all';
     } else if (sd.para.heatmap.collect_elements === 'interact') {
       sd.para.heatmap.collect_elements = 'interact';
+    } else if(_.isFunction(sd.para.heatmap.collect_elements)){
+      sd.para.heatmap.collect_elements = sd.para.heatmap.collect_elements();
     } else {
       sd.para.heatmap.collect_elements = 'interact';
     }

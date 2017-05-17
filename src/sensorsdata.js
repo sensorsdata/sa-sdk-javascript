@@ -59,7 +59,9 @@ try{
 
     is_trackLink:true,
 
-    is_track_device_id: false
+    is_track_device_id: false,
+
+    use_app_track: false
 
   };
   // 合并配置
