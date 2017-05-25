@@ -110,6 +110,9 @@ logger.info = function() {
     };
 
   _.isFunction = function(f) {
+    if(!f){
+      return false;
+    }
     try {
       return /^\s*\bfunction\b/.test(f);
     } catch (x) {
@@ -1942,6 +1945,15 @@ saEvent.send = function(p, callback) {
       _.addEvent(document,'click',function(e){trackAll.clickEvents(e);});
 
     },
+    trackHeatMap: function(target){
+      if((typeof target === 'object') && target.tagName){
+        var tagName = target.tagName.toLowerCase();
+        var parent_ele = target.parentNode.tagName.toLowerCase();     
+        if (tagName !== 'button' && tagName !== 'a' && parent_ele !== 'a' && parent_ele !== 'button' && tagName !== 'input' && tagName !== 'textarea') {
+          heatmap.start(null,target,tagName);
+        }
+      }
+    },
     autoTrackWithoutProfile:function(para){
       this.autoTrack(_.extend(para,{not_set_profile:true}));
     },
@@ -2052,7 +2064,7 @@ saEvent.send = function(p, callback) {
       return false;
     }
     // 如果是非当前页面会跳转的链接，直接track
-    if (!link.href || /^javascript/.test(link.href) || link.target) {
+    if (!link.href || /^javascript/.test(link.href) || link.target || link.download || link.onclick) {
       sd.track(event_name, event_prop);
       return false;
     }
@@ -3062,10 +3074,6 @@ var heatmap = {
 
     if (sd.para.heatmap.collect_elements === 'all') {
       sd.para.heatmap.collect_elements = 'all';
-    } else if (sd.para.heatmap.collect_elements === 'interact') {
-      sd.para.heatmap.collect_elements = 'interact';
-    } else if(_.isFunction(sd.para.heatmap.collect_elements)){
-      sd.para.heatmap.collect_elements = sd.para.heatmap.collect_elements();
     } else {
       sd.para.heatmap.collect_elements = 'interact';
     }
@@ -3081,7 +3089,8 @@ var heatmap = {
         if(!target || !target.parentNode || !target.parentNode.children){
           return false;
         }
-        if(target.parentNode.tagName.toLowerCase() === 'a'){
+        var parent_ele = target.parentNode.tagName.toLowerCase();
+        if(parent_ele === 'a' || parent_ele === 'button'){
           that.start(ev, target.parentNode, target.parentNode.tagName.toLowerCase());
         }else{
           that.start(ev, target, tagName);
@@ -3099,8 +3108,9 @@ var heatmap = {
         if(!target || !target.parentNode || !target.parentNode.children){
           return false;
         }        
-        if (tagName === 'button' || tagName === 'a' || target.parentNode.tagName.toLowerCase() === 'a' || tagName === 'input' || tagName === 'textarea') {
-          if(target.parentNode.tagName.toLowerCase() === 'a'){
+        var parent_ele = target.parentNode.tagName.toLowerCase();     
+        if (tagName === 'button' || tagName === 'a' || parent_ele === 'a' || parent_ele === 'button' || tagName === 'input' || tagName === 'textarea') {
+          if(parent_ele === 'a' || parent_ele === 'button'){
             that.start(ev, target.parentNode, target.parentNode.tagName.toLowerCase());
           }else{
             that.start(ev, target, tagName);
