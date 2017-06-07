@@ -863,6 +863,12 @@ _.getEleInfo = function(obj){
     }
     props.$element_content = textContent || '';
   }
+  // 针对inut只采集button和submit非名感的词汇
+  if(tagName === 'input' && (target.type === 'button' || target.type === 'submit')){
+    props.$element_content = target.value || '';
+  }
+
+
   props = _.strip_empty_properties(props);
 
   props.$url = location.href;
@@ -1205,7 +1211,7 @@ _.ry.init.prototype = {
   removeClass: function(para){
     var classes = ' ' + this.ele.className + ' ';
     if(classes.indexOf(' ' + para + ' ') !== -1){
-      this.ele.className = classes.replace(' ' + para + ' ', '').slice(1,-1);
+      this.ele.className = classes.replace(' ' + para + ' ', ' ').slice(1,-1);
     }
     return this;
   },
@@ -1237,6 +1243,11 @@ _.ry.init.prototype = {
           top: rect.top + window.pageYOffset - docElem.clientTop,
           left: rect.left + window.pageXOffset - docElem.clientLeft
         };
+      }else{
+        return {
+          top: 0,
+          left: 0
+        }
       }
 
   },
@@ -1362,7 +1373,35 @@ sd.sendState = {}
 sd.sendState._complete = 0;
 //接受发送数
 sd.sendState._receive = 0;
+
 sd.sendState.getSendCall = function(data, callback) {
+  // 点击图渲染模式不发数据
+  if(sd.is_heatmap_render_mode){
+    return false;
+  }
+
+  // 加cache防止缓存
+  data._nocache = (String(Math.random()) + String(Math.random()) + String(Math.random())).replace(/\./g,'').slice(0,15);
+  data = JSON.stringify(data);
+
+  // 打通app传数据给app
+  if(sd.para.use_app_track){
+    if((typeof SensorsData_APP_JS_Bridge === 'object') && SensorsData_APP_JS_Bridge.sensorsdata_track){
+      SensorsData_APP_JS_Bridge.sensorsdata_track(data);
+      logger.info('app数据',data);
+    }else if(/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream){
+      var iframe = document.createElement('iframe');
+      iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(data));
+      document.documentElement.appendChild(iframe);
+      iframe.parentNode.removeChild(iframe);
+      iframe = null;
+    }
+    (typeof callback === 'function') && callback();
+    return false;
+  }
+
+  logger.info(data);
+
   ++this._receive;
   var state = '_state' + this._receive;
   var me = this;
@@ -1374,14 +1413,8 @@ sd.sendState.getSendCall = function(data, callback) {
     ++me._complete;
     (typeof callback === 'function') && callback();
   };
-  // 加cache防止缓存
-  data._nocache = (String(Math.random()) + String(Math.random()) + String(Math.random())).replace(/\./g,'').slice(0,15);
-  logger.info(data);
-  data = JSON.stringify(data);
 
-  if(sd.is_heatmap_render_mode){
-    this[state].src = sd.para.server_url;
-  }else if (sd.para.server_url.indexOf('?') !== -1) {
+  if (sd.para.server_url.indexOf('?') !== -1) {
     this[state].src = sd.para.server_url + '&data=' + encodeURIComponent(_.base64Encode(data));
   } else {
     this[state].src = sd.para.server_url + '?data=' + encodeURIComponent(_.base64Encode(data));
@@ -2421,9 +2454,23 @@ saEvent.send = function(p, callback) {
 
 
 var heatmap_render = {
+// 保存点击图里所有选择器对应元素，方便删除重新渲染
+  heatDataElement:[],
+  setRefresh: function(){
+    var me = this;
+    var div = document.createElement('div');
+    div.setAttribute('style','border-radius:3px;cursor:pointer;z-index:99999;padding:8px 10px;background:#3790e9;color:#fff;position: fixed;left:10px;bottom:10px;line-height:20px;height:20px;');
+    div.innerHTML = '<svg width="15px" height="13px" viewBox="0 0 15 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-145.000000, -1953.000000)" fill="#FFFFFF"><g transform="translate(132.000000, 1941.000000)"><path d="M27.8813854,14.6046259 L25.720853,15.6691713 C24.4905498,13.2443736 21.804888,11.6623409 18.7741412,12.0615454 C15.7734018,12.4607499 13.3728103,14.900333 13.042729,17.8574034 C12.592618,21.8494485 15.7583981,25.2352941 19.7193742,25.2352941 C22.5700766,25.2352941 24.9706681,23.4906226 25.9459084,21.0214688 L24.2804981,20.4744107 L24.2654944,20.4744107 C23.3952799,22.5295747 21.1297217,23.8602564 18.639108,23.342769 C16.7936532,22.9583499 15.2932835,21.4798147 14.9031874,19.646431 C14.2430247,16.5119364 16.6436163,13.7470755 19.7193742,13.7470755 C21.6548511,13.7470755 23.3052578,14.8411916 24.1154574,16.4380096 L21.8649028,17.5616964 C21.804888,17.5912671 21.804888,17.6947645 21.8799065,17.7095499 L26.3960193,19.1732998 C26.4410304,19.1880851 26.4860415,19.1585144 26.5010452,19.1141583 L27.9864112,14.6637674 C28.0314223,14.6341967 27.9564038,14.5750552 27.8813854,14.6046259 L27.8813854,14.6046259 Z" id="refresh"></path></g></g></g></svg> <span title="当页面有内容更切换时候，点击刷新数据，重新计算">刷新点击图数据</span>';
+    document.body.appendChild(div);
+    _.addEvent(div,'click',function(){
+      me.refreshHeatData();
+      me.showErrorInfo(5);
+    });
+  },
   showErrorInfo: function(error_type,error_msg){
     var div = document.createElement('div');
     div.setAttribute('style','background:#e55b41;border:none;border-radius:8px;color:#fff;font-size:18px;left:50%;margin-left:-300px;padding:15px;position: fixed;text-align: center;top: 0;width:600px;z-index:9999;');
+    
     if(error_type === 1){
       div.innerHTML = '当前页面在所选时间段内暂时没有点击数据';     
     }else if(error_type === 2){
@@ -2440,7 +2487,11 @@ var heatmap_render = {
       }else{
         div.innerHTML = '请求数据异常';
       }      
+    }else if(error_type === 5){
+      div.style.backgroundColor = '#3790e9';
+      div.innerHTML = '刷新点击图数据成功';      
     }
+
     document.body.appendChild(div);
     setTimeout(function(){
       document.body.removeChild(div);
@@ -2514,6 +2565,7 @@ var heatmap_render = {
     }
   },
   calculateHeatData: function(data){
+    this.ajaxHeatData = data;
     var me = this;
 
     if(!_.isObject(data) || !_.isArray(data.rows) || !_.isObject(data.rows[0])){
@@ -2597,6 +2649,7 @@ var heatmap_render = {
       'button':true
     };
     var dom =  _.ry(selector[0]);
+    this.heatDataElement.push(dom);
     dom.attr('data-heat-place',String(key))
     .addClass('sa-click-area')
 //    .attr('title',this.heatDataTitle(data))
@@ -2612,6 +2665,14 @@ var heatmap_render = {
     */
 
     // 判断外层或者内层是否有class。
+
+  },
+  refreshHeatData: function(){
+    _.each(this.heatDataElement,function(ele){
+      ele.removeClass('sa-click-area');
+    });
+    this.heatDataElement = [];
+    this.calculateHeatData(this.ajaxHeatData);
 
   },
   is_fix_state : null,
@@ -2663,14 +2724,17 @@ var heatmap_render = {
     var target_is_on_float = false;
 
     var me = this;
-    var str = '<div style="padding: 8px;"><div style="color: #757575">当前元素内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div>点击次数: {{value_fix}}</div><div style="cursor:pointer;" title="点击次数/当前页面的浏览次数">点击率(?): {{data_click_percent}}</div><div style="cursor:pointer;" title="点击次数/当前页面的点击总次数">点击占比(?): {{data_page_percent}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 8px;"><div style="color: #757575">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: rgba(0,0,0,0.1); height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看点击用户列表</a ></div>';
+    var str = '<div style="padding: 8px;"><div style="color: #CACACA">当前内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: #444; height:1px;"></div><div style="padding: 8px;">'+
+    '<table style="width:100%;"><tr><td>点击次数: </td><td style="text-align:right;">{{value_fix}}次</td></tr><tr><td style="cursor:pointer;" title="点击次数/当前页面的浏览次数"><span style="float:left;">点击率</span><span style="float:left;margin-top:5px;margin-left:3px;"><svg width="12px" height="12px" viewBox="0 0 10 10" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-1803.000000, -158.000000)" fill="#979797"><g transform="translate(1737.000000, 84.000000)"><path d="M71,74 C68.24,74 66,76.24 66,79 C66,81.76 68.24,84 71,84 C73.76,84 76,81.76 76,79 C76,76.24 73.76,74 71,74 L71,74 Z M71.5,82.5 L70.5,82.5 L70.5,81.5 L71.5,81.5 L71.5,82.5 L71.5,82.5 Z M72.535,78.625 L72.085,79.085 C71.725,79.45 71.5,79.75 71.5,80.5 L70.5,80.5 L70.5,80.25 C70.5,79.7 70.725,79.2 71.085,78.835 L71.705,78.205 C71.89,78.025 72,77.775 72,77.5 C72,76.95 71.55,76.5 71,76.5 C70.45,76.5 70,76.95 70,77.5 L69,77.5 C69,76.395 69.895,75.5 71,75.5 C72.105,75.5 73,76.395 73,77.5 C73,77.94 72.82,78.34 72.535,78.625 L72.535,78.625 Z" id="prompt"></path></g></g></g></svg></span></td><td style="text-align:right;">{{data_click_percent}}</td></tr><tr><td style="cursor:pointer;" title="点击次数/当前页面的点击总次数"><span style="float:left;">点击占比</span> <span style="float:left;margin-top:5px;margin-left:3px;"><svg width="12px" height="12px" viewBox="0 0 10 10" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-1803.000000, -158.000000)" fill="#979797"><g transform="translate(1737.000000, 84.000000)"><path d="M71,74 C68.24,74 66,76.24 66,79 C66,81.76 68.24,84 71,84 C73.76,84 76,81.76 76,79 C76,76.24 73.76,74 71,74 L71,74 Z M71.5,82.5 L70.5,82.5 L70.5,81.5 L71.5,81.5 L71.5,82.5 L71.5,82.5 Z M72.535,78.625 L72.085,79.085 C71.725,79.45 71.5,79.75 71.5,80.5 L70.5,80.5 L70.5,80.25 C70.5,79.7 70.725,79.2 71.085,78.835 L71.705,78.205 C71.89,78.025 72,77.775 72,77.5 C72,76.95 71.55,76.5 71,76.5 C70.45,76.5 70,76.95 70,77.5 L69,77.5 C69,76.395 69.895,75.5 71,75.5 C72.105,75.5 73,76.395 73,77.5 C73,77.94 72.82,78.34 72.535,78.625 L72.535,78.625 Z" id="prompt"></path></g></g></g></svg></span></td><td style="text-align:right;">{{data_page_percent}}</td></tr></table>'+
+    '</div><div style="background: #444; height:1px;"></div><div style="padding: 8px;"><div style="color: #CACACA;">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: #444; height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看用户列表</a ></div>';
 
     var newStr = '';
     var isShow = true;
     var div = document.createElement('div');
     document.body.appendChild(div);
-    div.setAttribute('style','display:none;border:1px solid #ccc;position: fixed; right:0; top:0; background: #F4F5F7;line-height:24px;font-size:13px;width:220px;color: #333;font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;box-shadow: 0 2px 4px rgba(0,0,0,0.24);z-index:99999;');
+    div.setAttribute('style','border-radius:3px;display:none;border:1px solid #000;position: fixed; right:0; top:0; background: #333;line-height:24px;font-size:13px;width:220px;color: #fff;font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;box-shadow: 0 2px 4px rgba(0,0,0,0.24);z-index:99999;');
 
+/*
     div.innerHTML = '<div id="sa_heat_float_right_box_slidedown" class="sa-heat-box-head-2017322">'
     + '<div id="sa_heat_float_right_box_close_btn" style="cursor:pointer;display: inline-block;float: left;padding: 4px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g id="Artboard-4" fill="#000000"><polygon id="Combined-Shape" points="9.77297077 8.7123106 6.06066017 5 5 6.06066017 8.7123106 9.77297077 5 13.4852814 6.06066017 14.5459415 9.77297077 10.8336309 13.4852814 14.5459415 14.5459415 13.4852814 10.8336309 9.77297077 14.5459415 6.06066017 13.4852814 5"></polygon></g></g></svg></div>'
     + '<div id="sa_heat_float_right_box_right_btn" style="cursor:pointer;display: inline-block;float: right;padding: 4px 2px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g id="Artboard-4" fill="#000000"><polygon id="Combined-Shape" points="12.1923882 9.65685425 7.59619408 14.2530483 8.65685425 15.3137085 14.3137085 9.65685425 8.65685425 4 7.59619408 5.06066017"></polygon></g></g></svg></div></div>'
@@ -2683,14 +2747,13 @@ var heatmap_render = {
     + '<div style="line-height: 30px;display: inline-block;float:right;padding-right: 10px;">展开</div><div style="padding:2px;display: inline-block;float: right;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g fill="#000000"><path d="M6.8,4 L6,4 L6,12 L7.6,12 L7.6,5.6 L14,5.6 L14,4 L6.8,4 Z" transform="translate(10.000000, 8.000000) rotate(-135.000000) translate(-10.000000, -8.000000) "></path></g></g></svg></div></div>'
 
     + '<div id="sa_heat_float_right_box_content" style="clear:both;"></div>';
+*/
+    div.innerHTML = '<div id="sa_heat_float_right_box_content" style="clear:both;"></div>';
 
-
-
+/*
     var eleSlideDown = document.getElementById('sa_heat_float_right_box_slidedown');
     var eleSlideUp = document.getElementById('sa_heat_float_right_box_slideup');
     var eleSlideDownRight = document.getElementById('sa_heat_float_right_box_slidedownRight');    
-
-    var eleContent = document.getElementById('sa_heat_float_right_box_content'); 
 
     var eleBtnSlideDown = document.getElementById('sa_heat_float_right_box_btn_slidedown');
     var eleBtnSlideUp = document.getElementById('sa_heat_float_right_box_btn_slideup');
@@ -2698,7 +2761,8 @@ var heatmap_render = {
     var eleBtnClose = document.getElementById('sa_heat_float_right_box_close_btn');
     var eleBtnRight = document.getElementById('sa_heat_float_right_box_right_btn');
     var eleBtnLeft = document.getElementById('sa_heat_float_right_box_left_btn');
-    
+*/    
+    var eleContent = document.getElementById('sa_heat_float_right_box_content');     
 
     _.addEvent(div,'mouseleave',function(){
       if(me.is_fix_state === 'notfix'){
@@ -2712,7 +2776,7 @@ var heatmap_render = {
         target_is_on_float = true;
       }
     });
-
+/*
     _.addEvent(eleSlideDown,'mousedown',function(e){
         if(e.target.id === 'sa_heat_float_right_box_slidedown'){
           _.draggable(div,e);          
@@ -2766,35 +2830,18 @@ var heatmap_render = {
       me.is_fix_state = 'fixslidedown';
       _.cookie.set('sensorsdata_heatmap_float_fix_state','fixslidedown');
     });
-
+*/
 
 
     _.addEvent(div, 'animationend', function(){
       div.className = '';
     });
 
-/*
-    _.addEvent(eleIsFixed, 'click', function(e){
-      var target = e.target;
-      
-      if(_.ry(target).hasClass('sensorsdata-heatmap-head-fix-btn')){      }
 
-    });
-*/
-/*
-    eleSlideUp.onmousedown = function(e){
-      e = e || window.event;
-      _.draggable(div,e);
-    }
-    eleSlideDown.onmousedown = function(e){
-      e = e || window.event;
-      _.draggable(div,e);
-    }
-*/
-
-
+      this.is_fix_state = 'notfix';
 
     //浮动层效果的事件和初始化
+    /*
     var fix_state = _.cookie.get('sensorsdata_heatmap_float_fix_state');
     if( fix_state === null){
       this.is_fix_state = 'notfix';
@@ -2823,7 +2870,7 @@ var heatmap_render = {
     }
 
 
-
+*/
 
     // 绑定浮动层的显示
     var timeEle = 600;
@@ -3041,8 +3088,11 @@ var heatmap = {
       }
       //进入渲染模式
       heatmap_render.setCssStyle();
-      heatmap_render.getRequestInfo(data,url);
-      me.sendIframeData();
+      setTimeout(function(){
+        heatmap_render.getRequestInfo(data,url);
+        heatmap_render.setRefresh();
+        me.sendIframeData();
+      },sd.para.heatmap.loadTimeout || 0);
     }
     if(match && match[0] && match[1]){
       sd.is_heatmap_render_mode = true;
