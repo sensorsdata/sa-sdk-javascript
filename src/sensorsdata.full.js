@@ -84,7 +84,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.11';
+  , LIB_VERSION = '1.7.5';
 
 sd.lib_version = LIB_VERSION;
 
@@ -2590,11 +2590,17 @@ var heatmap_render = {
 
       var urlParse2 = new _.urlParse(sd.para.web_url);
       urlParse2._values.Path = '/api/heat_map/report/path/' + id;
+      var urlParse2Value = urlParse2.getUrl();
+      if(urlParse2Value.indexOf('?') === -1){
+        urlParse2Value = urlParse2Value + '?pathUrl=' + url;
+      }else{
+        urlParse2Value = urlParse2Value + '&pathUrl=' + url;
+      }
 
       if(url){
         this.requestType = 3;
         _.ajax({
-          url: urlParse2.getUrl() + '?pathUrl=' + url,
+          url: urlParse2Value,
           type: 'POST',
           cors: true,
           header: {cors: "true"},
