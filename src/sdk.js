@@ -1268,6 +1268,12 @@ _.ry.init.prototype = {
     }else{
       return this.ele.ownerDocument.defaultView.getComputedStyle(this.ele, null).getPropertyValue(value);
     }
+  },
+  wrap: function(elementTagName){
+    var ele = document.createElement(elementTagName);
+    this.ele.parentNode.insertBefore(ele, this.ele);
+    ele.appendChild(this.ele);
+    return _.ry(ele);
   }
 };
 
@@ -2649,12 +2655,11 @@ var heatmap_render = {
       + '\r\n点击占比 ' + data.data_page_percent + '\r\n历史数据 ' + String(data.top_values[0]).slice(0,30) );
   },
   renderHeatData: function(selector,data,key){
-    var allowElements = {
-      'input':true,
-      'a':true,
-      'button':true
-    };
     var dom =  _.ry(selector[0]);
+    if(dom.ele.tagName.toLowerCase() === 'input' || dom.ele.tagName.toLowerCase() === 'textarea'){
+      dom = dom.wrap('span');
+      dom.ele.style.display = 'inline-block';
+    }    
     this.heatDataElement.push(dom);
     dom.attr('data-heat-place',String(key))
     .addClass('sa-click-area')
@@ -2664,13 +2669,6 @@ var heatmap_render = {
     if(dom.getStyle('display') === 'inline'){
       selector[0].style.display = 'inline-block';
     }
-    /*
-    if(selector[0] && (selector[0].tagName.toLowerCase() in allowElements)){
-      dom.addClass('sa-click-area' + this.heatData(data.data_click));
-    }
-    */
-
-    // 判断外层或者内层是否有class。
 
   },
   refreshHeatData: function(){
