@@ -64,13 +64,22 @@ try{
     use_app_track: false
 
   };
+  var i;
   // 合并配置
-  for (var i in sd.para_default) {
+  for (i in sd.para_default) {
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
   }
   // 优化配置
+  if(typeof sd.para.server_url === 'object' && sd.para.server_url.length){
+    for(i = 0; i < sd.para.server_url.length; i++){ 
+      if (!/sa\.gif[^\/]*$/.test(sd.para.server_url[i])) {
+        sd.para.server_url[i] = sd.para.server_url[i].replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
+      }
+    }
+  }
+
   if (!/sa\.gif[^\/]*$/.test(sd.para.server_url)) {
     sd.para.server_url = sd.para.server_url.replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
   }

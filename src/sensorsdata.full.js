@@ -59,13 +59,22 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     use_app_track: false
 
   };
+  var i;
   // 合并配置
-  for (var i in sd.para_default) {
+  for (i in sd.para_default) {
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
   }
   // 优化配置
+  if(typeof sd.para.server_url === 'object' && sd.para.server_url.length){
+    for(i = 0; i < sd.para.server_url.length; i++){ 
+      if (!/sa\.gif[^\/]*$/.test(sd.para.server_url[i])) {
+        sd.para.server_url[i] = sd.para.server_url[i].replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
+      }
+    }
+  }
+
   if (!/sa\.gif[^\/]*$/.test(sd.para.server_url)) {
     sd.para.server_url = sd.para.server_url.replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
   }
@@ -84,7 +93,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.13';
+  , LIB_VERSION = '1.7.14';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1354,6 +1363,23 @@ _.ry.init.prototype = {
     this.ele.parentNode.insertBefore(ele, this.ele);
     ele.appendChild(this.ele);
     return _.ry(ele);
+  },
+  getCssStyle: function(prop){
+    var result = this.ele.style.getPropertyValue(prop);
+    if (result) {
+        return result;
+    }
+    var rules = getMatchedCSSRules(this.ele);
+    if(!rules || !_.isArray(rules)){
+      return null;
+    }
+    for (var i = rules.length - 1; i >= 0; i--) {
+        var r = rules[i];
+        result = r.style.getPropertyValue(prop);
+        if (result) {
+            return result;
+        }
+    }
   }
 };
 
@@ -1485,28 +1511,61 @@ sd.sendState.getSendCall = function(data, callback) {
     (typeof callback === 'function') && callback();
     return false;
   }
-
   logger.info(data);
+  this.prepareServerUrl(data,callback);
+};
+
+sd.sendState.prepareServerUrl = function(data,callback){
+  if(_.isArray(sd.para.server_url)){
+    for(var i =0; i<sd.para.server_url.length;i++){
+      if (sd.para.server_url[i].indexOf('?') !== -1) {
+        this.sendCall(sd.para.server_url[i] + '&data=' + encodeURIComponent(_.base64Encode(data)),callback);
+      } else {
+        this.senCall(sd.para.server_url[i] + '?data=' + encodeURIComponent(_.base64Encode(data)),callback);
+      }              
+    }
+  }else{
+    if (sd.para.server_url.indexOf('?') !== -1) {
+      this.sendCall(sd.para.server_url + '&data=' + encodeURIComponent(_.base64Encode(data)),callback);
+    } else {
+      this.sendCall(sd.para.server_url + '?data=' + encodeURIComponent(_.base64Encode(data)),callback);
+    }
+  }
+};
+
+sd.sendState.callBack = function(callback){
+
+  (typeof callback === 'function') && callback();
+
+};
+
+sd.sendState.sendCall = function(server_url,callback){
+
 
   ++this._receive;
   var state = '_state' + this._receive;
   var me = this;
   this[state] = document.createElement('img');
-  this[state].onload = this[state].onerror = function(e) {
+  
+  this[state].onload = function(e) {
     me[state].onload = null;
-    me[state].onerror = null;
     delete me[state];
     ++me._complete;
-    (typeof callback === 'function') && callback();
+    me.callBack(callback);
+  };
+  this[state].onerror = function(e) {
+    me[state].onerror = null;
+    delete me[state];
+    me.callBack(callback);
+  };
+  this[state].onabort = function(e) {
+    delete me[state];
+    me.callBack(callback);
   };
 
-  if (sd.para.server_url.indexOf('?') !== -1) {
-    this[state].src = sd.para.server_url + '&data=' + encodeURIComponent(_.base64Encode(data));
-  } else {
-    this[state].src = sd.para.server_url + '?data=' + encodeURIComponent(_.base64Encode(data));
-  }
-};
+  this[state].src = server_url;
 
+};
 
 // 检查是否是新用户（第一次种cookie，且在8个小时内的）
 var saNewUser = {
@@ -2342,6 +2401,9 @@ saEvent.send = function(p, callback) {
    * @param {string} distinct_id
    * */
   sd.identify = function(id, isSave) {
+    if(typeof id === 'number'){
+      id = String(id);
+    }
     var firstId = store.getFirstId();
     if (typeof id === 'undefined') {
       if(firstId){      
@@ -2449,6 +2511,9 @@ saEvent.send = function(p, callback) {
   };
 
   sd.login = function(id){
+    if(typeof id === 'number'){
+      id = String(id);
+    }
     if (saEvent.check({distinct_id: id})) {
       var firstId = store.getFirstId();
       var distinctId = store.getDistinctId();
@@ -2730,9 +2795,15 @@ var heatmap_render = {
   },
   renderHeatData: function(selector,data,key){
     var dom =  _.ry(selector[0]);
+    // 优化input不支持伪类的样式
     if(dom.ele.tagName.toLowerCase() === 'input' || dom.ele.tagName.toLowerCase() === 'textarea'){
-      dom = dom.wrap('span');
-      dom.ele.style.display = 'inline-block';
+        var width = dom.getCssStyle('width');
+        dom = dom.wrap('span');        
+        if(typeof width === 'string' && width.slice(-1) === '%'){
+          dom.ele.style.width = width;
+        }
+        dom.ele.style.display = 'inline-block';
+
     }    
     this.heatDataElement.push(dom);
     dom.attr('data-heat-place',String(key))
@@ -3029,7 +3100,7 @@ var heatmap_render = {
 
   },
   setCssStyle: function(){
-    var css = '.sa-heat-box-head-2017322{border-bottom:1px solid rgba(0,0,0,.06);cursor:move;height:30px;background:#E1E1E1;color:#999;clear:both}.sa-heat-box-effect-2017314{animation-duration:.5s;animation-fill-mode:both;animation-iteration-count:1;animation-name:sa-heat-box-effect-2017314}@keyframes sa-heat-box-effect-2017314{0%{opacity:.6}100%{opacity:1}}.sa-click-area{position:relative}.sa-click-area:before{cursor:pointer;content:"";width:100%;position:absolute;left:0;top:0;bottom:0}.sa-click-area.sa-click-area0:before{background:rgba(254,254,155,.75);box-shadow:0 0 0 2px rgba(254,254,155,1) inset}.sa-click-area.sa-click-area0:hover::before{background:rgba(254,254,155,.85)}.sa-click-area.sa-click-area1:before{background:rgba(255,236,142,.75);box-shadow:0 0 0 2px rgba(255,236,142,1) inset}.sa-click-area.sa-click-area1:hover::before{background:rgba(255,236,142,.85)}.sa-click-area.sa-click-area2:before{background:rgba(255,188,113,.75);box-shadow:0 0 0 2px rgba(255,188,113,1) inset}.sa-click-area.sa-click-area2:hover::before{background:rgba(255,188,113,.85)}.sa-click-area.sa-click-area3:before{background:rgba(255,120,82,.75);box-shadow:0 0 0 2px rgba(255,120,82,1) inset}.sa-click-area.sa-click-area3:hover::before{background:rgba(255,120,82,.85)}.sa-click-area.sa-click-area4:before{background:rgba(255,65,90,.75);box-shadow:0 0 0 2px rgba(255,65,90,1) inset}.sa-click-area.sa-click-area4:hover::before{background:rgba(255,65,90,.85)}.sa-click-area.sa-click-area5:before{background:rgba(199,0,18,.75);box-shadow:0 0 0 2px rgba(199,0,18,1) inset}.sa-click-area.sa-click-area5:hover::before{background:rgba(199,0,18,.85)}.sa-click-area.sa-click-area6:before{background:rgba(127,0,79,.75);box-shadow:0 0 0 3px rgba(127,0,79,1) inset}.sa-click-area.sa-click-area6:hover::before{background:rgba(127,0,79,.85)}.sa-click-area .sa-click-area:before{background:0 0!important}.sa-click-area:after{height:14px;line-height:14px;margin:-7px 0 0 -28px;width:56px;color:#fff;content:attr(data-click);font-size:14px;font-weight:700;left:50%;line-height:1em;position:absolute;text-align:center;text-indent:0;text-shadow:1px 1px 2px #000;top:50%;z-index:10}';
+    var css = '.sa-heat-box-head-2017322{border-bottom:1px solid rgba(0,0,0,.06);cursor:move;height:30px;background:#e1e1e1;color:#999;clear:both}.sa-heat-box-effect-2017314{animation-duration:.5s;animation-fill-mode:both;animation-iteration-count:1;animation-name:sa-heat-box-effect-2017314}@keyframes sa-heat-box-effect-2017314{0%{opacity:.6}to{opacity:1}}.sa-click-area{position:relative}.sa-click-area:before{cursor:pointer;content:"";width:100%;position:absolute;left:0;top:0;bottom:0}.sa-click-area.sa-click-area0:before{background:hsla(60,98%,80%,.75);box-shadow:0 0 0 2px #fefe9b inset}.sa-click-area.sa-click-area0:hover:before,input.sa-click-area.sa-click-area0,textarea.sa-click-area.sa-click-area0{background:hsla(60,98%,80%,.85)}.sa-click-area.sa-click-area1:before{background:rgba(255,236,142,.75);box-shadow:0 0 0 2px #ffec8e inset}.sa-click-area.sa-click-area1:hover:before,input.sa-click-area.sa-click-area1,textarea.sa-click-area.sa-click-area1{background:rgba(255,236,142,.85)}.sa-click-area.sa-click-area2:before{background:rgba(255,188,113,.75);box-shadow:0 0 0 2px #ffbc71 inset}.sa-click-area.sa-click-area2:hover:before,input.sa-click-area.sa-click-area2,textarea.sa-click-area.sa-click-area2{background:rgba(255,188,113,.85)}.sa-click-area.sa-click-area3:before{background:rgba(255,120,82,.75);box-shadow:0 0 0 2px #ff7852 inset}.sa-click-area.sa-click-area3:hover:before,input.sa-click-area.sa-click-area3,textarea.sa-click-area.sa-click-area3{background:rgba(255,120,82,.85)}.sa-click-area.sa-click-area4:before{background:rgba(255,65,90,.75);box-shadow:0 0 0 2px #ff415a inset}.sa-click-area.sa-click-area4:hover:before,input.sa-click-area.sa-click-area4,textarea.sa-click-area.sa-click-area4{background:rgba(255,65,90,.85)}.sa-click-area.sa-click-area5:before{background:rgba(199,0,18,.75);box-shadow:0 0 0 2px #c70012 inset}.sa-click-area.sa-click-area5:hover:before,input.sa-click-area.sa-click-area5,textarea.sa-click-area.sa-click-area5{background:rgba(199,0,18,.85)}.sa-click-area.sa-click-area6:before{background:rgba(127,0,79,.75);box-shadow:0 0 0 3px #7f004f inset}.sa-click-area.sa-click-area6:hover:before,input.sa-click-area.sa-click-area6,textarea.sa-click-area.sa-click-area6{background:rgba(127,0,79,.85)}.sa-click-area .sa-click-area:before{background:0 0!important}.sa-click-area:after{height:14px;line-height:14px;margin:-7px 0 0 -28px;width:56px;color:#fff;content:attr(data-click);font-size:14px;font-weight:700;left:50%;line-height:1em;position:absolute;text-align:center;text-indent:0;text-shadow:1px 1px 2px #000;top:50%;z-index:10}';
 
     var style = document.createElement('style');
     style.type = 'text/css';
