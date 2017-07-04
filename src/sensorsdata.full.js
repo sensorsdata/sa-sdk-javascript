@@ -1722,7 +1722,7 @@ var saNewUser = {
     // 判断最近一次，如果前向地址跟自己域名一致，且cookie中取不到值，认为有异常
     // 最近一次站外前向地址，如果域名不一致，就register为latest
     if(url_domain === referrer_domain){
-      if(!_.store.getProps() || !_.store.getProps().$latest_referrer){
+      if(!store.getProps() || !store.getProps().$latest_referrer){
         sd.register({
           $latest_referrer: '取值异常',
           $latest_referrer_host: '取值异常'
