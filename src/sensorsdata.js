@@ -2,13 +2,17 @@
  * @fileoverview sensors analytic javascript sdk
  * @author shengyonggen@sensorsdata.cn
  */
+(function() {
 try{
-
-(function(sd) {
-
+  var sd = window['sensorsDataAnalytic201505'],has_declare;
+  if(sd){
+    sd = window[sd];
+    has_declare = true;
+  }else{
+    sd = {};
+    has_declare = false;
+  }
   // 防止重复引入
-  sd = window[sd];
-
   if ((typeof sd !== 'function' && typeof sd !== 'object') || sd.has_load_sdk) {
     return false;
   }
@@ -30,9 +34,9 @@ try{
 
     sd.customEv = $({});
   }
-  // 默认配置
-  sd.para = sd.para || {};
+
   sd.para_default = {
+    name: 'sa',
     // referrer字符串截取
     max_referrer_string_length: 200,
     //通用字符串截取，超过7000的字符串会导致url超长发不出去，所以限制长度
@@ -58,15 +62,26 @@ try{
     is_single_page: false,
 
     is_trackLink:true,
+    // 如果要设置，设置数组
+    source_type_config:{
+      utm: null,
+      search: null,
+      social: null
+    },
 
     is_track_device_id: false,
 
     use_app_track: false
 
   };
+
+sd.initPara = function(para){
+    // 默认配置
+  sd.para = para || sd.para || {};
+
   var i;
   // 合并配置
-  for (i in sd.para_default) {
+  for (i in sd.para_default) {init
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
@@ -92,6 +107,8 @@ try{
     sd.para.noCache = '';
   }
 
+}
+
   @@include('sa-sdk-javascript/src/sdk.js')
 
 @@if (sensorsdata_mode === 'vtrack') {
@@ -99,14 +116,17 @@ try{
   }
 
 @@if (sensorsdata_mode !== 'vtrack') {
-    sd._init();
+    sd.init();
+  }
+
+  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
+    this[sd.para.name] = sd;
+    define(function() {
+      return sd;
+    });
   }
 
 
-})(window['sensorsDataAnalytic201505']);
-
-
-  
 }catch(err){
   if (typeof console === 'object' && console.log) {
     try {console.log(err)} catch (e) {};
@@ -126,3 +146,4 @@ try{
   })();
 */
 }
+})();

@@ -730,7 +730,9 @@
       return historyStr;
     },
     init: function() {
-      sd.init();
+
+      sdkMain._init();
+
       var me = this;
       sd.customEv.on('debugInfo', function(ev, data) {
         me.showTrackInfo(data, 'vtrack')

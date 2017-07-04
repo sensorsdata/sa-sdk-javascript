@@ -2,13 +2,17 @@
  * @fileoverview sensors analytic javascript sdk
  * @author shengyonggen@sensorsdata.cn
  */
+(function() {
 try{
-
-(function(sd) {
-
+  var sd = window['sensorsDataAnalytic201505'],has_declare;
+  if(sd){
+    sd = window[sd];
+    has_declare = true;
+  }else{
+    sd = {};
+    has_declare = false;
+  }
   // 防止重复引入
-  sd = window[sd];
-
   if ((typeof sd !== 'function' && typeof sd !== 'object') || sd.has_load_sdk) {
     return false;
   }
@@ -25,9 +29,9 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
   var _ = sd._ = {};
 
 
-  // 默认配置
-  sd.para = sd.para || {};
+
   sd.para_default = {
+    name: 'sa',
     // referrer字符串截取
     max_referrer_string_length: 200,
     //通用字符串截取，超过7000的字符串会导致url超长发不出去，所以限制长度
@@ -53,15 +57,26 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     is_single_page: false,
 
     is_trackLink:true,
+    // 如果要设置，设置数组
+    source_type_config:{
+      utm: null,
+      search: null,
+      social: null
+    },
 
     is_track_device_id: false,
 
     use_app_track: false
 
   };
+
+sd.initPara = function(para){
+    // 默认配置
+  sd.para = para || sd.para || {};
+
   var i;
   // 合并配置
-  for (i in sd.para_default) {
+  for (i in sd.para_default) {init
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
@@ -87,13 +102,15 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     sd.para.noCache = '';
   }
 
+}
+
   var ArrayProto = Array.prototype
   , FuncProto = Function.prototype
   , ObjProto = Object.prototype
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.14';
+  , LIB_VERSION = '1.7.19';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1397,16 +1414,69 @@ _.querySelectorAll = function(val){
 };
 
 _.getReferrer = function(referrer){
+  var referrer = referrer || document.referrer;
+  if(typeof referrer !== 'string'){
+    return '取值异常';
+  }
+  if (referrer.indexOf("https://www.baidu.com/") === 0) {
+    referrer =  referrer.split('?')[0];
+  }
+  referrer = referrer.slice(0, sd.para.max_referrer_string_length);
+  return (typeof referrer === 'string' ? referrer : '' );
+};
 
-      var referrer = referrer || document.referrer;
-      
-      if(referrer.indexOf("https://www.baidu.com/") === 0){
-        referrer =  referrer.split('?')[0];
+_.getKeywordFromReferrer = function(){
+  var search_keyword = {baidu:'wd',google:'q',bing:'q',yahoo:'p',sogou:'query',so:'q'}
+  if(document && typeof document.referrer === 'string'){
+    if(document.referrer.indexOf('http') === 0) {
+      var domain = _.url('domain',document.referrer);
+      var query = _.url('?',document.referrer);
+      for(var i in search_keyword){
+        if(domain.indexOf(i) === 0){
+          if(typeof query === 'object' && query[search_keyword[i]]){
+            return query[search_keyword[i]];
+          }
+        }
       }
-      referrer = referrer.slice(0, sd.para.max_referrer_string_length);
+    }else{
+      return '未取到值';
+    }
+  }else{
+    return '取值异常';
+  }
+};
 
-      return (typeof referrer === 'string' ? referrer : '' );
-}
+_.getSourceFromReferrer = function(){
+  function getMatchStrFromArr(arr,str){
+    for(var i = 0; i<arr.length; i++){
+      if(str.split('?')[0].indexOf(arr[i]) !== -1){
+        return true;
+      }
+    }
+  }
+
+  var search_engine = ['www.baidu.','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'];
+  var social_engine = ['weibo.com','renren.com','kaixin001.com','douban.com','qzone.qq.com','zhihu.com','tieba.baidu.com','weixin.qq.com'];
+
+  var referrer = document.referrer || '';
+  var url = _.info.pageProp.url;
+  if(url){
+    var utm_match = url.match(/(utm_source|utm_medium|utm_campaign|utm_content|utm_term)\=[^&]+/);    
+    if(utm_match && utm_match[0]){
+      return '付费广告流量';
+    }else if(getMatchStrFromArr(search_engine,referrer)){
+      return '自然搜索流量';
+    }else if(getMatchStrFromArr(social_engine,referrer)){
+      return '社交网站流量';
+    }else if(referrer === ''){
+      return '直接流量';
+    }else{
+      return '引荐流量';
+    }
+  }else{
+    return '获取url异常';
+  }
+};
 
 _.info = {
   initPage: function() {
@@ -1649,11 +1719,23 @@ var saNewUser = {
   checkIsFirstLatest: function() {
     var url_domain = _.info.pageProp.url_domain;
     var referrer_domain = _.info.pageProp.referrer_domain;
-    // 如果域名不一致，就register为latest
-    if (url_domain !== '' && url_domain !== referrer_domain) {
+    // 判断最近一次，如果前向地址跟自己域名一致，且cookie中取不到值，认为有异常
+    // 最近一次站外前向地址，如果域名不一致，就register为latest
+    if(url_domain === referrer_domain){
+      if(!_.store.getProps() || !_.store.getProps().$latest_referrer){
+        sd.register({
+          $latest_referrer: '取值异常',
+          $latest_referrer_host: '取值异常'
+          //$latest_traffic_source_type: '取值异常',
+          //$latest_search_keyword: '取值异常'
+        });
+      }
+    } else {
       sd.register({
+        //$latest_traffic_source_type:_.getSourceFromReferrer(),
         $latest_referrer: _.info.pageProp.referrer,
         $latest_referrer_host: _.info.pageProp.referrer_host
+        //$latest_search_keyword: _.getKeywordFromReferrer()        
       });
     }
     // utm
@@ -2147,8 +2229,11 @@ saEvent.send = function(p, callback) {
             // 暂时隐藏，等extractor都部署上去 $first_landing_page: _.info.pageProp.url.slice(0, sd.para.max_referrer_string_length),
             $first_visit_time: new Date(),
             $first_referrer: _.getReferrer(),
-            $first_browser_language: navigator.language,
-            $first_referrer_host: _.info.pageProp.referrer_host
+            $first_browser_language: navigator.language || '取值异常',
+            //$first_browser_charset: document.charset || '取值异常',
+            $first_referrer_host: _.info.pageProp.referrer_host,
+            $first_traffic_source_type: _.getSourceFromReferrer(),
+            $first_search_keyword: _.getKeywordFromReferrer()
           }, $utms)
         );
       }
@@ -3321,16 +3406,15 @@ var heatmap = {
   }
 };
     
-
- 
-  //可视化埋点的后初始化
-  sd.init = function(){
-    if(_.isObject(sd.sdkMain)){
-     sd.sdkMain._init();
-    } 
+  sd.init = function(para){
+    if((!para && has_declare) || (para && !has_declare)){
+      console.log('test', typeof para)
+      sd.initPara(para);
+      sd._init();
+    }
   };
 
-  sd._init = function() {    
+  sd._init = function() {
     // 防止爬虫等异常情况
     /*
      if(!_.hasStandardBrowserEnviroment()){
@@ -3353,20 +3437,24 @@ var heatmap = {
 
   };
 
-
-
-
-
-
-
-    sd._init();
   
 
 
-})(window['sensorsDataAnalytic201505']);
 
 
+
+
+    sd.init();
   
+
+  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
+    this[sd.para.name] = sd;
+    define(function() {
+      return sd;
+    });
+  }
+
+
 }catch(err){
   if (typeof console === 'object' && console.log) {
     try {console.log(err)} catch (e) {};
@@ -3386,3 +3474,4 @@ var heatmap = {
   })();
 */
 }
+})();
