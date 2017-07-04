@@ -120,7 +120,7 @@ sd.initPara = function(para){
   }
 
   if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
-    this[sd.para.name] = sd;
+//    this[sd.para.name] = sd;
     define(function() {
       return sd;
     });

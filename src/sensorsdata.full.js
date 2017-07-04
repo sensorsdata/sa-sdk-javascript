@@ -2231,9 +2231,9 @@ saEvent.send = function(p, callback) {
             $first_referrer: _.getReferrer(),
             $first_browser_language: navigator.language || '取值异常',
             //$first_browser_charset: document.charset || '取值异常',
-            $first_referrer_host: _.info.pageProp.referrer_host,
-            $first_traffic_source_type: _.getSourceFromReferrer(),
-            $first_search_keyword: _.getKeywordFromReferrer()
+            $first_referrer_host: _.info.pageProp.referrer_host
+            //$first_traffic_source_type: _.getSourceFromReferrer(),
+            //$first_search_keyword: _.getKeywordFromReferrer()
           }, $utms)
         );
       }
@@ -3408,7 +3408,6 @@ var heatmap = {
     
   sd.init = function(para){
     if((!para && has_declare) || (para && !has_declare)){
-      console.log('test', typeof para)
       sd.initPara(para);
       sd._init();
     }
@@ -3448,7 +3447,7 @@ var heatmap = {
   
 
   if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
-    this[sd.para.name] = sd;
+//    this[sd.para.name] = sd;
     define(function() {
       return sd;
     });
