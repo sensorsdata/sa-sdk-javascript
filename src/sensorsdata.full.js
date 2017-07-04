@@ -76,7 +76,7 @@ sd.initPara = function(para){
 
   var i;
   // 合并配置
-  for (i in sd.para_default) {init
+  for (i in sd.para_default) {
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
