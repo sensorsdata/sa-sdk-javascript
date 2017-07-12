@@ -2,7 +2,19 @@
  * @fileoverview sensors analytic javascript sdk
  * @author shengyonggen@sensorsdata.cn
  */
-(function() {
+
+;(function(root,factory) {
+
+  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
+    define(factory);
+  } else if (typeof exports === 'object' && typeof module === 'object') {
+    module.exports = factory();
+  }else{
+    factory();
+  }
+
+})(this,function(){
+
 try{
   var sd = window['sensorsDataAnalytic201505'],has_declare;
   if(sd){
@@ -110,7 +122,7 @@ sd.initPara = function(para){
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.19';
+  , LIB_VERSION = '1.7.20';
 
 sd.lib_version = LIB_VERSION;
 
@@ -354,6 +366,17 @@ _.encodeDates = function(obj) {
     }
   });
   return obj;
+};
+
+_.hashCode = function(str){
+  var hash = 0;
+  if (str.length == 0) return hash;
+  for (i = 0; i < str.length; i++) {
+    char = str.charCodeAt(i);
+    hash = ((hash<<5)-hash)+char;
+    hash = hash & hash;
+  }
+  return hash;
 };
 
 _.formatDate = function(d) {
@@ -1565,41 +1588,45 @@ sd.sendState.getSendCall = function(data, callback) {
   // 加cache防止缓存
   data._nocache = (String(Math.random()) + String(Math.random()) + String(Math.random())).replace(/\./g,'').slice(0,15);
   data = JSON.stringify(data);
-
+  logger.info(data);
   // 打通app传数据给app
   if(sd.para.use_app_track){
     if((typeof SensorsData_APP_JS_Bridge === 'object') && SensorsData_APP_JS_Bridge.sensorsdata_track){
       SensorsData_APP_JS_Bridge.sensorsdata_track(data);
-      logger.info('app数据',data);
-    }else if(/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream){
+      (typeof callback === 'function') && callback();      
+    }else if(/sa-sdk-ios/.test(navigator.userAgent) && !window.MSStream){
       var iframe = document.createElement('iframe');
       iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(data));
       document.documentElement.appendChild(iframe);
       iframe.parentNode.removeChild(iframe);
       iframe = null;
+      (typeof callback === 'function') && callback();      
+    }else{
+      this.prepareServerUrl(data,callback);      
     }
-    (typeof callback === 'function') && callback();
-    return false;
+  }else{
+    this.prepareServerUrl(data,callback);
   }
-  logger.info(data);
-  this.prepareServerUrl(data,callback);
+};
+
+sd.sendState.getUrlPara = function(url,data){
+  var base64Data = _.base64Encode(data);
+  var crc = 'crc=' + _.hashCode(base64Data);
+  if (url.indexOf('?') !== -1) {
+    return url + '&data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
+  }else{
+    return url + '?data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
+  }
+
 };
 
 sd.sendState.prepareServerUrl = function(data,callback){
   if(_.isArray(sd.para.server_url)){
     for(var i =0; i<sd.para.server_url.length;i++){
-      if (sd.para.server_url[i].indexOf('?') !== -1) {
-        this.sendCall(sd.para.server_url[i] + '&data=' + encodeURIComponent(_.base64Encode(data)),callback);
-      } else {
-        this.senCall(sd.para.server_url[i] + '?data=' + encodeURIComponent(_.base64Encode(data)),callback);
-      }              
+      this.sendCall(this.getUrlPara(sd.para.server_url[i],data),callback);
     }
   }else{
-    if (sd.para.server_url.indexOf('?') !== -1) {
-      this.sendCall(sd.para.server_url + '&data=' + encodeURIComponent(_.base64Encode(data)),callback);
-    } else {
-      this.sendCall(sd.para.server_url + '?data=' + encodeURIComponent(_.base64Encode(data)),callback);
-    }
+    this.sendCall(this.getUrlPara(sd.para.server_url,data),callback);
   }
 };
 
@@ -2689,7 +2716,7 @@ var heatmap_render = {
   setRefresh: function(){
     var me = this;
     var div = document.createElement('div');
-    div.setAttribute('style','border-radius:3px;cursor:pointer;z-index:99999;padding:8px 10px;background:#3790e9;color:#fff;position: fixed;left:10px;bottom:10px;');
+    div.setAttribute('style','border-radius:3px;font-size:14px;cursor:pointer;z-index:99999;padding:8px 10px;background:#3790e9;color:#fff;position: fixed;left:10px;bottom:10px;');
     div.innerHTML = '<svg width="15px" height="13px" viewBox="0 0 15 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-145.000000, -1953.000000)" fill="#FFFFFF"><g transform="translate(132.000000, 1941.000000)"><path d="M27.8813854,14.6046259 L25.720853,15.6691713 C24.4905498,13.2443736 21.804888,11.6623409 18.7741412,12.0615454 C15.7734018,12.4607499 13.3728103,14.900333 13.042729,17.8574034 C12.592618,21.8494485 15.7583981,25.2352941 19.7193742,25.2352941 C22.5700766,25.2352941 24.9706681,23.4906226 25.9459084,21.0214688 L24.2804981,20.4744107 L24.2654944,20.4744107 C23.3952799,22.5295747 21.1297217,23.8602564 18.639108,23.342769 C16.7936532,22.9583499 15.2932835,21.4798147 14.9031874,19.646431 C14.2430247,16.5119364 16.6436163,13.7470755 19.7193742,13.7470755 C21.6548511,13.7470755 23.3052578,14.8411916 24.1154574,16.4380096 L21.8649028,17.5616964 C21.804888,17.5912671 21.804888,17.6947645 21.8799065,17.7095499 L26.3960193,19.1732998 C26.4410304,19.1880851 26.4860415,19.1585144 26.5010452,19.1141583 L27.9864112,14.6637674 C28.0314223,14.6341967 27.9564038,14.5750552 27.8813854,14.6046259 L27.8813854,14.6046259 Z" id="refresh"></path></g></g></g></svg> <span title="当页面有内容更切换时候，点击刷新数据，重新计算">刷新点击图数据</span>';
     document.body.appendChild(div);
     _.addEvent(div,'click',function(){
@@ -3445,15 +3472,9 @@ var heatmap = {
 
     sd.init();
   
-
-  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
-//    this[sd.para.name] = sd;
-    define(function() {
-      return sd;
-    });
-  }
-
-
+  
+  return sd;
+  
 }catch(err){
   if (typeof console === 'object' && console.log) {
     try {console.log(err)} catch (e) {};
@@ -3473,4 +3494,7 @@ var heatmap = {
   })();
 */
 }
-})();
+
+
+
+});

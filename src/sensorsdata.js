@@ -2,7 +2,19 @@
  * @fileoverview sensors analytic javascript sdk
  * @author shengyonggen@sensorsdata.cn
  */
-(function() {
+
+;(function(root,factory) {
+
+  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
+    define(factory);
+  } else if (typeof exports === 'object' && typeof module === 'object') {
+    module.exports = factory();
+  }else{
+    factory();
+  }
+
+})(this,function(){
+
 try{
   var sd = window['sensorsDataAnalytic201505'],has_declare;
   if(sd){
@@ -118,15 +130,9 @@ sd.initPara = function(para){
 @@if (sensorsdata_mode !== 'vtrack') {
     sd.init();
   }
-
-  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
-//    this[sd.para.name] = sd;
-    define(function() {
-      return sd;
-    });
-  }
-
-
+  
+  return sd;
+  
 }catch(err){
   if (typeof console === 'object' && console.log) {
     try {console.log(err)} catch (e) {};
@@ -146,4 +152,7 @@ sd.initPara = function(para){
   })();
 */
 }
-})();
+
+
+
+});

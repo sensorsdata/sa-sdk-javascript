@@ -1,0 +1,24 @@
+{
+  "name": "sa-sdk-javascript",
+  "version": "1.7.20",
+  "description": "official sensorsdata javascript sdk",
+  "main": "sensorsdata.min.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sensorsdata/sa-sdk-javascript.git"
+  },
+  "keywords": [
+    "sensorsdata",
+    "javascript",
+    "sdk"
+  ],
+  "author": "shengyonggen",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/sensorsdata/sa-sdk-javascript/issues"
+  },
+  "homepage": "https://github.com/sensorsdata/sa-sdk-javascript#readme"
+}
