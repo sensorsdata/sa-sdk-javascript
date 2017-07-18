@@ -1,0 +1,22 @@
+{
+  "name": "sa-sdk-javascript",
+  "description": "official sensorsdata javascript sdk",
+  "main": "sensorsdata.min.js",
+  "authors": [
+    "shengyonggen"
+  ],
+  "license": "Apache-2.0",
+  "keywords": [
+    "sensorsdata",
+    "javascript",
+    "sdk"
+  ],
+  "homepage": "https://github.com/sensorsdata/sa-sdk-javascript",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
