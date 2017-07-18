@@ -122,7 +122,7 @@ sd.initPara = function(para){
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.20';
+  , LIB_VERSION = '1.7.1.1';
 
 sd.lib_version = LIB_VERSION;
 
