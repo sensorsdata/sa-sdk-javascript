@@ -1773,6 +1773,11 @@ saEvent.send = function(p, callback) {
     properties: {}
   };
 
+  if (_.isObject(p) && _.isObject(p.properties) && !_.isEmptyObject(p.properties) && p.properties.$lib_detail) {
+    data.lib.$lib_detail = p.properties.$lib_detail;
+    delete p.properties.$lib_detail;
+  }
+
   // 测试部分数据没有distinct_id的问题
   if (typeof store.getDistinctId() !== 'string' || typeof store.getDistinctId() === '') {
     var wrong_case = '';
