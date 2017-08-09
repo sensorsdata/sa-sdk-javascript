@@ -114,7 +114,7 @@ sd.initPara = function(para){
     sd.para.noCache = '';
   }
 
-}
+};
 
   var ArrayProto = Array.prototype
   , FuncProto = Function.prototype
@@ -122,7 +122,7 @@ sd.initPara = function(para){
   , slice = ArrayProto.slice
   , toString = ObjProto.toString
   , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.7.1.3';
+  , LIB_VERSION = '1.8.1.3';
 
 sd.lib_version = LIB_VERSION;
 
@@ -353,7 +353,7 @@ _.decodeURIComponent = function(val){
     result = decodeURIComponent(val);
   }catch(e){
     result = val;
-  };
+  }
   return result;
 };
 
@@ -407,6 +407,15 @@ _.searchObjDate = function(o) {
     });
   }
 };
+
+_.formatJsonString = function(obj){
+  try{
+    return JSON.stringify(obj, null, '  ');
+  }catch(e){
+    return JSON.stringify(obj);
+  }
+};
+
 // 把字符串格式数据限制字符串长度
 _.formatString = function(str) {
   if (str.length > sd.para.max_string_length) {
@@ -564,8 +573,7 @@ _.base64Encode = function(data) {
 
 _.UUID = (function() {
   var T = function() {
-    var d = 1 * new Date()
-      , i = 0;
+    var d = 1 * new Date(), i = 0;
     while (d == 1 * new Date()) {
       i++;
     }
@@ -687,7 +695,7 @@ _.urlParse = function(para) {
 
   };
   return new URLParser(para);
-}
+};
 
 /* ulr预置
 _.referringDomain = function(referrer) {
@@ -788,50 +796,37 @@ _.hasStandardBrowserEnviroment = function() {
 
 };
 
-_.bindReady = function(handler) {
-  var called = false
-  function ready() { 
-    if (called) {
-      return false;
+_.bindReady = function(fn,win) {
+  win = win || window;
+  var done = false, 
+  top = true,
+  doc = win.document,
+  root = doc.documentElement,
+  modern = doc.addEventListener,
+  add = modern ? 'addEventListener' : 'attachEvent',
+  rem = modern ? 'removeEventListener' : 'detachEvent',
+  pre = modern ? '' : 'on',
+  init = function(e) {
+    if (e.type == 'readystatechange' && doc.readyState != 'complete') return;
+    (e.type == 'load' ? win : doc)[rem](pre + e.type, init, false);
+    if (!done && (done = true)) fn.call(win, e.type || e);
+  },
+  poll = function() {
+    try { root.doScroll('left'); } catch(e) { setTimeout(poll, 50); return; }
+    init('poll');
+  };
+
+  if (doc.readyState == 'complete') fn.call(win, 'lazy');
+  else {
+    if (!modern && root.doScroll) {
+      try { top = !win.frameElement; } catch(e) { }
+      if (top) poll();
     }
-    called = true;
-    handler();
+    doc[add](pre + 'DOMContentLoaded', init, false);
+    doc[add](pre + 'readystatechange', init, false);
+    win[add](pre + 'load', init, false);
   }
-  if ( document.addEventListener ) {
-    document.addEventListener( "DOMContentLoaded", ready, false );
-  } else if ( document.attachEvent ) {
-    try {
-      var isFrame = window.frameElement != null
-    } catch(e) {}
-    if ( document.documentElement.doScroll && !isFrame ) {
-      function tryScroll(){
-        if (called) return
-        try {
-          document.documentElement.doScroll("left")
-          ready()
-        } catch(e) {
-          setTimeout(tryScroll, 10)
-        }
-      }
-      tryScroll()
-    }
-    document.attachEvent("onreadystatechange", function(){
-      if ( document.readyState === "complete" ) {
-        ready()
-      }
-    })
-  }
-  if (window.addEventListener){
-    window.addEventListener('load', ready, false)
-  } else if (window.attachEvent) {
-    window.attachEvent('onload', ready)
-  } else {
-    var fn = window.onload;
-    window.onload = function() {
-      fn && fn();
-      ready();
-    }
-  }
+
 };
 
 
@@ -1452,7 +1447,7 @@ _.getReferrer = function(referrer){
 };
 
 _.getKeywordFromReferrer = function(){
-  var search_keyword = {baidu:'wd',google:'q',bing:'q',yahoo:'p',sogou:'query',so:'q'}
+  var search_keyword = {baidu:'wd',google:'q',bing:'q',yahoo:'p',sogou:'query',so:'q'};
   if(document && typeof document.referrer === 'string'){
     if(document.referrer.indexOf('http') === 0) {
       var domain = _.url('domain',document.referrer);
@@ -1464,6 +1459,7 @@ _.getKeywordFromReferrer = function(){
           }
         }
       }
+      return '未取到值';
     }else{
       return '未取到值';
     }
@@ -1590,8 +1586,9 @@ sd.sendState.getSendCall = function(data, callback) {
 
   // 加cache防止缓存
   data._nocache = (String(Math.random()) + String(Math.random()) + String(Math.random())).replace(/\./g,'').slice(0,15);
+  var originData = data;
   data = JSON.stringify(data);
-  logger.info(data);
+  logger.info(_.formatJsonString(originData));
   // 打通app传数据给app
   if(sd.para.use_app_track){
     if((typeof SensorsData_APP_JS_Bridge === 'object') && SensorsData_APP_JS_Bridge.sensorsdata_track){
@@ -1633,38 +1630,50 @@ sd.sendState.prepareServerUrl = function(data,callback){
   }
 };
 
-sd.sendState.callBack = function(callback){
+sd.sendState.stateInfo = function(para){
+  this.callback = para.callback;
+  this.hasCalled = false;
+  this.img = document.createElement('img');
+  this.server_url = para.server_url;
+  this.sendState = para.sendState;
+  this.start();
+};
 
-  (typeof callback === 'function') && callback();
-
+sd.sendState.stateInfo.prototype.start = function(){
+  var me = this;
+  function callAndDelete(){
+    if(typeof me === 'object' && typeof me.callback === 'function' && !me.hasCalled){
+      me.hasCalled = true;
+      me.callback();      
+      delete me;
+    }
+  }
+  setTimeout(callAndDelete, 1000);
+  this.img.onload = function(e) {
+    this.onload = null;
+    ++me.sendState._complete;
+    callAndDelete();
+  };
+  this.img.onerror = function(e) {
+    this.onerror = null;
+    callAndDelete();
+  };
+  this.img.onabort = function(e) {
+    this.onabort = null;
+    callAndDelete();
+  };
+  this.img.src = this.server_url;
 };
 
 sd.sendState.sendCall = function(server_url,callback){
-
-
   ++this._receive;
   var state = '_state' + this._receive;
   var me = this;
-  this[state] = document.createElement('img');
-  
-  this[state].onload = function(e) {
-    me[state].onload = null;
-    delete me[state];
-    ++me._complete;
-    me.callBack(callback);
-  };
-  this[state].onerror = function(e) {
-    me[state].onerror = null;
-    delete me[state];
-    me.callBack(callback);
-  };
-  this[state].onabort = function(e) {
-    delete me[state];
-    me.callBack(callback);
-  };
-
-  this[state].src = server_url;
-
+  this[state] = new this.stateInfo({
+    callback: callback,
+    server_url: server_url,
+    sendState: this
+  });  
 };
 
 // 检查是否是新用户（第一次种cookie，且在8个小时内的）
@@ -1755,17 +1764,17 @@ var saNewUser = {
       if(!store.getProps() || !store.getProps().$latest_referrer){
         sd.register({
           $latest_referrer: '取值异常',
-          $latest_referrer_host: '取值异常'
-          //$latest_traffic_source_type: '取值异常',
-          //$latest_search_keyword: '取值异常'
+          $latest_referrer_host: '取值异常',
+          $latest_traffic_source_type: '取值异常',
+          $latest_search_keyword: '取值异常'
         });
       }
     } else {
       sd.register({
-        //$latest_traffic_source_type:_.getSourceFromReferrer(),
+        $latest_traffic_source_type:_.getSourceFromReferrer(),
         $latest_referrer: _.info.pageProp.referrer,
-        $latest_referrer_host: _.info.pageProp.referrer_host
-        //$latest_search_keyword: _.getKeywordFromReferrer()        
+        $latest_referrer_host: _.info.pageProp.referrer_host,
+        $latest_search_keyword: _.getKeywordFromReferrer()        
       });
     }
     // utm
@@ -2265,10 +2274,10 @@ saEvent.send = function(p, callback) {
             $first_visit_time: new Date(),
             $first_referrer: _.getReferrer(),
             $first_browser_language: navigator.language || '取值异常',
-            //$first_browser_charset: document.charset || '取值异常',
-            $first_referrer_host: _.info.pageProp.referrer_host
-            //$first_traffic_source_type: _.getSourceFromReferrer(),
-            //$first_search_keyword: _.getKeywordFromReferrer()
+            $first_browser_charset: document.charset || '取值异常',
+            $first_referrer_host: _.info.pageProp.referrer_host,
+            $first_traffic_source_type: _.getSourceFromReferrer(),
+            $first_search_keyword: _.getKeywordFromReferrer()
           }, $utms)
         );
       }

@@ -119,7 +119,7 @@ sd.initPara = function(para){
     sd.para.noCache = '';
   }
 
-}
+};
 
   @@include('sa-sdk-javascript/src/sdk.js')
 
