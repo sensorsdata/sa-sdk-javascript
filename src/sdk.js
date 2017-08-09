@@ -1530,7 +1530,7 @@ sd.sendState.stateInfo.prototype.start = function(){
       delete me;
     }
   }
-  setTimeout(callAndDelete, 1000);
+  setTimeout(callAndDelete, sd.para.callback_timeout);
   this.img.onload = function(e) {
     this.onload = null;
     ++me.sendState._complete;

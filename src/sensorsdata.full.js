@@ -75,7 +75,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       search: null,
       social: null
     },
-
+    callback_timeout: 1500,
     is_track_device_id: false,
 
     use_app_track: false
@@ -1648,7 +1648,7 @@ sd.sendState.stateInfo.prototype.start = function(){
       delete me;
     }
   }
-  setTimeout(callAndDelete, 1000);
+  setTimeout(callAndDelete, sd.para.callback_timeout);
   this.img.onload = function(e) {
     this.onload = null;
     ++me.sendState._complete;

@@ -80,7 +80,7 @@ try{
       search: null,
       social: null
     },
-
+    callback_timeout: 1500,
     is_track_device_id: false,
 
     use_app_track: false
