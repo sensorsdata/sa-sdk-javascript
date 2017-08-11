@@ -894,11 +894,14 @@ _.getEleInfo = function(obj){
     }
     props.$element_content = textContent || '';
   }
-  // 针对inut只采集button和submit非名感的词汇
-  if(tagName === 'input' && (target.type === 'button' || target.type === 'submit')){
-    props.$element_content = target.value || '';
+  // 针对inut默认只采集button和submit非名感的词汇。可以自定义（银联提）
+  if(tagName === 'input'){
+    if(target.type === 'button' || target.type === 'submit'){
+      props.$element_content = target.value || '';
+    } else if (sd.para.heatmap && (typeof sd.para.heatmap.collect_input === 'function') && sd.para.heatmap.collect_input(target)){
+      props.$element_content = target.value || '';
+    }
   }
-
 
   props = _.strip_empty_properties(props);
 
