@@ -371,7 +371,7 @@ _.encodeDates = function(obj) {
 _.hashCode = function(str){
   var hash = 0;
   if (str.length == 0) return hash;
-  for (i = 0; i < str.length; i++) {
+  for (var i = 0; i < str.length; i++) {
     char = str.charCodeAt(i);
     hash = ((hash<<5)-hash)+char;
     hash = hash & hash;
@@ -866,6 +866,7 @@ _.addEvent = function() {
         if (event) {
             event.preventDefault = fixEvent.preventDefault;
             event.stopPropagation = fixEvent.stopPropagation;
+            //event.path = fixEvent.path;
         }
         return event;
     }
@@ -876,6 +877,27 @@ _.addEvent = function() {
     fixEvent.stopPropagation = function() {
         this.cancelBubble = true;
     };
+    fixEvent.path1 = function() {
+      try{
+        var polyfill = function () {
+          var element = this.target;
+          var pathArr = [element];
+          if (element === null || element.parentElement === null) {
+            return [];
+          }
+          while (element.parentElement !== null) {
+            element = element.parentElement;
+            pathArr.unshift(element);
+          }
+          return pathArr;
+        };
+        return this.path || (this.composedPath && this.composedPath()) || polyfill();
+      }catch(e){
+        return [];
+      }
+    };
+
+
     register_event.apply(null,arguments);
 };
 
