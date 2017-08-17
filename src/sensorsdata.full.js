@@ -116,13 +116,13 @@ sd.initPara = function(para){
 
 };
 
-  var ArrayProto = Array.prototype
-  , FuncProto = Function.prototype
-  , ObjProto = Object.prototype
-  , slice = ArrayProto.slice
-  , toString = ObjProto.toString
-  , hasOwnProperty = ObjProto.hasOwnProperty
-  , LIB_VERSION = '1.8.1.4';
+  var ArrayProto = Array.prototype;
+var FuncProto = Function.prototype;
+var ObjProto = Object.prototype;
+var slice = ArrayProto.slice;
+var toString = ObjProto.toString;
+var hasOwnProperty = ObjProto.hasOwnProperty;
+var LIB_VERSION = '1.8.1.5';
 
 sd.lib_version = LIB_VERSION;
 
@@ -475,7 +475,7 @@ _.strip_sa_properties = function(p) {
         if (_.isString(arrv)) {
           temp.push(arrv);
         } else {
-          logger.info('您的数据-', v, '的数组里的值必须是字符串,已经将其删除');
+          logger.info('您的数据-',k, v, '的数组里的值必须是字符串,已经将其删除');
         }
       });
       if (temp.length !== 0) {
@@ -487,7 +487,7 @@ _.strip_sa_properties = function(p) {
     }
     // 只能是字符串，数字，日期,布尔，数组
     if (!(_.isString(v) || _.isNumber(v) || _.isDate(v) || _.isBoolean(v) || _.isArray(v))) {
-      logger.info('您的数据-', v, '-格式不满足要求，我们已经将其删除');
+      logger.info('您的数据-',k, v, '-格式不满足要求，我们已经将其删除');
       delete p[k];
     }
   });
@@ -1792,7 +1792,7 @@ var saNewUser = {
     // 判断最近一次，如果前向地址跟自己域名一致，且cookie中取不到值，认为有异常
     // 最近一次站外前向地址，如果域名不一致，就register为latest
     if(url_domain === referrer_domain){
-      if(!store.getProps() || !store.getProps().$latest_referrer){
+      if(!store.getProps() || !('$latest_referrer' in store.getProps())){
         sd.register({
           $latest_referrer: '取值异常',
           $latest_referrer_host: '取值异常',
@@ -2283,8 +2283,24 @@ saEvent.send = function(p, callback) {
         }
       }
     },
-    autoTrackWithoutProfile:function(para){
-      this.autoTrack(_.extend(para,{not_set_profile:true}));
+    autoTrackSinglePage:function(para,callback){
+      var url = _.info.pageProp.url;
+      function closure(){
+        sd.track('$pageview', _.extend({
+            $referrer: url,
+            $referrer_host: _.url('hostname',url) || '',
+            $url: location.href,
+            $url_path: location.pathname,
+            $title: document.title
+          }, para),callback
+        );
+        url = location.href;
+      }
+      closure();
+      this.autoTrackSinglePage = closure;
+    },
+    autoTrackWithoutProfile:function(para,callback){
+      this.autoTrack(_.extend(para,{not_set_profile:true}),callback);
     },
     autoTrack: function(para, callback) {
       para = _.isObject(para) ? para : {};
@@ -3362,6 +3378,10 @@ var heatmap = {
     }
   },
   start : function(ev, target, tagName) {
+    if(sd.para.heatmap && sd.para.heatmap.collect_element && !sd.para.heatmap.collect_element(target)){
+      return false;
+    }
+
     var selector = this.getDomSelector(target);
     var prop = _.getEleInfo({target:target});
 
