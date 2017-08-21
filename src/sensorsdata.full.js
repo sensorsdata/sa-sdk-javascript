@@ -122,7 +122,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.8.1.5';
+var LIB_VERSION = '1.8.7';
 
 sd.lib_version = LIB_VERSION;
 
@@ -460,7 +460,6 @@ _.unique = function(ar) {
   }
   return n;
 };
-
 
 // 只能是sensors满足的数据格式
 _.strip_sa_properties = function(p) {
@@ -837,9 +836,50 @@ _.bindReady = function(fn,win) {
 
 
 _.addEvent = function() {
+
+    function fixEvent(event) {
+        if (event) {
+            event.preventDefault = fixEvent.preventDefault;
+            event.stopPropagation = fixEvent.stopPropagation;
+            event._getPath = fixEvent._getPath;
+        }
+        return event;
+    }
+    fixEvent._getPath = function(){
+      var ev = this;
+      var polyfill = function () {
+        try{
+          var element = ev.target;
+          var pathArr = [element];
+          if (element === null || element.parentElement === null) {
+              return [];
+          }
+          while (element.parentElement !== null) {
+              element = element.parentElement;
+              pathArr.unshift(element); 
+          }
+          return pathArr;
+        }catch(err){
+          return [];
+        }
+
+      };
+      return this.path || (this.composedPath && this.composedPath()) || polyfill();
+    };
+    fixEvent.preventDefault = function() {
+        this.returnValue = false;
+    };
+    fixEvent.stopPropagation = function() {
+        this.cancelBubble = true;
+    };
+
+
     var register_event = function(element, type, handler) {
         if (element && element.addEventListener) {
-            element.addEventListener(type, handler, false);
+            element.addEventListener(type, function(e){
+              e._getPath = fixEvent._getPath;
+              handler.call(this,e);
+            }, false);
         } else {
             var ontype = 'on' + type;
             var old_handler = element[ontype];
@@ -856,7 +896,7 @@ _.addEvent = function() {
 
             var ret = true;
             var old_result, new_result;
-            if (_.isFunction(old_handlers)) {
+            if (typeof old_handlers === 'function') {
                 old_result = old_handlers(event);
             }
             new_result = new_handler.call(element, event);
@@ -868,44 +908,9 @@ _.addEvent = function() {
         return handler;
     }
 
-    function fixEvent(event) {
-        if (event) {
-            event.preventDefault = fixEvent.preventDefault;
-            event.stopPropagation = fixEvent.stopPropagation;
-            //event.path = fixEvent.path;
-        }
-        return event;
-    }
-
-    fixEvent.preventDefault = function() {
-        this.returnValue = false;
-    };
-    fixEvent.stopPropagation = function() {
-        this.cancelBubble = true;
-    };
-    fixEvent.path1 = function() {
-      try{
-        var polyfill = function () {
-          var element = this.target;
-          var pathArr = [element];
-          if (element === null || element.parentElement === null) {
-            return [];
-          }
-          while (element.parentElement !== null) {
-            element = element.parentElement;
-            pathArr.unshift(element);
-          }
-          return pathArr;
-        };
-        return this.path || (this.composedPath && this.composedPath()) || polyfill();
-      }catch(e){
-        return [];
-      }
-    };
-
-
     register_event.apply(null,arguments);
 };
+
 
 _.addHashEvent = function(callback){
   var hashEvent = ('pushState' in window.history ? 'popstate' : 'hashchange');
@@ -2284,6 +2289,19 @@ saEvent.send = function(p, callback) {
       }
     },
     autoTrackSinglePage:function(para,callback){
+      function getUtm(){
+        var utms = _.info.campaignParams();
+        var $utms = {};
+        for (var i in utms) {
+          if ((' ' + source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {
+            $utms['$' + i] = utms[i];
+          } else {
+            $utms[i] = utms[i];
+          }
+        }
+        return $utms;
+      }
+
       var url = _.info.pageProp.url;
       function closure(){
         sd.track('$pageview', _.extend({
@@ -2292,7 +2310,7 @@ saEvent.send = function(p, callback) {
             $url: location.href,
             $url_path: location.pathname,
             $title: document.title
-          }, para),callback
+          }, para, getUtm()),callback
         );
         url = location.href;
       }
@@ -3449,6 +3467,17 @@ var heatmap = {
       }
     }
   },
+  hasElement:function(e){
+    var path = e._getPath();
+    if(_.isArray(path) && (path.length > 0) ){
+      for(var i = 0;i<path.length;i++){
+        if(path[i].tagName.toLowerCase() === 'a'){
+          return path[i];
+        }
+      }
+    }
+    return false;
+  },
   init : function() {
     var that = this;
     if (!_.isObject(sd.para.heatmap)) {
@@ -3495,14 +3524,19 @@ var heatmap = {
         }
         if(!target || !target.parentNode || !target.parentNode.children){
           return false;
-        }        
-        var parent_ele = target.parentNode.tagName.toLowerCase();     
-        if (tagName === 'button' || tagName === 'a' || parent_ele === 'a' || parent_ele === 'button' || tagName === 'input' || tagName === 'textarea') {
-          if(parent_ele === 'a' || parent_ele === 'button'){
-            that.start(ev, target.parentNode, target.parentNode.tagName.toLowerCase());
-          }else{
-            that.start(ev, target, tagName);
-          }         
+        }
+
+        parent_ele = target.parentNode;
+
+        if(tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea'){
+          that.start(ev, target, tagName);
+        }else if(parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a'){
+          that.start(ev, parent_ele, target.parentNode.tagName.toLowerCase());            
+        }else{
+          var hasA = that.hasElement(e);
+          if(hasA){
+            that.start(ev, hasA, hasA.tagName.toLowerCase());            
+          }
         }
       });
     }
