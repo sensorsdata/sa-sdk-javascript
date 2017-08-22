@@ -3359,7 +3359,7 @@ var heatmap = {
     var path = e._getPath();
     if(_.isArray(path) && (path.length > 0) ){
       for(var i = 0;i<path.length;i++){
-        if(path[i].tagName.toLowerCase() === 'a'){
+        if(path[i] && path[i].tagName && (path[i].tagName.toLowerCase() === 'a')){
           return path[i];
         }
       }
