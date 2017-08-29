@@ -1511,7 +1511,11 @@ _.getKeywordFromReferrer = function(){
       }
       return '未取到值';
     }else{
-      return '未取到值(非http的url)';
+      if(document.referrer === ''){
+        return '未取到值(直接打开)';
+      }else{
+        return '未取到值(非http的url)';
+      }
     }
   }else{
     return '取值异常(referrer异常)(' + String(document.referrer) + ')';
