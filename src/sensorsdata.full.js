@@ -51,6 +51,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     //    send_error_event: true,
     cross_subdomain: true,
     show_log: true,
+    is_debug: false,
     debug_mode: false,
     debug_mode_upload: false,
 
@@ -122,7 +123,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.8.7';
+var LIB_VERSION = '1.8.8';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1177,7 +1178,7 @@ _.ajax = function(para) {
 _.url = (function() {
 
     function _t() {
-        return new RegExp(/(.*?)\.?([^\.]*?)\.?(com|net|org|biz|ws|in|me|co\.uk|co|org\.uk|ltd\.uk|plc\.uk|me\.uk|edu|mil|br\.com|cn\.com|eu\.com|hu\.com|no\.com|qc\.com|sa\.com|se\.com|se\.net|us\.com|uy\.com|ac|co\.ac|gv\.ac|or\.ac|ac\.ac|af|am|as|at|ac\.at|co\.at|gv\.at|or\.at|asn\.au|com\.au|edu\.au|org\.au|net\.au|id\.au|be|ac\.be|adm\.br|adv\.br|am\.br|arq\.br|art\.br|bio\.br|cng\.br|cnt\.br|com\.br|ecn\.br|eng\.br|esp\.br|etc\.br|eti\.br|fm\.br|fot\.br|fst\.br|g12\.br|gov\.br|ind\.br|inf\.br|jor\.br|lel\.br|med\.br|mil\.br|net\.br|nom\.br|ntr\.br|odo\.br|org\.br|ppg\.br|pro\.br|psc\.br|psi\.br|rec\.br|slg\.br|tmp\.br|tur\.br|tv\.br|vet\.br|zlg\.br|br|ab\.ca|bc\.ca|mb\.ca|nb\.ca|nf\.ca|ns\.ca|nt\.ca|on\.ca|pe\.ca|qc\.ca|sk\.ca|yk\.ca|ca|cc|ac\.cn|com\.cn|edu\.cn|gov\.cn|org\.cn|bj\.cn|sh\.cn|tj\.cn|cq\.cn|he\.cn|nm\.cn|ln\.cn|jl\.cn|hl\.cn|js\.cn|zj\.cn|ah\.cn|gd\.cn|gx\.cn|hi\.cn|sc\.cn|gz\.cn|yn\.cn|xz\.cn|sn\.cn|gs\.cn|qh\.cn|nx\.cn|xj\.cn|tw\.cn|hk\.cn|mo\.cn|cn|cx|cz|de|dk|fo|com\.ec|tm\.fr|com\.fr|asso\.fr|presse\.fr|fr|gf|gs|co\.il|net\.il|ac\.il|k12\.il|gov\.il|muni\.il|ac\.in|co\.in|org\.in|ernet\.in|gov\.in|net\.in|res\.in|is|it|ac\.jp|co\.jp|go\.jp|or\.jp|ne\.jp|ac\.kr|co\.kr|go\.kr|ne\.kr|nm\.kr|or\.kr|li|lt|lu|asso\.mc|tm\.mc|com\.mm|org\.mm|net\.mm|edu\.mm|gov\.mm|ms|nl|no|nu|pl|ro|org\.ro|store\.ro|tm\.ro|firm\.ro|www\.ro|arts\.ro|rec\.ro|info\.ro|nom\.ro|nt\.ro|se|si|com\.sg|org\.sg|net\.sg|gov\.sg|sk|st|tf|ac\.th|co\.th|go\.th|mi\.th|net\.th|or\.th|tm|to|com\.tr|edu\.tr|gov\.tr|k12\.tr|net\.tr|org\.tr|com\.tw|org\.tw|net\.tw|ac\.uk|uk\.com|uk\.net|gb\.com|gb\.net|vg|sh|kz|ch|info|ua|gov|name|pro|ie|hk|com\.hk|org\.hk|net\.hk|edu\.hk|us|tk|cd|by|ad|lv|eu\.lv|bz|es|jp|cl|ag|mobi|eu|co\.nz|org\.nz|net\.nz|maori\.nz|iwi\.nz|io|la|md|sc|sg|vc|tw|travel|my|se|tv|pt|com\.pt|edu\.pt|asia|fi|com\.ve|net\.ve|fi|org\.ve|web\.ve|info\.ve|co\.ve|tel|im|gr|ru|net\.ru|org\.ru|hr|com\.hr|ly|xyz)$/);
+      return new RegExp(/(.*?)\.?([^\.]*?)\.(com|net|org|biz|ws|in|me|co\.uk|co|org\.uk|ltd\.uk|plc\.uk|me\.uk|edu|mil|br\.com|cn\.com|eu\.com|hu\.com|no\.com|qc\.com|sa\.com|se\.com|se\.net|us\.com|uy\.com|ac|co\.ac|gv\.ac|or\.ac|ac\.ac|af|am|as|at|ac\.at|co\.at|gv\.at|or\.at|asn\.au|com\.au|edu\.au|org\.au|net\.au|id\.au|be|ac\.be|adm\.br|adv\.br|am\.br|arq\.br|art\.br|bio\.br|cng\.br|cnt\.br|com\.br|ecn\.br|eng\.br|esp\.br|etc\.br|eti\.br|fm\.br|fot\.br|fst\.br|g12\.br|gov\.br|ind\.br|inf\.br|jor\.br|lel\.br|med\.br|mil\.br|net\.br|nom\.br|ntr\.br|odo\.br|org\.br|ppg\.br|pro\.br|psc\.br|psi\.br|rec\.br|slg\.br|tmp\.br|tur\.br|tv\.br|vet\.br|zlg\.br|br|ab\.ca|bc\.ca|mb\.ca|nb\.ca|nf\.ca|ns\.ca|nt\.ca|on\.ca|pe\.ca|qc\.ca|sk\.ca|yk\.ca|ca|cc|ac\.cn|com\.cn|edu\.cn|gov\.cn|org\.cn|bj\.cn|sh\.cn|tj\.cn|cq\.cn|he\.cn|nm\.cn|ln\.cn|jl\.cn|hl\.cn|js\.cn|zj\.cn|ah\.cn|gd\.cn|gx\.cn|hi\.cn|sc\.cn|gz\.cn|yn\.cn|xz\.cn|sn\.cn|gs\.cn|qh\.cn|nx\.cn|xj\.cn|tw\.cn|hk\.cn|mo\.cn|cn|cx|cz|de|dk|fo|com\.ec|tm\.fr|com\.fr|asso\.fr|presse\.fr|fr|gf|gs|co\.il|net\.il|ac\.il|k12\.il|gov\.il|muni\.il|ac\.in|co\.in|org\.in|ernet\.in|gov\.in|net\.in|res\.in|is|it|ac\.jp|co\.jp|go\.jp|or\.jp|ne\.jp|ac\.kr|co\.kr|go\.kr|ne\.kr|nm\.kr|or\.kr|li|lt|lu|asso\.mc|tm\.mc|com\.mm|org\.mm|net\.mm|edu\.mm|gov\.mm|ms|nl|no|nu|pl|ro|org\.ro|store\.ro|tm\.ro|firm\.ro|www\.ro|arts\.ro|rec\.ro|info\.ro|nom\.ro|nt\.ro|se|si|com\.sg|org\.sg|net\.sg|gov\.sg|sk|st|tf|ac\.th|co\.th|go\.th|mi\.th|net\.th|or\.th|tm|to|com\.tr|edu\.tr|gov\.tr|k12\.tr|net\.tr|org\.tr|com\.tw|org\.tw|net\.tw|ac\.uk|uk\.com|uk\.net|gb\.com|gb\.net|vg|sh|kz|ch|info|ua|gov|name|pro|ie|hk|com\.hk|org\.hk|net\.hk|edu\.hk|us|tk|cd|by|ad|lv|eu\.lv|bz|es|jp|cl|ag|mobi|eu|co\.nz|org\.nz|net\.nz|maori\.nz|iwi\.nz|io|la|md|sc|sg|vc|tw|travel|my|se|tv|pt|com\.pt|edu\.pt|asia|fi|com\.ve|net\.ve|fi|org\.ve|web\.ve|info\.ve|co\.ve|tel|im|gr|ru|net\.ru|org\.ru|hr|com\.hr|ly|xyz)$/);
     }
 
     function _d(s) {
@@ -1457,6 +1458,19 @@ _.ry.init.prototype = {
   }
 };
 
+_.jssdkDebug = function(recevie_prop,has_prop){
+  if (sd.para.is_debug) {
+    var cookie = store.getCookieName();
+    var match = document.cookie.match(new RegExp(cookie + '[^;]+'));
+    if(match && match[0] ){
+      cookie = match[0];
+    }else{
+      cookie = '';
+    }
+    recevie_prop._jssdk_debug_info = '(' + cookie + ')' + navigator.userAgent;
+  }
+};
+
 _.querySelectorAll = function(val){
   if(typeof val !== 'string'){
     logger.info('错误',val);
@@ -1473,7 +1487,7 @@ _.querySelectorAll = function(val){
 _.getReferrer = function(referrer){
   var referrer = referrer || document.referrer;
   if(typeof referrer !== 'string'){
-    return '取值异常';
+    return '取值异常(referrer异常)(' + String(referrer) + ')';
   }
   if (referrer.indexOf("https://www.baidu.com/") === 0) {
     referrer =  referrer.split('?')[0];
@@ -1497,10 +1511,10 @@ _.getKeywordFromReferrer = function(){
       }
       return '未取到值';
     }else{
-      return '未取到值';
+      return '未取到值(非http的url)';
     }
   }else{
-    return '取值异常';
+    return '取值异常(referrer异常)(' + String(document.referrer) + ')';
   }
 };
 
@@ -1796,16 +1810,7 @@ var saNewUser = {
     var referrer_domain = _.info.pageProp.referrer_domain;
     // 判断最近一次，如果前向地址跟自己域名一致，且cookie中取不到值，认为有异常
     // 最近一次站外前向地址，如果域名不一致，就register为latest
-    if(url_domain === referrer_domain){
-      if(!store.getProps() || !('$latest_referrer' in store.getProps())){
-        sd.register({
-          $latest_referrer: '取值异常',
-          $latest_referrer_host: '取值异常',
-          $latest_traffic_source_type: '取值异常',
-          $latest_search_keyword: '取值异常'
-        });
-      }
-    } else {
+    if(url_domain !== referrer_domain){
       sd.register({
         $latest_traffic_source_type:_.getSourceFromReferrer(),
         $latest_referrer: _.info.pageProp.referrer,
@@ -1982,7 +1987,24 @@ saEvent.send = function(p, callback) {
   if (!p.type || p.type.slice(0, 7) !== 'profile') {
     // 传入的属性 > 当前页面的属性 > session的属性 > cookie的属性 > 预定义属性
     data.properties = _.extend({}, _.info.properties(), store.getProps(), store.getSessionProps(), _.info.currentProps, data.properties);
+    if(!_.isString(data.properties.$latest_referrer)){
+      data.properties.$latest_referrer = '取值异常';
+      _.jssdk_debug(data.properties,store.getProps());
+    }
+    if(!_.isString(data.properties.$latest_referrer_host)){
+      data.properties.$latest_referrer_host = '取值异常';
+    }
+    if(!_.isString(data.properties.$latest_search_keyword)){
+      data.properties.$latest_search_keyword = '取值异常';
+    }
+    if(!_.isString(data.properties.$latest_traffic_source_type)){
+      data.properties.$latest_traffic_source_type = '取值异常';
+    }
+
   }
+
+
+
   // 如果$time是传入的就用，否则使用服务端时间
   if (data.properties.$time && _.isDate(data.properties.$time)) {
     data.time = data.properties.$time * 1;
@@ -2035,7 +2057,7 @@ saEvent.send = function(p, callback) {
       _sessionState: {},
       _state: {},
       getProps: function() {
-        return this._state.props;
+        return this._state.props || {};
       },
       getSessionProps: function() {
         return this._sessionState;
@@ -2193,6 +2215,9 @@ saEvent.send = function(p, callback) {
 
 
   var commonWays = {
+    isReady:function(callback){
+      callback();
+    },
     // 获取谷歌标准参数
     getUtm: function() {
       return _.info.campaignParams();
@@ -2374,7 +2399,7 @@ saEvent.send = function(p, callback) {
           $url: location.href,
           $url_path: location.pathname,
           $title: document.title
-        }, $utms,para),callback
+        },$utms,para),callback
       );
 
     }
@@ -2435,6 +2460,7 @@ saEvent.send = function(p, callback) {
       return false;
     }
     function linkFunc(e){
+      e.stopPropagation();      
       e.preventDefault();   // 阻止默认跳转
       var hasCalled = false;
       function track_a_click(){
@@ -2457,7 +2483,11 @@ saEvent.send = function(p, callback) {
   };
 
   sd.trackLink = function(link,event_name,event_prop){
-    _.trackLink({ele:link},event_name,event_prop);
+    if(typeof link === 'object' && link.tagName){
+      _.trackLink({ele:link},event_name,event_prop);
+    }else if(typeof link === 'object' && link.target && link.event){
+      _.trackLink(link,event_name,event_prop);
+    }
   };
     // 跟踪链接
   sd.trackLinks = function(link,event_name,event_prop){

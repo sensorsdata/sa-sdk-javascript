@@ -56,6 +56,7 @@ try{
     //    send_error_event: true,
     cross_subdomain: true,
     show_log: true,
+    is_debug: false,
     debug_mode: false,
     debug_mode_upload: false,
 
