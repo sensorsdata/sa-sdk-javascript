@@ -43,6 +43,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
 
   sd.para_default = {
+    //scrollmap:{delay:6000}
+
     name: 'sa',
     // referrer字符串截取
     max_referrer_string_length: 200,
@@ -123,7 +125,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.8.8';
+var LIB_VERSION = '1.8.9';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1562,6 +1564,7 @@ _.info = {
     var url = location.href;
     var url_host = url ? _.url('hostname',url) : url;
     var url_domain = url ? _.url('domain',url) : url;
+
     this.pageProp = {
       referrer: referrer,
       referrer_host: referrer_host,
@@ -1993,7 +1996,7 @@ saEvent.send = function(p, callback) {
     data.properties = _.extend({}, _.info.properties(), store.getProps(), store.getSessionProps(), _.info.currentProps, data.properties);
     if(!_.isString(data.properties.$latest_referrer)){
       data.properties.$latest_referrer = '取值异常';
-      _.jssdk_debug(data.properties,store.getProps());
+      _.jssdkDebug(data.properties,store.getProps());
     }
     if(!_.isString(data.properties.$latest_referrer_host)){
       data.properties.$latest_referrer_host = '取值异常';

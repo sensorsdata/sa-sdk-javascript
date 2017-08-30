@@ -48,6 +48,8 @@ try{
   }
 
   sd.para_default = {
+    //scrollmap:{delay:6000}
+
     name: 'sa',
     // referrer字符串截取
     max_referrer_string_length: 200,
