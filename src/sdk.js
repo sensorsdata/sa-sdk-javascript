@@ -1341,14 +1341,22 @@ _.ry.init.prototype = {
 
 _.jssdkDebug = function(recevie_prop,has_prop){
   if (sd.para.is_debug) {
-    var cookie = store.getCookieName();
-    var match = document.cookie.match(new RegExp(cookie + '[^;]+'));
-    if(match && match[0] ){
-      cookie = match[0];
+    if(_.isString(recevie_prop)){
+
+      sd.registerPage({_jssdk_debug_info: recevie_prop});
+
     }else{
-      cookie = '';
+
+      var cookie = store.getCookieName();
+      var match = document.cookie.match(new RegExp(cookie + '[^;]+'));
+      if(match && match[0] ){
+        cookie = match[0];
+      }else{
+        cookie = '';
+      }
+      recevie_prop._jssdk_debug_info = '(' + cookie + ')' + navigator.userAgent;
+
     }
-    recevie_prop._jssdk_debug_info = '(' + cookie + ')' + navigator.userAgent;
   }
 };
 
@@ -1444,6 +1452,13 @@ _.info = {
     var url_host = url ? _.url('hostname',url) : url;
     var url_domain = url ? _.url('domain',url) : url;
 
+    if(referrer && !referrer_domain){
+      _.jssdkDebug('referrer_domain异常(' + referrer + ')' + referrer_domain);
+    }
+    if(!url_domain){
+      _.jssdkDebug('url_domain异常('+ url + ')' + url_domain);
+    }
+
     this.pageProp = {
       referrer: referrer,
       referrer_host: referrer_host,
@@ -1452,6 +1467,8 @@ _.info = {
       url_host: url_host,
       url_domain: url_domain
     };
+
+
   },
   //当前页面的一些属性，在store初始化是生成
   pageProp: {}, 
@@ -2080,7 +2097,7 @@ saEvent.send = function(p, callback) {
         
         just_test_distinctid = 2;
         just_test_distinctid_detail = JSON.stringify(cross);
-        just_test_distinctid_detail2 = navigator.userAgent+'^_^'+document.cookie;                                           
+        just_test_distinctid_detail2 = JSON.stringify(document.cookie.match(/2015[^;]+/g));                                          
 
         if (!_.isJSONString(cross) || !(JSON.parse(cross)).distinct_id){
           is_first_visitor = true;

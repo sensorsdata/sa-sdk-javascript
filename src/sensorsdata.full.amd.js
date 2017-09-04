@@ -7,6 +7,9 @@
 
   if (typeof exports === 'object' && typeof module === 'object') {
     module.exports = factory();
+  } 
+  else if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
+    define(factory);
   } else{
     factory();
   }

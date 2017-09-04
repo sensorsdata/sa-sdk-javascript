@@ -5,11 +5,12 @@
 
 ;(function(root,factory) {
 
-  if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
-    define(factory);
-  } else if (typeof exports === 'object' && typeof module === 'object') {
+  if (typeof exports === 'object' && typeof module === 'object') {
     module.exports = factory();
-  }else{
+  } @@if (sensorsdata_amd_mode === 'amd') {
+  else if (typeof define == 'function' && typeof define.amd == 'object' && define.amd) {
+    define(factory);
+  } }else{
     factory();
   }
 
