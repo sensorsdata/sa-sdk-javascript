@@ -1020,13 +1020,18 @@ _.getEleInfo = function(obj){
   props.$element_target_url = target.getAttribute('href');
 
   // 获取内容
+  
+  var textContent = '';
   if (target.textContent) {
-    var textContent = _.trim(target.textContent);
-    if (textContent) {
-      textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
-    }
-    props.$element_content = textContent || '';
+    textContent = _.trim(target.textContent);
+  }else if(target.innerText){
+    textContent = _.trim(target.innerText);
   }
+  if (textContent) {
+    textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+  }
+  props.$element_content = textContent || '';
+
   // 针对inut默认只采集button和submit非名感的词汇。可以自定义（银联提）
   if(tagName === 'input'){
     if(target.type === 'button' || target.type === 'submit'){
@@ -1045,7 +1050,6 @@ _.getEleInfo = function(obj){
   return props;
 
 };
-
 
 // _.localStorage
 _.localStorage = {
