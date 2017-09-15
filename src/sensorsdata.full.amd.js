@@ -126,7 +126,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.8.10';
+var LIB_VERSION = '1.8.11';
 
 sd.lib_version = LIB_VERSION;
 
@@ -149,6 +149,10 @@ logger.info = function() {
   if (!sd.para.show_log) {
     return false;
   }
+  if(sd.para.show_log === true || sd.para.show_log === 'string'){
+    arguments[0] = _.formatJsonString(arguments[0]);
+  }
+
   if (typeof console === 'object' && console.log) {
     try {
       return console.log.apply(console, arguments);
@@ -1451,7 +1455,10 @@ _.ry.init.prototype = {
     if (result) {
         return result;
     }
-    var rules = getMatchedCSSRules(this.ele);
+    var rules = null;
+    if(typeof window.getMatchedCSSRules === 'function'){
+      rules = getMatchedCSSRules(this.ele);
+    }
     if(!rules || !_.isArray(rules)){
       return null;
     }
@@ -1462,7 +1469,7 @@ _.ry.init.prototype = {
             return result;
         }
     }
-  }
+  } 
 };
 
 _.jssdkDebug = function(recevie_prop,has_prop){
@@ -1502,7 +1509,7 @@ _.querySelectorAll = function(val){
 _.getReferrer = function(referrer){
   var referrer = referrer || document.referrer;
   if(typeof referrer !== 'string'){
-    return '取值异常(referrer异常)(' + String(referrer) + ')';
+    return '取值异常_referrer异常_' + String(referrer);
   }
   if (referrer.indexOf("https://www.baidu.com/") === 0) {
     referrer =  referrer.split('?')[0];
@@ -1527,13 +1534,13 @@ _.getKeywordFromReferrer = function(){
       return '未取到值';
     }else{
       if(document.referrer === ''){
-        return '未取到值(直接打开)';
+        return '未取到值_直接打开';
       }else{
-        return '未取到值(非http的url)';
+        return '未取到值_非http的url';
       }
     }
   }else{
-    return '取值异常(referrer异常)(' + String(document.referrer) + ')';
+    return '取值异常_referrer异常_' + String(document.referrer);
   }
 };
 
@@ -1579,10 +1586,10 @@ _.info = {
     var url_domain = url ? _.url('domain',url) : url;
 
     if(referrer && !referrer_domain){
-      _.jssdkDebug('referrer_domain异常(' + referrer + ')' + referrer_domain);
+      _.jssdkDebug('referrer_domain异常_' + referrer + '_' + referrer_domain);
     }
     if(!url_domain){
-      _.jssdkDebug('url_domain异常('+ url + ')' + url_domain);
+      _.jssdkDebug('url_domain异常_'+ url + '_' + url_domain);
     }
 
     this.pageProp = {
@@ -1667,7 +1674,7 @@ sd.sendState.getSendCall = function(data, callback) {
   data._nocache = (String(Math.random()) + String(Math.random()) + String(Math.random())).replace(/\./g,'').slice(0,15);
   var originData = data;
   data = JSON.stringify(data);
-  logger.info(_.formatJsonString(originData));
+  logger.info(originData);
   // 打通app传数据给app
   if(sd.para.use_app_track){
     if((typeof SensorsData_APP_JS_Bridge === 'object') && SensorsData_APP_JS_Bridge.sensorsdata_track){
