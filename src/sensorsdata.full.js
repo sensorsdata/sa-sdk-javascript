@@ -104,8 +104,9 @@ sd.initPara = function(para){
   }else if (!/sa\.gif[^\/]*$/.test(sd.para.server_url)) {
     sd.para.server_url = sd.para.server_url.replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
   }
-  sd.para.debug_mode_url = sd.para.debug_mode_url || sd.para.server_url.replace('sa.gif', 'debug');
-
+  if(typeof sd.para.server_url === 'string'){
+    sd.para.debug_mode_url = sd.para.debug_mode_url || sd.para.server_url.replace('sa.gif', 'debug');
+  } 
   // 是否需要非cache，等于每次请求文件
   if (sd.para.noCache === true) {
     sd.para.noCache = '?' + (new Date()).getTime();
