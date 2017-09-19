@@ -104,9 +104,7 @@ sd.initPara = function(para){
         sd.para.server_url[i] = sd.para.server_url[i].replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
       }
     }
-  }
-
-  if (!/sa\.gif[^\/]*$/.test(sd.para.server_url)) {
+  }else if (!/sa\.gif[^\/]*$/.test(sd.para.server_url)) {
     sd.para.server_url = sd.para.server_url.replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
   }
   sd.para.debug_mode_url = sd.para.debug_mode_url || sd.para.server_url.replace('sa.gif', 'debug');
