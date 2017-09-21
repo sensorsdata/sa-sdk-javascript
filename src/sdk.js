@@ -1347,7 +1347,24 @@ _.ry.init.prototype = {
             return result;
         }
     }
-  } 
+  },
+  sibling:function(cur, dir ){
+    while ( ( cur = cur[ dir ] ) && cur.nodeType !== 1 ) {}
+    return cur;
+  },
+  next: function() {
+    return this.sibling( this.ele, "nextSibling" );
+  },
+  prev: function( elem ) {
+    return this.sibling( this.ele, "previousSibling" );
+  },
+  siblings: function( elem ) {
+    return this.siblings( ( this.ele.parentNode || {} ).firstChild, this.ele);
+  },
+  children: function( elem ) {
+    return this.siblings( this.ele.firstChild );
+  }
+
 };
 
 _.jssdkDebug = function(recevie_prop,has_prop){
@@ -3288,10 +3305,12 @@ var heatmap = {
    selector:function (el){
     //var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
     var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
-    return el.tagName.toLowerCase()
-      + (el.id ? '#' + el.id : '')
-      //+ (classname ? classname.replace(/^| +/g, '.') : '')
-      + (~i ? ':nth-child(' + (i + 1) + ')' : '');
+    if(el.id){
+      return '#' + el.id;
+    }else{
+      return el.tagName.toLowerCase()      //+ (classname ? classname.replace(/^| +/g, '.') : '')
+        + (~i ? ':nth-child(' + (i + 1) + ')' : '');
+    }
   },
   getDomSelector : function(el,arr) {
     if(!el || !el.parentNode || !el.parentNode.children){
@@ -3482,6 +3501,8 @@ var heatmap = {
           that.start(ev, target, tagName);
         }else if(parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a'){
           that.start(ev, parent_ele, target.parentNode.tagName.toLowerCase());            
+        }else if(tagName === 'area' && parent_ele.tagName.toLowerCase() === 'map' && _.ry(parent_ele).prev().tagName && _.ry(parent_ele).prev().tagName.toLowerCase() === 'img'){
+          that.start(ev, _.ry(parent_ele).prev(), _.ry(parent_ele).prev().tagName.toLowerCase());
         }else{
           var hasA = that.hasElement(e);
           if(hasA){
