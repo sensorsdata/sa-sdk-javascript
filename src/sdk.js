@@ -1448,7 +1448,7 @@ _.getSourceFromReferrer = function(){
     }
   }
 
-  var search_engine = ['www.baidu.','m.baidu.','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'];
+  var search_engine = ['www.baidu.','m.baidu.','m.sm.cn','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'];
   var social_engine = ['weibo.com','renren.com','kaixin001.com','douban.com','qzone.qq.com','zhihu.com','tieba.baidu.com','weixin.qq.com'];
 
   var referrer = document.referrer || '';
@@ -3311,6 +3311,9 @@ var heatmap_render = {
 
 var heatmap = {
   getDomIndex: function (el){
+    if(el.parentNode && 9 == el.parentNode.nodeType){
+      return -1;
+    }
     var indexof = [].indexOf;
     if (!el.parentNode) return -1;
     var list = el.parentNode.children;
@@ -3324,14 +3327,36 @@ var heatmap = {
     }
     return -1;
   },
-   selector:function (el){
+  hasSimilar:function(el){
+    if (!el.parentNode) {
+      return false;
+    }
+    if(el.parentNode && 9 == el.parentNode.nodeType){
+      return false;
+    }
+    var list = el.parentNode.children;
+    if (!list) return false;
+    var len = list.length;
+    for (var i = 0; i < len; ++i) {
+      if (typeof list[i] === 'object' && el.tagName == list[i].tagName && el !== list[i]){ 
+        return true;
+      }
+    }
+    return false;
+  },
+  selector:function (el){
     //var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
-    var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
+
     if(el.id){
       return '#' + el.id;
     }else{
-      return el.tagName.toLowerCase()      //+ (classname ? classname.replace(/^| +/g, '.') : '')
-        + (~i ? ':nth-child(' + (i + 1) + ')' : '');
+      if(this.hasSimilar(el)){
+        var i = this.getDomIndex(el);
+        return el.tagName.toLowerCase()      //+ (classname ? classname.replace(/^| +/g, '.') : '')
+          + (~i ? ':nth-child(' + (i + 1) + ')' : '');
+      }else{
+        return el.tagName.toLowerCase();
+      }
     }
   },
   getDomSelector : function(el,arr) {
@@ -3345,7 +3370,9 @@ var heatmap = {
       return arr.join(' > ');
     }
     arr.unshift(this.selector(el));
-    if (el.id) return arr.join(' > ');
+    if (el.id){ 
+      return arr.join(' > ');
+    }
     return this.getDomSelector(el.parentNode, arr);    
   },
   na : function() {
