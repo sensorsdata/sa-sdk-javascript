@@ -955,7 +955,7 @@ _.cookie = {
     //
     if (days !== 0) {
       var date = new Date();
-      // 默认是填，可以是秒
+      // 默认是天，可以是秒
       if (String(days).slice(-1) === 's') {
         date.setTime(date.getTime() + (Number(String(days).slice(0, -1)) * 1000));
       } else {
