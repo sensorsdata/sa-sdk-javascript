@@ -79,10 +79,15 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
       search: null,
       social: null
     },
-    callback_timeout: 1500,
+    callback_timeout: 1000,
     is_track_device_id: false,
 
-    use_app_track: false
+    use_app_track: false,
+
+    heatmap: {
+      clickmap:'default',
+      scroll_notice_map:'default'
+    }
 
   };
 
@@ -96,6 +101,18 @@ sd.initPara = function(para){
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
+  }
+
+  sd.para.heatmap_url = sd.para.heatmap_url || sd.para.sdk_url.replace(/[^\/]+\.min\.js/,'heatmap.min.js');
+  
+  if(_.isObject(sd.para.heatmap)) {
+    if(_.isEmptyObject(sd.para.heatmap)){
+      sd.para.heatmap = sd.para_default.heatmap;
+    }else{
+      sd.para.heatmap = _.extend(sd.para_default.heatmap,sd.para.heatmap);
+    }
+   
+    sd.para.heatmap.scroll_delay_time = sd.para.heatmap.scroll_delay_time || 4000;
   }
   // 优化配置
   if(typeof sd.para.server_url === 'object' && sd.para.server_url.length){
@@ -125,7 +142,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.8.14';
+var LIB_VERSION = '1.9.0';
 
 sd.lib_version = LIB_VERSION;
 
@@ -373,6 +390,42 @@ _.encodeDates = function(obj) {
     }
   });
   return obj;
+};
+
+_.now = Date.now || function() {
+  return new Date().getTime();
+};
+
+_.throttle = function(func, wait, options) {
+    var context, args, result;
+    var timeout = null;
+    var previous = 0;
+    if (!options) options = {};
+    var later = function() {
+      previous = options.leading === false ? 0 : _.now();
+      timeout = null;
+      result = func.apply(context, args);
+      if (!timeout) context = args = null;
+    };
+    return function() {
+      var now = _.now();
+      if (!previous && options.leading === false) previous = now;
+      var remaining = wait - (now - previous);
+      context = this;
+      args = arguments;
+      if (remaining <= 0 || remaining > wait) {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
+        previous = now;
+        result = func.apply(context, args);
+        if (!timeout) context = args = null;
+      } else if (!timeout && options.trailing !== false) {
+        timeout = setTimeout(later, remaining);
+      }
+      return result;
+    };
 };
 
 _.hashCode = function(str){
@@ -683,6 +736,38 @@ _.urlParse = function(para) {
       this._values[a] = ''
     }
   };
+  URLParser.prototype.addQueryString = function(queryObj) {
+      if(typeof queryObj !== 'object'){
+          return false;
+      }
+      var query = this._values.QueryString || '';
+      for(var i in queryObj){
+         if(new RegExp(i+'[^&]+').test(query)){         
+            query = query.replace(new RegExp(i+'[^&]+'), i + '=' + queryObj[i]);
+         }else{
+             if(query.slice(-1) === '&'){
+                 query = query + i + '=' + queryObj[i];
+             }else{
+              if(query === ''){
+                query = i + '=' + queryObj[i];
+              }else{
+                query = query + '&' + i + '=' + queryObj[i];
+              }
+             }
+         }
+      }
+      this._values.QueryString = query;
+  };  
+  URLParser.prototype.getUrl = function() {
+    var url = '';
+    url += this._values.Origin;
+    url += this._values.Port ? ':' + this._values.Port : '';
+    url += this._values.Path;
+    url += this._values.QueryString ? '?' + this._values.QueryString : '';
+    url += this._values.Fragment ? '#'+this._values.Fragment : '';    
+    return url;
+  };
+
   URLParser.prototype.getUrl = function() {
     var url = '';
     url += this._values.Origin;
@@ -1183,12 +1268,48 @@ _.ajax = function(para) {
 };
 
 
+ _.loadScript = function(para) {
+  para = _.extend({
+    success: function() {},
+    error: function() {},
+    appendCall: function(g) {
+      document.getElementsByTagName('head')[0].appendChild(g);
+    }
+  }, para);
+  
+    var g = null;
+    if (para.type === 'css') {
+      g = document.createElement('link');
+      g.rel = 'stylesheet';
+      g.href = para.url;
+    }
+    if (para.type === 'js') {
+      g = document.createElement('script');
+      g.async = 'async';
+      g.setAttribute('charset','UTF-8');
+      g.src = para.url;
+      g.type = 'text/javascript';
+    }
+    g.onload = g.onreadystatechange = function() {
+      if (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete') {
+        para.success();
+        g.onload = g.onreadystatechange = null;
+      }
+    };
+    g.onerror = function() {
+      para.error();
+      g.onerror = null;
+    };
+    // if iframe
+    para.appendCall(g);  
+};
+
 //https://github.com/websanova/js-url
 
 _.url = (function() {
 
     function _t() {
-      return new RegExp(/(.*?)\.?([^\.]*?)\.(com|net|org|biz|ws|in|me|co\.uk|co|org\.uk|ltd\.uk|plc\.uk|me\.uk|edu|mil|br\.com|cn\.com|eu\.com|hu\.com|no\.com|qc\.com|sa\.com|se\.com|se\.net|us\.com|uy\.com|ac|co\.ac|gv\.ac|or\.ac|ac\.ac|af|am|as|at|ac\.at|co\.at|gv\.at|or\.at|asn\.au|com\.au|edu\.au|org\.au|net\.au|id\.au|be|ac\.be|adm\.br|adv\.br|am\.br|arq\.br|art\.br|bio\.br|cng\.br|cnt\.br|com\.br|ecn\.br|eng\.br|esp\.br|etc\.br|eti\.br|fm\.br|fot\.br|fst\.br|g12\.br|gov\.br|ind\.br|inf\.br|jor\.br|lel\.br|med\.br|mil\.br|net\.br|nom\.br|ntr\.br|odo\.br|org\.br|ppg\.br|pro\.br|psc\.br|psi\.br|rec\.br|slg\.br|tmp\.br|tur\.br|tv\.br|vet\.br|zlg\.br|br|ab\.ca|bc\.ca|mb\.ca|nb\.ca|nf\.ca|ns\.ca|nt\.ca|on\.ca|pe\.ca|qc\.ca|sk\.ca|yk\.ca|ca|cc|ac\.cn|com\.cn|edu\.cn|gov\.cn|org\.cn|bj\.cn|sh\.cn|tj\.cn|cq\.cn|he\.cn|nm\.cn|ln\.cn|jl\.cn|hl\.cn|js\.cn|zj\.cn|ah\.cn|gd\.cn|gx\.cn|hi\.cn|sc\.cn|gz\.cn|yn\.cn|xz\.cn|sn\.cn|gs\.cn|qh\.cn|nx\.cn|xj\.cn|tw\.cn|hk\.cn|mo\.cn|cn|cx|cz|de|dk|fo|com\.ec|tm\.fr|com\.fr|asso\.fr|presse\.fr|fr|gf|gs|co\.il|net\.il|ac\.il|k12\.il|gov\.il|muni\.il|ac\.in|co\.in|org\.in|ernet\.in|gov\.in|net\.in|res\.in|is|it|ac\.jp|co\.jp|go\.jp|or\.jp|ne\.jp|ac\.kr|co\.kr|go\.kr|ne\.kr|nm\.kr|or\.kr|li|lt|lu|asso\.mc|tm\.mc|com\.mm|org\.mm|net\.mm|edu\.mm|gov\.mm|ms|nl|no|nu|pl|ro|org\.ro|store\.ro|tm\.ro|firm\.ro|www\.ro|arts\.ro|rec\.ro|info\.ro|nom\.ro|nt\.ro|se|si|com\.sg|org\.sg|net\.sg|gov\.sg|sk|st|tf|ac\.th|co\.th|go\.th|mi\.th|net\.th|or\.th|tm|to|com\.tr|edu\.tr|gov\.tr|k12\.tr|net\.tr|org\.tr|com\.tw|org\.tw|net\.tw|ac\.uk|uk\.com|uk\.net|gb\.com|gb\.net|vg|sh|kz|ch|info|ua|gov|name|pro|ie|hk|com\.hk|org\.hk|net\.hk|edu\.hk|us|tk|cd|by|ad|lv|eu\.lv|bz|es|jp|cl|ag|mobi|eu|co\.nz|org\.nz|net\.nz|maori\.nz|iwi\.nz|io|la|md|sc|sg|vc|tw|travel|my|se|tv|pt|com\.pt|edu\.pt|asia|fi|com\.ve|net\.ve|fi|org\.ve|web\.ve|info\.ve|co\.ve|tel|im|gr|ru|net\.ru|org\.ru|hr|com\.hr|ly|xyz)$/);
+      return new RegExp(/(.*?)\.?([^\.]*?)\.(com|net|org|biz|ws|in|me|co\.uk|co|org\.uk|ltd\.uk|plc\.uk|me\.uk|edu|mil|br\.com|cn\.com|eu\.com|hu\.com|no\.com|qc\.com|sa\.com|se\.com|se\.net|us\.com|uy\.com|ac|co\.ac|gv\.ac|or\.ac|ac\.ac|af|am|as|at|ac\.at|co\.at|gv\.at|or\.at|asn\.au|com\.au|edu\.au|org\.au|net\.au|id\.au|be|ac\.be|adm\.br|adv\.br|am\.br|arq\.br|art\.br|bio\.br|cng\.br|cnt\.br|com\.br|ecn\.br|eng\.br|esp\.br|etc\.br|eti\.br|fm\.br|fot\.br|fst\.br|g12\.br|gov\.br|ind\.br|inf\.br|jor\.br|lel\.br|med\.br|mil\.br|net\.br|nom\.br|ntr\.br|odo\.br|org\.br|ppg\.br|pro\.br|psc\.br|psi\.br|rec\.br|slg\.br|tmp\.br|tur\.br|tv\.br|vet\.br|zlg\.br|br|ab\.ca|bc\.ca|mb\.ca|nb\.ca|nf\.ca|ns\.ca|nt\.ca|on\.ca|pe\.ca|qc\.ca|sk\.ca|yk\.ca|ca|cc|ac\.cn|net\.cn|com\.cn|edu\.cn|gov\.cn|org\.cn|bj\.cn|sh\.cn|tj\.cn|cq\.cn|he\.cn|nm\.cn|ln\.cn|jl\.cn|hl\.cn|js\.cn|zj\.cn|ah\.cn|gd\.cn|gx\.cn|hi\.cn|sc\.cn|gz\.cn|yn\.cn|xz\.cn|sn\.cn|gs\.cn|qh\.cn|nx\.cn|xj\.cn|tw\.cn|hk\.cn|mo\.cn|cn|cx|cz|de|dk|fo|com\.ec|tm\.fr|com\.fr|asso\.fr|presse\.fr|fr|gf|gs|co\.il|net\.il|ac\.il|k12\.il|gov\.il|muni\.il|ac\.in|co\.in|org\.in|ernet\.in|gov\.in|net\.in|res\.in|is|it|ac\.jp|co\.jp|go\.jp|or\.jp|ne\.jp|ac\.kr|co\.kr|go\.kr|ne\.kr|nm\.kr|or\.kr|li|lt|lu|asso\.mc|tm\.mc|com\.mm|org\.mm|net\.mm|edu\.mm|gov\.mm|ms|nl|no|nu|pl|ro|org\.ro|store\.ro|tm\.ro|firm\.ro|www\.ro|arts\.ro|rec\.ro|info\.ro|nom\.ro|nt\.ro|se|si|com\.sg|org\.sg|net\.sg|gov\.sg|sk|st|tf|ac\.th|co\.th|go\.th|mi\.th|net\.th|or\.th|tm|to|com\.tr|edu\.tr|gov\.tr|k12\.tr|net\.tr|org\.tr|com\.tw|org\.tw|net\.tw|ac\.uk|uk\.com|uk\.net|gb\.com|gb\.net|vg|sh|kz|ch|info|ua|gov|name|pro|ie|hk|com\.hk|org\.hk|net\.hk|edu\.hk|us|tk|cd|by|ad|lv|eu\.lv|bz|es|jp|cl|ag|mobi|eu|co\.nz|org\.nz|net\.nz|maori\.nz|iwi\.nz|io|la|md|sc|sg|vc|tw|travel|my|se|tv|pt|com\.pt|edu\.pt|asia|fi|com\.ve|net\.ve|fi|org\.ve|web\.ve|info\.ve|co\.ve|tel|im|gr|ru|net\.ru|org\.ru|hr|com\.hr|ly|xyz)$/);
     }
 
     function _d(s) {
@@ -1746,8 +1867,7 @@ sd.sendState.stateInfo.prototype.start = function(){
   function callAndDelete(){
     if(typeof me === 'object' && typeof me.callback === 'function' && !me.hasCalled){
       me.hasCalled = true;
-      me.callback();      
-      delete me;
+      me.callback();
     }
   }
   setTimeout(callAndDelete, sd.para.callback_timeout);
@@ -1858,6 +1978,20 @@ var saNewUser = {
   },
   //检查是否是latest
   checkIsFirstLatest: function() {
+    //去除以前的$latest_utm_source相关
+    var latest_utms = ['$latest_utm_source','$latest_utm_medium', '$latest_utm_campaign', '$latest_utm_content', '$latest_utm_term'];
+    var props = store.getProps();
+    for(var i =0;i<latest_utms.length;i++){
+      if(latest_utms[i] in props){
+        if(!(latest_utms[i].replace('latest_','') in props)){
+          props[latest_utms[i].replace('latest_','')] = props[latest_utms[i]];          
+        }
+        delete props[latest_utms[i]];
+      }
+    }
+    store.setProps(props,true);
+
+
     var url_domain = _.info.pageProp.url_domain;
     var referrer_domain = _.info.pageProp.referrer_domain;
     // 判断最近一次，如果前向地址跟自己域名一致，且cookie中取不到值，认为有异常
@@ -1871,7 +2005,7 @@ var saNewUser = {
       });
     }
     // utm
-    var allUtms = _.info.campaignParamsStandard('$latest_','_latest_');
+    var allUtms = _.info.campaignParamsStandard('$','_latest_');
     var $utms = allUtms.$utms;
     var otherUtms = allUtms.otherUtms;
     if (!_.isEmptyObject($utms)) {
@@ -2038,6 +2172,7 @@ saEvent.send = function(p, callback) {
   // profile时不传公用属性
   if (!p.type || p.type.slice(0, 7) !== 'profile') {
     // 传入的属性 > 当前页面的属性 > session的属性 > cookie的属性 > 预定义属性
+
     data.properties = _.extend({}, _.info.properties(), store.getProps(), store.getSessionProps(), _.info.currentProps, data.properties);
     if(!_.isString(data.properties.$latest_referrer)){
       data.properties.$latest_referrer = '取值异常';
@@ -2176,9 +2311,25 @@ saEvent.send = function(p, callback) {
         _.coverExtend(props, newp);
         this.sessionSave(props);
       },
-      setProps: function(newp) {
+      setProps: function(newp,isCover) {
         var props = this._state.props || {};
-        _.extend(props, newp);
+        if(!isCover){
+          _.extend(props, newp);          
+          this.set('props', props);
+        }else{
+          this.set('props', newp);
+        }
+      },
+      removeProps: function(newp){
+        if(!_.isArray(newp)){
+          return false;
+        }
+        var props = this._state.props || {};
+        for(var i =0 ;i<newp.length;i++){
+          if(newp[i] in props){
+            delete props[i];
+          }
+        }
         this.set('props', props);
       },
       setPropsOnce: function(newp) {
@@ -2366,19 +2517,6 @@ saEvent.send = function(p, callback) {
       }
     },
     autoTrackSinglePage:function(para,callback){
-      function getUtm(){
-        var utms = _.info.campaignParams();
-        var $utms = {};
-        for (var i in utms) {
-          if ((' ' + source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {
-            $utms['$' + i] = utms[i];
-          } else {
-            $utms[i] = utms[i];
-          }
-        }
-        return $utms;
-      }
-
       var url = _.info.pageProp.url;
       function closure(){
         sd.track('$pageview', _.extend({
@@ -2387,7 +2525,7 @@ saEvent.send = function(p, callback) {
             $url: location.href,
             $url_path: location.pathname,
             $title: document.title
-          }, para, getUtm()),callback
+          }, para),callback
         );
         url = location.href;
       }
@@ -2439,7 +2577,7 @@ saEvent.send = function(p, callback) {
               $url: location.href,
               $url_path: location.pathname,
               $title: document.title
-            }, $utms,para),callback
+            }, para),callback
           );        
           current_page_url = location.href;
         });
@@ -2451,7 +2589,7 @@ saEvent.send = function(p, callback) {
           $url: location.href,
           $url_path: location.pathname,
           $title: document.title
-        },$utms,para),callback
+        },para),callback
       );
 
     }
@@ -2874,733 +3012,97 @@ saEvent.send = function(p, callback) {
   };
 
 
-var heatmap_render = {
-// 保存点击图里所有选择器对应元素，方便删除重新渲染
-  heatDataElement:[],
-  setRefresh: function(){
-    var me = this;
-    var div = document.createElement('div');
-    div.setAttribute('style','border-radius:3px;font-size:14px;cursor:move;z-index:99999;padding:10px 16px;background:#3790e9;color:#fff;position: fixed;left:10px;bottom:10px;');
-    div.innerHTML = '<!-- <svg width="15px" height="13px" viewBox="0 0 15 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-145.000000, -1953.000000)" fill="#FFFFFF"><g transform="translate(132.000000, 1941.000000)"><path d="M27.8813854,14.6046259 L25.720853,15.6691713 C24.4905498,13.2443736 21.804888,11.6623409 18.7741412,12.0615454 C15.7734018,12.4607499 13.3728103,14.900333 13.042729,17.8574034 C12.592618,21.8494485 15.7583981,25.2352941 19.7193742,25.2352941 C22.5700766,25.2352941 24.9706681,23.4906226 25.9459084,21.0214688 L24.2804981,20.4744107 L24.2654944,20.4744107 C23.3952799,22.5295747 21.1297217,23.8602564 18.639108,23.342769 C16.7936532,22.9583499 15.2932835,21.4798147 14.9031874,19.646431 C14.2430247,16.5119364 16.6436163,13.7470755 19.7193742,13.7470755 C21.6548511,13.7470755 23.3052578,14.8411916 24.1154574,16.4380096 L21.8649028,17.5616964 C21.804888,17.5912671 21.804888,17.6947645 21.8799065,17.7095499 L26.3960193,19.1732998 C26.4410304,19.1880851 26.4860415,19.1585144 26.5010452,19.1141583 L27.9864112,14.6637674 C28.0314223,14.6341967 27.9564038,14.5750552 27.8813854,14.6046259 L27.8813854,14.6046259 Z" id="refresh"></path></g></g></g></svg> --> <span style="cursor:pointer;" title="当页面有内容更切换时候，点击刷新数据，重新计算">刷新数据</span>';
-    document.body.appendChild(div);
-    _.addEvent(div,'click',function(e){
-      if(e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'span'){
-        me.refreshHeatData();
-        me.showErrorInfo(5);
-      }
-    });
-    _.addEvent(div,'mousedown',function(e){
-        if(e.target && e.target.tagName && e.target.tagName.toLowerCase() !== 'span'){
-          _.draggable(div,e);          
-        }
-    });    
-
-  },
-  setRefresh2: function(){
-    var me = this;
-    var div = document.createElement('div');
-    div.setAttribute('style','background:#fff;width:100%;position:fixed;top:0;left:0; font-size:14px;color:#475669;border-bottom:2px solid #F2F5F8;margin:0;clear: both;');
-    div.innerHTML = '<div style="height:39px;line-height:39px;padding:6px 15px;"><div id="sa-sdk-heatmap-toolbar-selectmap" style="position:relative;width:70px;float:left" title="选择查看类型"><div style="cursor:pointer"><span>点击图</span> <span style="position:absolute;top:9px"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="icon" transform="translate(-199.000000, -18.000000)" fill="#99A9BF"><polygon id="Triangle-1-Copy-29" transform="translate(209.000000, 28.000000) scale(1, -1) translate(-209.000000, -28.000000) " points="209 26 213 30 205 30"></polygon></g></g></svg></span></div><ul style="display:none;list-style:none;margin:0;padding:0;width:100px"><li>点击图</li><li>触达率图</li></ul></div><div style="float:left;padding:0 10px;width:1px;color:#E0E6ED">|</div><div style="float:right;position:relative;width:30px;height:100%;cursor:pointer" title="收起打开"><span style="position:absolute;top:9px;right:0"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-129.000000, -260.000000)" fill-rule="nonzero" fill="#99A9BF"><polygon points="132.110192 274.35347 130.5 272.842901 138.860144 265 147.23 272.842902 145.619784 274.35347 138.864999 268.016603"></polygon></g></g></svg></span></div><div style="float:right;padding:0 10px;width:1px;color:#E0E6ED">|</div><div style="float:right;position:relative;cursor:pointer;width:30px;height:100%" title="刷新数据"><span style="position:absolute;top:9px;left:0"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g><g><path d="M18.1201298,5.45190941 L15.7071603,6.65839414 C14.3331082,3.91029003 11.3336531,2.11731966 7.94879319,2.56975143 C4.59744671,3.02218321 1.91636953,5.78704405 1.54772141,9.13839053 C1.04501944,13.6627083 4.58068998,17.5 9.00446733,17.5 C12.1882465,17.5 14.8693237,15.5227056 15.9585113,12.7243313 L14.098514,12.1043322 L14.0817572,12.1043322 C13.1098668,14.433518 10.5796002,15.9416239 7.7979826,15.3551383 C5.73690451,14.9194632 4.06123127,13.24379 3.62555623,11.1659552 C2.88826001,7.61352789 5.56933719,4.48001893 9.00446733,4.48001893 C11.1660858,4.48001893 13.0093264,5.72001713 13.9141899,7.52974422 L11.4006801,8.80325589 C11.3336531,8.83676935 11.3336531,8.95406648 11.4174368,8.97082321 L16.4612132,10.6297397 C16.5114834,10.6464964 16.5617536,10.612983 16.5785104,10.5627128 L18.2374269,5.51893634 C18.2876971,5.48542287 18.2039134,5.41839594 18.1201298,5.45190941 L18.1201298,5.45190941 Z" id="Shape-Copy-22" fill="#99A9BF"></path><rect x="0" y="0" width="20" height="20"></rect></g></g></g></svg></span></div></div>';
-    document.body.appendChild(div);
-
-    /*
-    _.addEvent(div,'click',function(e){
-      if(e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'span'){
-        me.refreshHeatData();
-        me.showErrorInfo(5);
-      }
-    });
-    _.addEvent(div,'mousedown',function(e){
-        if(e.target && e.target.tagName && e.target.tagName.toLowerCase() !== 'span'){
-          _.draggable(div,e);          
-        }
-    });
-    */    
-
-  },
-  showErrorInfo: function(error_type,error_msg){
-    var div = document.createElement('div');
-    div.setAttribute('style','background:#e55b41;border:none;border-radius:8px;color:#fff;font-size:18px;left:50%;margin-left:-300px;padding:15px;position: fixed;text-align: center;top: 0;width:600px;z-index:9999;');
+  var heatmap = { 
+      getDomIndex: function (el){
+        var indexof = [].indexOf;
+        if (!el.parentNode) return -1;
+        var list = el.parentNode.children;
     
-    if(error_type === 1){
-      div.innerHTML = '当前页面在所选时间段内暂时没有点击数据';     
-    }else if(error_type === 2){
-      if(error_msg.error){
-        div.innerHTML = error_msg.error;     
-      }else{
-        div.innerHTML = '请求数据异常';
-      }
-    }else if(error_type === 3){
-      div.innerHTML = '当前页面在所选时间段内暂时没有点击数据';
-    }else if(error_type === 4){
-      if(error_msg.error){
-        div.innerHTML = error_msg.error;     
-      }else{
-        div.innerHTML = '请求数据异常';
-      }      
-    }else if(error_type === 5){
-      div.style.backgroundColor = '#3790e9';
-      div.innerHTML = '刷新点击图数据成功';      
-    }
-
-    document.body.appendChild(div);
-    setTimeout(function(){
-      document.body.removeChild(div);
-    },5000)
-
-/*4中错误类型
-    带id的正常请求，没有数据
-    带id的错误请求
-    session里的正常请求，没有数据
-    session里的错误请求
-*/
-
-  },
-  requestType: 1,
-  getRequestInfo: function(id,url){
-
-    var me = this;
-    if(typeof id === 'string' && sd.para.web_url){
-
-      var urlParse = new _.urlParse(sd.para.web_url);
-      urlParse._values.Path = '/api/heat_map/report/' + id;
-
-      var urlParse2 = new _.urlParse(sd.para.web_url);
-      urlParse2._values.Path = '/api/heat_map/report/path/' + id;
-      var urlParse2Value = urlParse2.getUrl();
-      if(urlParse2Value.indexOf('?') === -1){
-        urlParse2Value = urlParse2Value + '?pathUrl=' + url;
-      }else{
-        urlParse2Value = urlParse2Value + '&pathUrl=' + url;
-      }
-
-      if(url){
-        this.requestType = 3;
-        _.ajax({
-          url: urlParse2Value,
-          type: 'POST',
-          cors: true,
-          header: {cors: "true"},
-          success: function(data) {
-            me.bindEffect();
-            me.calculateHeatData(data);
-          },
-          error: function(res){
-            me.showErrorInfo(2,res);
-            sessionStorage.removeItem('sensors_heatmap_id');
-
-            if(location.href.indexOf('http://www.notrack.com:8080/sdk_test.html') === 0){
-              me.bindEffect();
-              me.calculateHeatData(window.data_sa_heat_test_data_test_201703130440 || {});  
-            }
-          }
-        });
-      }else{
-        this.requestType = 1;
-        _.ajax({
-          url: urlParse.getUrl(),
-          type: 'POST',
-          cors: true,
-          header: {cors: "true"},
-          success: function(data) {
-            me.bindEffect();
-            me.calculateHeatData(data);
-          },
-          error: function(res){
-            me.showErrorInfo(4,res);            
-            sessionStorage.removeItem('sensors_heatmap_id');
-
-            if(location.href.indexOf('http://www.notrack.com:8080/sdk_test.html') === 0){
-              me.bindEffect();
-              me.calculateHeatData(window.data_sa_heat_test_data_test_201703130440 || {});  
-            }
-          }
-        });
-      }
-    }else{
-      _.logger.info('缺少web_url');
-    }
-  },
-  calculateHeatData: function(data){
-    this.ajaxHeatData = data;
-    var me = this;
-
-    if(!_.isObject(data) || !_.isArray(data.rows) || !_.isObject(data.rows[0])){
-      me.showErrorInfo(me.requestType);
-      return false;
-    }
-    var pv = parseInt(data.page_view,10);
-    var heat_map_id = data.heat_map_id;
-    data = data.rows;
-
-    var dataPageTotal = 0;
-    var usableData = [];
+        if (!list) return -1;
+        var len = list.length;
     
-    _.each(data,function(obj){
-      if( obj.by_values[0] && _.querySelectorAll(obj.by_values[0])[0] ){
-        usableData.push(obj);
-      }
-    });
-
-    if(usableData.length === 0){
-      me.showErrorInfo(me.requestType);
-    }
-
-    data = usableData;
-
-    _.each(data,function(obj,key){
-      obj.value_fix = obj.values[0][0];
-      dataPageTotal += obj.value_fix;
-    });
-
-    me.data_render = data;
-
-    _.each(data,function(obj,key){
-      if(obj.by_values[0]){
-        obj.data_page_percent = Number(obj.value_fix/dataPageTotal*100).toFixed(2) + '%';
-
-        obj.data_click_percent = Number(obj.value_fix/pv*100).toFixed(2) + '%';
-
-        obj.data_click = Number(obj.value_fix/pv);
-        obj.data_page = Number(obj.value_fix/dataPageTotal);
-
-
-        var urlParse = new _.urlParse(sd.para.web_url);
-        urlParse._values.Path = '/web-click/users';
-        obj.data_user_link = urlParse.getUrl() + '#heat_map_id=' + heat_map_id + '&element_selector=' + encodeURIComponent(obj.by_values[0]);
-
-        if(String(obj.top_values[0]) === 'null'){
-          obj.data_top_value = '没有值';          
-        } else {
-          obj.data_top_value = String(obj.top_values[0]);
+        if (indexof) return indexof.call(list, el);
+        for (var i = 0; i < len; ++i) {
+          if (el == list[i]) return i;
         }
-
-        var selector = _.querySelectorAll(obj.by_values[0]);
-        if(typeof selector === 'object' && selector.length > 0){
-          me.renderHeatData(selector,obj,key);
+        return -1;
+      },
+       selector:function (el){
+        //var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
+        var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
+        if(el.id){
+          return '#' + el.id;
+        }else{
+          return el.tagName.toLowerCase()      //+ (classname ? classname.replace(/^| +/g, '.') : '')
+            + (~i ? ':nth-child(' + (i + 1) + ')' : '');
         }
-      }
-    });
-
-
-
-  },
-  heatData:function(data){
-    var heat = [0.005,0.01,0.025,0.05,0.1,0.5];
-    for(var i=0; i<heat.length; i++){
-      if(data < heat[i]){
-        return i;
-      }
-    }
-    return 6;
-  },
-  heatDataTitle: function(data){
-    return ('点击次数 ' + data.value_fix 
-      + '\r\n点击概率 ' + data.data_click_percent 
-      + '\r\n点击占比 ' + data.data_page_percent + '\r\n历史数据 ' + String(data.top_values[0]).slice(0,30) );
-  },
-  renderHeatData: function(selector,data,key){
-    var dom =  _.ry(selector[0]);
-    // 优化input不支持伪类的样式
-    if(dom.ele.tagName.toLowerCase() === 'input' || dom.ele.tagName.toLowerCase() === 'textarea'){
-        var width = dom.getCssStyle('width');
-        dom = dom.wrap('span');        
-        if(typeof width === 'string' && width.slice(-1) === '%'){
-          dom.ele.style.width = width;
-        }
-        dom.ele.style.display = 'inline-block';
-
-    }    
-    this.heatDataElement.push(dom);
-    dom.attr('data-heat-place',String(key))
-    .addClass('sa-click-area')
-//    .attr('title',this.heatDataTitle(data))
-    .attr('data-click',data.data_click_percent)
-    .addClass('sa-click-area' + this.heatData(data.data_click));
-    if(dom.getStyle('display') === 'inline'){
-      selector[0].style.display = 'inline-block';
-    }
-
-  },
-  refreshHeatData: function(){
-    _.each(this.heatDataElement,function(ele){
-      ele.removeClass('sa-click-area');
-    });
-    this.heatDataElement = [];
-    this.calculateHeatData(this.ajaxHeatData);
-
-  },
-  is_fix_state : null,
-  showEffectBox: function(e,div,isShow){
-    if(this.is_fix_state === 'fixslidedown'){
-
-      div.style.position = 'fixed';
-      div.style.left = 'auto';
-      div.style.right = 0;
-      div.style.top = 0;
-      
-      if(isShow){
-        div.className = 'sa-heat-box-effect-2017314';
-      }
-
-    }else if(this.is_fix_state === 'notfix'){
-
-      var width = heatmap.getBrowserWidth();
-
-      var target = e.target;
-      var offset = _.ry(target).offset();
-      var size = _.ry(target).getSize();
-      var x = offset.left + size.width + 2;
-      var y = offset.top+1;
-
-      if(width < (x + 220)){
-        x = offset.left - 220;
-        if(offset.left < 220){
-          x = e.pageX;
-        }
-      }
-
-      
-      div.style.position = 'absolute';
-      div.style.left = x + 'px';
-      div.style.top = y + 'px';
-
-    }
-
-    if(div.style.display !== 'block'){
-      div.style.display = 'block';
-    }
-
-  },
-  bindEffect: function(){
-    var me = this;
-    // 浮动层的内容的初始化
-    var mouseoverEvent = null;
-    var target_is_on_float = false;
-
-    var me = this;
-    var str = '<div style="padding: 8px;"><div style="color: #CACACA">当前内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: #444; height:1px;"></div><div style="padding: 8px;">'+
-    '<table style="width:100%;"><tr><td>点击次数: </td><td style="text-align:right;">{{value_fix}}次</td></tr><tr><td style="cursor:pointer;" title="点击次数/当前页面的浏览次数"><span style="float:left;">点击率</span><span style="float:left;margin-left:3px;"><svg width="12px" height="12px" viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-1803.000000, -158.000000)" fill="#979797"><g transform="translate(1737.000000, 84.000000)"><path d="M71,74 C68.24,74 66,76.24 66,79 C66,81.76 68.24,84 71,84 C73.76,84 76,81.76 76,79 C76,76.24 73.76,74 71,74 L71,74 Z M71.5,82.5 L70.5,82.5 L70.5,81.5 L71.5,81.5 L71.5,82.5 L71.5,82.5 Z M72.535,78.625 L72.085,79.085 C71.725,79.45 71.5,79.75 71.5,80.5 L70.5,80.5 L70.5,80.25 C70.5,79.7 70.725,79.2 71.085,78.835 L71.705,78.205 C71.89,78.025 72,77.775 72,77.5 C72,76.95 71.55,76.5 71,76.5 C70.45,76.5 70,76.95 70,77.5 L69,77.5 C69,76.395 69.895,75.5 71,75.5 C72.105,75.5 73,76.395 73,77.5 C73,77.94 72.82,78.34 72.535,78.625 L72.535,78.625 Z" id="prompt"></path></g></g></g></svg></span></td><td style="text-align:right;">{{data_click_percent}}</td></tr><tr><td style="cursor:pointer;" title="点击次数/当前页面的点击总次数"><span style="float:left;">点击占比</span> <span style="float:left;margin-left:3px;"><svg width="12px" height="12px" viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-1803.000000, -158.000000)" fill="#979797"><g transform="translate(1737.000000, 84.000000)"><path d="M71,74 C68.24,74 66,76.24 66,79 C66,81.76 68.24,84 71,84 C73.76,84 76,81.76 76,79 C76,76.24 73.76,74 71,74 L71,74 Z M71.5,82.5 L70.5,82.5 L70.5,81.5 L71.5,81.5 L71.5,82.5 L71.5,82.5 Z M72.535,78.625 L72.085,79.085 C71.725,79.45 71.5,79.75 71.5,80.5 L70.5,80.5 L70.5,80.25 C70.5,79.7 70.725,79.2 71.085,78.835 L71.705,78.205 C71.89,78.025 72,77.775 72,77.5 C72,76.95 71.55,76.5 71,76.5 C70.45,76.5 70,76.95 70,77.5 L69,77.5 C69,76.395 69.895,75.5 71,75.5 C72.105,75.5 73,76.395 73,77.5 C73,77.94 72.82,78.34 72.535,78.625 L72.535,78.625 Z" id="prompt"></path></g></g></g></svg></span></td><td style="text-align:right;">{{data_page_percent}}</td></tr></table>'+
-    '</div><div style="background: #444; height:1px;"></div><div style="padding: 8px;"><div style="color: #CACACA;">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: #444; height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看用户列表</a ></div>';
-
-    var newStr = '';
-    var isShow = true;
-    var div = document.createElement('div');
-    document.body.appendChild(div);
-    div.setAttribute('style','border-radius:3px;display:none;border:1px solid #000;position: fixed; right:0; top:0; background: #333;line-height:24px;font-size:13px;width:220px;color: #fff;font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;box-shadow: 0 2px 4px rgba(0,0,0,0.24);z-index:99999;');
-
-/*
-    div.innerHTML = '<div id="sa_heat_float_right_box_slidedown" class="sa-heat-box-head-2017322">'
-    + '<div id="sa_heat_float_right_box_close_btn" style="cursor:pointer;display: inline-block;float: left;padding: 4px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g id="Artboard-4" fill="#000000"><polygon id="Combined-Shape" points="9.77297077 8.7123106 6.06066017 5 5 6.06066017 8.7123106 9.77297077 5 13.4852814 6.06066017 14.5459415 9.77297077 10.8336309 13.4852814 14.5459415 14.5459415 13.4852814 10.8336309 9.77297077 14.5459415 6.06066017 13.4852814 5"></polygon></g></g></svg></div>'
-    + '<div id="sa_heat_float_right_box_right_btn" style="cursor:pointer;display: inline-block;float: right;padding: 4px 2px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g id="Artboard-4" fill="#000000"><polygon id="Combined-Shape" points="12.1923882 9.65685425 7.59619408 14.2530483 8.65685425 15.3137085 14.3137085 9.65685425 8.65685425 4 7.59619408 5.06066017"></polygon></g></g></svg></div></div>'
-    
-    + '<div id="sa_heat_float_right_box_slidedownRight" class="sa-heat-box-head-2017322">'
-    + '<div id="sa_heat_float_right_box_left_btn" style="cursor:pointer;display: inline-block;float: left;padding: 4px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g id="Artboard-4" fill="#000000"><polygon id="Combined-Shape" points="8.12132034 9.65685425 12.7175144 14.2530483 11.6568542 15.3137085 6 9.65685425 11.6568542 4 12.7175144 5.06066017"></polygon></g></g></svg></div>'
-    + '<div id="sa_heat_float_right_box_btn_slidedown" style="cursor:pointer;display: inline-block;float: right;margin-right:10px;padding: 4px 2px;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g fill="#000000"><path d="M6.8,7 L6,7 L6,15 L7.6,15 L7.6,8.6 L14,8.6 L14,7 L6.8,7 Z" transform="translate(10.000000, 11.000000) rotate(-315.000000) translate(-10.000000, -11.000000) "></path></g></g></svg></div></div>'
-
-    + '<div id="sa_heat_float_right_box_slideup" class="sa-heat-box-head-2017322" style="cursor:pointer;">'
-    + '<div style="line-height: 30px;display: inline-block;float:right;padding-right: 10px;">展开</div><div style="padding:2px;display: inline-block;float: right;"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" fill-opacity="0.54"><g fill="#000000"><path d="M6.8,4 L6,4 L6,12 L7.6,12 L7.6,5.6 L14,5.6 L14,4 L6.8,4 Z" transform="translate(10.000000, 8.000000) rotate(-135.000000) translate(-10.000000, -8.000000) "></path></g></g></svg></div></div>'
-
-    + '<div id="sa_heat_float_right_box_content" style="clear:both;"></div>';
-*/
-    div.innerHTML = '<div id="sa_heat_float_right_box_content" style="clear:both;"></div>';
-
-/*
-    var eleSlideDown = document.getElementById('sa_heat_float_right_box_slidedown');
-    var eleSlideUp = document.getElementById('sa_heat_float_right_box_slideup');
-    var eleSlideDownRight = document.getElementById('sa_heat_float_right_box_slidedownRight');    
-
-    var eleBtnSlideDown = document.getElementById('sa_heat_float_right_box_btn_slidedown');
-    var eleBtnSlideUp = document.getElementById('sa_heat_float_right_box_btn_slideup');
-
-    var eleBtnClose = document.getElementById('sa_heat_float_right_box_close_btn');
-    var eleBtnRight = document.getElementById('sa_heat_float_right_box_right_btn');
-    var eleBtnLeft = document.getElementById('sa_heat_float_right_box_left_btn');
-*/    
-    var eleContent = document.getElementById('sa_heat_float_right_box_content');     
-
-    _.addEvent(div,'mouseleave',function(){
-      if(me.is_fix_state === 'notfix'){
-        target_is_on_float = false;
-        div.style.display = 'none';        
-      }
-    });
-
-    _.addEvent(div,'mouseenter',function(){
-      if(me.is_fix_state === 'notfix'){
-        target_is_on_float = true;
-      }
-    });
-
-/*
-    _.addEvent(eleSlideDown,'mousedown',function(e){
-        if(e.target.id === 'sa_heat_float_right_box_slidedown'){
-          _.draggable(div,e);          
-        }
-    });
-
-    _.addEvent(eleSlideDownRight,'mousedown',function(e){
-        if(e.target.id === 'sa_heat_float_right_box_slidedownRight'){
-          _.draggable(div,e);          
-        }
-    });
-
-    _.addEvent(eleBtnClose,'click',function(e){
-      div.style.display = 'none';
-    });
-
-    _.addEvent(eleBtnLeft,'click',function(e){
-      eleSlideDown.style.display = 'block';
-      eleSlideDownRight.style.display = 'none';
-      me.is_fix_state = 'notfix';
-      _.cookie.set('sensorsdata_heatmap_float_fix_state','notfix'); 
-      me.showEffectBox(mouseoverEvent,div,isShow);
-    });
-
-    _.addEvent(eleBtnRight,'click',function(e){
-      eleSlideDownRight.style.display = 'block';
-      eleSlideDown.style.display = 'none';
-      me.is_fix_state = 'fixslidedown';
-      _.cookie.set('sensorsdata_heatmap_float_fix_state','fixslidedown'); 
-      me.showEffectBox(mouseoverEvent,div,isShow);
-    });
-
-    _.addEvent(eleBtnSlideDown,'click',function(){
-      isShow = false;
-      eleSlideDownRight.style.display = 'none';
-      eleSlideUp.style.display = 'block';
-      eleContent.style.display = 'none';   
-      div.style.width = '70px'; 
-      div.style.height = '30px';
-      me.is_fix_state = 'fixslideup';
-      _.cookie.set('sensorsdata_heatmap_float_fix_state','fixslideup'); 
-    });
-
-    _.addEvent(eleSlideUp,'click',function(){
-      isShow = true;
-      eleSlideDownRight.style.display = 'block';
-      eleSlideUp.style.display = 'none';
-      eleContent.style.display = 'block';   
-      div.style.width = '220px'; 
-      div.style.height = 'auto';       
-      me.is_fix_state = 'fixslidedown';
-      _.cookie.set('sensorsdata_heatmap_float_fix_state','fixslidedown');
-    });
-*/
-
-
-    _.addEvent(div, 'animationend', function(){
-      div.className = '';
-    });
-
-
-      this.is_fix_state = 'notfix';
-
-    //浮动层效果的事件和初始化
-    /*
-    var fix_state = _.cookie.get('sensorsdata_heatmap_float_fix_state');
-    if( fix_state === null){
-      this.is_fix_state = 'notfix';
-    }else{
-      this.is_fix_state = fix_state;      
-    }
-    
-    if(this.is_fix_state === 'notfix'){      
-      eleSlideDown.style.display = 'block';
-      eleSlideDownRight.style.display = 'none';
-      eleSlideUp.style.display = 'none';
-    }else if(this.is_fix_state === 'fixslidedown'){
-
-      eleSlideUp.style.display = 'none'; 
-      eleSlideDown.style.display = 'none';
-
-      eleSlideDownRight.style.display = 'block';
-    }else if(this.is_fix_state === 'fixslideup'){
-      isShow = false;
-      div.style.width = '70px'; 
-      div.style.height = '30px';
-      eleContent.style.display = 'none';   
-      eleSlideUp.style.display = 'block';
-      eleSlideDown.style.display = 'none';
-      eleSlideDownRight.style.display = 'none';
-    }
-
-
-*/
-
-    // 绑定浮动层的显示
-    var timeEle = 600;
-
-    function showBoxDetailContent(e){
-      mouseoverEvent = e;
-      var target = e.target;
-      var pos = target.getAttribute('data-heat-place');
-      var data = me.data_render[pos];
-      if(!data){
-        return false;
-      }
-
-      var textContent = _.trim(target.textContent);
-      if (textContent) {
-        textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
-      }
-
-      data.data_current_content = textContent || '没有值';
-
-      newStr = str.replace(/\{\{[^\{\{]+\}\}/g,function(a){
-        a = a.slice(2,-2);
-        if(typeof a === 'string' && typeof data === 'object'){
-          return data[a];
-        }
-      });
-      eleContent.innerHTML = newStr;
-      me.showEffectBox(e,div,isShow);
-    }
-    function showBoxDetail(e){
-      var target = e.target;
-      setTimeout(function(){
-        if(target === current_over){
-          showBoxDetailContent(e);
-        }
-      },timeEle);
-
-    }
-
-    var current_over = null;
-
-    if(/iPhone|Android/i.test(navigator.userAgent)){
-
-      _.addEvent(document,'mouseover',function(e){
-        var target = e.target;
-        var className = target.className;
-        current_over = target;
-        if(typeof className !== 'string' || (' ' + className + ' ').indexOf(' sa-click-area ') === -1){
+      },
+      getDomSelector : function(el,arr) {
+        if(!el || !el.parentNode || !el.parentNode.children){
           return false;
-        } 
-        target.onmouseleave = function(){
-          if(me.is_fix_state === 'notfix'){
-            setTimeout(function(){
-              if(!target_is_on_float){
-                target_is_on_float = false;
-                div.style.display = 'none';     
-              }
-            },timeEle);
-          }
         }
-
-        showBoxDetail(e);
-
-      });
-
-    }else{
-      _.addEvent(document,'mouseover',function(e){
-        var target = e.target;
-        var className = target.className;
-        current_over = target;
-        if(typeof className !== 'string' || (' ' + className + ' ').indexOf(' sa-click-area ') === -1){
+        arr = arr && arr.join ? arr : [];
+        var name = el.nodeName.toLowerCase();
+        if (!el || name === 'body' || 1 != el.nodeType) {
+          arr.unshift('body');
+          return arr.join(' > ');
+        }
+        arr.unshift(this.selector(el));
+        if (el.id) return arr.join(' > ');
+        return this.getDomSelector(el.parentNode, arr);    
+      },
+      na : function() {
+        var a = document.documentElement.scrollLeft || window.pageXOffset;
+        return parseInt(isNaN(a) ? 0 : a, 10);
+      },
+      i : function() {
+        var a = 0;
+        try {
+          a = o.documentElement.scrollTop || m.pageYOffset,
+          a = isNaN(a) ? 0 : a;
+        } catch (b) {
+          a = 0;
+        }
+        return parseInt(a, 10);
+      },
+      getBrowserWidth : function() {
+        var a = window.innerWidth || document.body.clientWidth;
+        return isNaN(a) ? 0 : parseInt(a, 10);
+      },
+      getBrowserHeight : function() {
+        var a = window.innerHeight || document.body.clientHeight;
+        return isNaN(a) ? 0 : parseInt(a, 10);
+      },
+      getScrollWidth : function() {
+        var a = parseInt(document.body.scrollWidth, 10);
+        return isNaN(a) ? 0 : a;
+      },
+      W : function(a) {
+        var b = parseInt(+a.clientX + +this.na(), 10);
+        var a = parseInt(+a.clientY + +this.i(), 10);
+        return {
+          x : isNaN(b) ? 0 : b,
+          y : isNaN(a) ? 0 : a
+        }
+      },
+      start : function(ev, target, tagName) {
+        if(sd.para.heatmap && sd.para.heatmap.collect_element && !sd.para.heatmap.collect_element(target)){
           return false;
-        } 
-        showBoxDetail(e);
-
-      });
-    }
-
-  },
-  setCssStyle: function(){
-    var css = '#sa-sdk-heatmap-toolbar-selectmap ul{position:absolute;top:40px;left:0;background:#fff;box-shadow:1px 1px 1px rgba(200,200,200,.6);border-radius:4px;border:1px solid #eee}#sa-sdk-heatmap-toolbar-selectmap ul li{cursor:pointer;height:32px;color:#475669;line-height:32px;padding-left:8px}#sa-sdk-heatmap-toolbar-selectmap ul li:hover{background:#2DCA93;color:#fff}#sa-sdk-heatmap-toolbar-selectmap ul li a{text-decoration:none}.sa-heat-box-head-2017322{border-bottom:1px solid rgba(0, 0, 0, .06);cursor:move;height:30px;background:#e1e1e1;color:#999;clear:both}.sa-heat-box-effect-2017314{animation-duration:.5s;animation-fill-mode:both;animation-iteration-count:1;animation-name:sa-heat-box-effect-2017314}@keyframes "sa-heat-box-effect-2017314"{0%{opacity:.6;}to{opacity:1;}}.sa-click-area{position:relative}.sa-click-area:before{cursor:pointer;content:"";width:100%;position:absolute;left:0;top:0;bottom:0}.sa-click-area.sa-click-area0:before{background:hsla(60, 98%, 80%, .75);box-shadow:0 0 0 2px #fefe9b inset}img.sa-click-area.sa-click-area0{border:2px solid #fefe9b}.sa-click-area.sa-click-area0:hover:before,input.sa-click-area.sa-click-area0,textarea.sa-click-area.sa-click-area0{background:hsla(60, 98%, 80%, .85)}.sa-click-area.sa-click-area1:before{background:rgba(255, 236, 142, .75);box-shadow:0 0 0 2px #ffec8e inset}img.sa-click-area.sa-click-area1{border:2px solid #ffec8e}.sa-click-area.sa-click-area1:hover:before,input.sa-click-area.sa-click-area1,textarea.sa-click-area.sa-click-area1{background:rgba(255, 236, 142, .85)}.sa-click-area.sa-click-area2:before{background:rgba(255, 188, 113, .75);box-shadow:0 0 0 2px #ffbc71 inset}img.sa-click-area.sa-click-area2{border:2px solid #ffbc71}.sa-click-area.sa-click-area2:hover:before,input.sa-click-area.sa-click-area2,textarea.sa-click-area.sa-click-area2{background:rgba(255, 188, 113, .85)}.sa-click-area.sa-click-area3:before{background:rgba(255, 120, 82, .75);box-shadow:0 0 0 2px #ff7852 inset}img.sa-click-area.sa-click-area3{border:2px solid #ff7852}.sa-click-area.sa-click-area3:hover:before,input.sa-click-area.sa-click-area3,textarea.sa-click-area.sa-click-area3{background:rgba(255, 120, 82, .85)}.sa-click-area.sa-click-area4:before{background:rgba(255, 65, 90, .75);box-shadow:0 0 0 2px #ff415a inset}img.sa-click-area.sa-click-area4{border:2px solid #ff415a}.sa-click-area.sa-click-area4:hover:before,input.sa-click-area.sa-click-area4,textarea.sa-click-area.sa-click-area4{background:rgba(255, 65, 90, .85)}.sa-click-area.sa-click-area5:before{background:rgba(199, 0, 18, .75);box-shadow:0 0 0 2px #c70012 inset}img.sa-click-area.sa-click-area5{border:2px solid #c70012}.sa-click-area.sa-click-area5:hover:before,input.sa-click-area.sa-click-area5,textarea.sa-click-area.sa-click-area5{background:rgba(199, 0, 18, .85)}.sa-click-area.sa-click-area6:before{background:rgba(127, 0, 79, .75);box-shadow:0 0 0 3px #7f004f inset}img.sa-click-area.sa-click-area6{border:2px solid #7f004f}.sa-click-area.sa-click-area6:hover:before,input.sa-click-area.sa-click-area6,textarea.sa-click-area.sa-click-area6{background:rgba(127, 0, 79, .85)}.sa-click-area .sa-click-area:before{background:0 0 !important}.sa-click-area:after{height:14px;line-height:14px;margin:-7px 0 0 -28px;width:56px;color:#fff;content:attr(data-click);font-size:14px;font-weight:700;left:50%;line-height:1em;position:absolute;text-align:center;text-indent:0;text-shadow:1px 1px 2px #000;top:50%;z-index:10}';
-
-    var style = document.createElement('style');
-    style.type = 'text/css';
-    try{
-        style.appendChild(document.createTextNode(css))
-    }catch(e){
-        style.styleSheet.cssText = css;
-    }
-    document.getElementsByTagName('head')[0].appendChild(style);
-
-  }
-
-
-};
-
-
-var heatmap = {
-  getDomIndex: function (el){
-    if(el.parentNode && 9 == el.parentNode.nodeType){
-      return -1;
-    }
-    var indexof = [].indexOf;
-    if (!el.parentNode) return -1;
-    var list = el.parentNode.children;
-
-    if (!list) return -1;
-    var len = list.length;
-
-    if (indexof) return indexof.call(list, el);
-    for (var i = 0; i < len; ++i) {
-      if (el == list[i]) return i;
-    }
-    return -1;
-  },
-  hasSimilar:function(el){
-    if (!el.parentNode) {
-      return false;
-    }
-    if(el.parentNode && 9 == el.parentNode.nodeType){
-      return false;
-    }
-    var list = el.parentNode.children;
-    if (!list) return false;
-    var len = list.length;
-    for (var i = 0; i < len; ++i) {
-      if (typeof list[i] === 'object' && el.tagName == list[i].tagName && el !== list[i]){ 
-        return true;
-      }
-    }
-    return false;
-  },
-  selector:function (el){
-    //var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
-
-    if(el.id){
-      return '#' + el.id;
-    }else{
-      if(this.hasSimilar(el)){
-        var i = this.getDomIndex(el);
-        return el.tagName.toLowerCase()      //+ (classname ? classname.replace(/^| +/g, '.') : '')
-          + (~i ? ':nth-child(' + (i + 1) + ')' : '');
-      }else{
-        return el.tagName.toLowerCase();
-      }
-    }
-  },
-  getDomSelector : function(el,arr) {
-    if(!el || !el.parentNode || !el.parentNode.children){
-      return false;
-    }
-    arr = arr && arr.join ? arr : [];
-    var name = el.nodeName.toLowerCase();
-    if (!el || name === 'body' || 1 != el.nodeType) {
-      arr.unshift('body');
-      return arr.join(' > ');
-    }
-    arr.unshift(this.selector(el));
-    if (el.id){ 
-      return arr.join(' > ');
-    }
-    return this.getDomSelector(el.parentNode, arr);    
-  },
-  na : function() {
-    var a = document.documentElement.scrollLeft || window.pageXOffset;
-    return parseInt(isNaN(a) ? 0 : a, 10);
-  },
-  i : function() {
-    var a = 0;
-    try {
-      a = o.documentElement.scrollTop || m.pageYOffset,
-      a = isNaN(a) ? 0 : a;
-    } catch (b) {
-      a = 0;
-    }
-    return parseInt(a, 10);
-  },
-  getBrowserWidth : function() {
-    var a = window.innerWidth || document.body.clientWidth;
-    return isNaN(a) ? 0 : parseInt(a, 10);
-  },
-  getBrowserHeight : function() {
-    var a = window.innerHeight || document.body.clientHeight;
-    return isNaN(a) ? 0 : parseInt(a, 10);
-  },
-  getScrollWidth : function() {
-    var a = parseInt(document.body.scrollWidth, 10);
-    return isNaN(a) ? 0 : a;
-  },
-  getScrollHeight: function() {
-    var a = parseInt(document.body.scrollHeight, 10);
-    return isNaN(a) ? 0 : a;
-  },
-  W : function(a) {
-    var b = parseInt(+a.clientX + +this.na(), 10);
-    var a = parseInt(+a.clientY + +this.i(), 10);
-    return {
-      x : isNaN(b) ? 0 : b,
-      y : isNaN(a) ? 0 : a
-    }
-  },
-  start : function(ev, target, tagName) {
-    if(sd.para.heatmap && sd.para.heatmap.collect_element && !sd.para.heatmap.collect_element(target)){
-      return false;
-    }
-
-    var selector = this.getDomSelector(target);
-    var prop = _.getEleInfo({target:target});
-
-    prop.$element_selector = selector ? selector : '';
-
-    if(tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true){
-      _.trackLink({event:ev,target:target},'$WebClick',prop);
-    }else{
-      sd.track('$WebClick',prop);     
-    }
-
-  },
-  sendIframeData: function(){
-    var me = this;
-    _.bindReady(
-      function(){
-        if (window && window.parent && window.parent.window && (window !== window.parent.window)) {
-          window.parent.window.postMessage({
-            method: 'setHeight',
-            params: {
-              height: me.getScrollHeight()
-            }
-          },sd.para.web_url); 
-
-          window.parent.window.postMessage({
-            method: 'setUrl',
-            params: {
-              url: location.href
-            }
-          },sd.para.web_url); 
         }
-      }
-    );
-  },
-  prepare: function(todo){
-    var match = location.search.match(/sa-request-id=([^&]+)/);
-    var me = this;
-    function isReady(data,url){
-      if(!document.querySelectorAll){
-        alert('请更新到最新版浏览器,建议用chrome或者firefox');
-        return false;
-      }
-      //进入渲染模式
-      heatmap_render.setCssStyle();
-      setTimeout(function(){
-        heatmap_render.getRequestInfo(data,url);
-        heatmap_render.setRefresh();
-        me.sendIframeData();
-      },sd.para.heatmap.loadTimeout || 0);
-    }
-    if(match && match[0] && match[1]){
-      sd.is_heatmap_render_mode = true;
-      if(typeof window.sessionStorage === 'object' && sessionStorage.setItem){
-        sessionStorage.setItem('sensors_heatmap_id',match[1]);
-      }
-      isReady(match[1]);
-    } else if(typeof window.sessionStorage === 'object' && sessionStorage.setItem && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string'){
-      sd.is_heatmap_render_mode = true;
-      isReady(sessionStorage.getItem('sensors_heatmap_id'),location.href);
-    }else{
-      todo();
-      //进入热力图采集模式
-      if (_.isObject(sd.para.heatmap)) {
-        this.init();
-      }
-    }
-  },
-  hasElement:function(e){
+    
+        var selector = this.getDomSelector(target);
+        var prop = _.getEleInfo({target:target});
+    
+        prop.$element_selector = selector ? selector : '';
+    
+        if(tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true){
+          _.trackLink({event:ev,target:target},'$WebClick',prop);
+        }else{
+          sd.track('$WebClick',prop);     
+        }
+    
+      },      
+    hasElement:function(e){
     var path = e._getPath();
     if(_.isArray(path) && (path.length > 0) ){
       for(var i = 0;i<path.length;i++){
@@ -3611,9 +3113,77 @@ var heatmap = {
     }
     return false;
   },
-  init : function() {
+  initScrollmap: function(){
+    if (!_.isObject(sd.para.heatmap) || sd.para.heatmap.scroll_notice_map !== 'default') {
+      return false;
+    }
+
+    var interDelay = function(param){
+      var interDelay = {};
+      interDelay.timeout = param.timeout || 1000;
+      interDelay.func = param.func;
+      interDelay.hasInit = false;
+      interDelay.inter = null;
+      interDelay.main = function(para){
+        this.func(para);
+        this.inter = null;
+      };
+      interDelay.go = function(isNoDelay){
+        var me = this;
+        var para = {};
+        if(!this.inter){
+          para.$viewport_position = document.documentElement.scrollTop || window.pageYOffset || document.body.scrollTop || 0;
+          para.$viewport_position = Math.round(para.$viewport_position) || 0;
+          para.$viewport_height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0;
+          para.$viewport_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
+
+          if(isNoDelay){
+            interDelay.main(para);
+          }else{
+
+            this.inter = setTimeout(function(){
+              interDelay.main(para);
+            }, this.timeout);
+
+          }
+        }
+      };
+      return interDelay;
+    };
+
+
+    var delayTime =  interDelay({
+      timeout: 1000,
+      func: function(para){
+        var current_time = new Date();
+        var delay_time = current_time - this.current_time;
+        if( delay_time > sd.para.heatmap.scroll_delay_time ){
+          para.$url = location.href;
+          para.$title = document.title;
+          para.$url_path = location.pathname;
+          para.event_duration = parseInt(delay_time);
+          sd.track('$WebStay',para);
+        }
+        this.current_time = current_time;
+      }
+    });
+
+    delayTime.current_time = new Date();
+
+
+    _.addEvent(window,'scroll', function () {
+      delayTime.go();
+    });
+
+    _.addEvent(window,'unload',function(){
+      delayTime.go('notime');
+    });
+
+
+  }, 
+  initHeatmap : function() {
     var that = this;
-    if (!_.isObject(sd.para.heatmap)) {
+    if (!_.isObject(sd.para.heatmap) || sd.para.heatmap.clickmap !== 'default') {
       return false;
     }
 
@@ -3631,7 +3201,13 @@ var heatmap = {
     if (sd.para.heatmap.collect_elements === 'all') {
       _.addEvent(document, 'click', function(e) {
         var ev = e || window.event;
+        if(!ev){
+          return false;
+        }        
         var target = ev.target || ev.srcElement;
+        if(!target){
+          return false;
+        }
         var tagName = target.tagName.toLowerCase();
         if(tagName.toLowerCase() === 'body' || tagName.toLowerCase() === 'html'){
           return false;
@@ -3650,7 +3226,13 @@ var heatmap = {
     } else {
       _.addEvent(document, 'click', function(e) {
         var ev = e || window.event;
+        if(!ev){
+          return false;
+        }
         var target = ev.target || ev.srcElement;
+        if(!target){
+          return false;
+        }
         var tagName = target.tagName.toLowerCase();
         if(tagName.toLowerCase() === 'body' || tagName.toLowerCase() === 'html'){
           return false;
@@ -3676,8 +3258,70 @@ var heatmap = {
       });
     }
 
-  }
-};
+  },
+  prepare:function(todo){
+    var match = location.search.match(/sa-request-id=([^&]+)/);
+    var type = location.search.match(/sa-request-type=([^&]+)/);
+    
+    var me = this;
+    function isReady(data,type,url){
+       
+       _.loadScript({
+           success:function(){
+        
+               setTimeout(function(){
+                  if(typeof sa_jssdk_heatmap_render !== 'undefined'){
+                   sa_jssdk_heatmap_render(sd,data,type,url);   
+                  }
+               },0)
+               
+           },
+           error:function(){},
+           type:'js',
+           url: sd.para.heatmap_url
+       })
+        
+    }
+    
+    if(match && match[0] && match[1]){
+      sd.is_heatmap_render_mode = true;
+      if(typeof window.sessionStorage === 'object' && sessionStorage.setItem){
+        sessionStorage.setItem('sensors_heatmap_id',match[1]);
+         
+          if(type && type[0] && type[1]){
+            if(type[1] === '1' || type[1] === '2' || type[1] === '3'){
+                type = type[1];
+                sessionStorage.setItem('sensors_heatmap_type',type);
+            }else{
+                type = null;
+            }
+          }else{
+              if(sessionStorage.getItem('sensors_heatmap_type') !== null){
+                type = sessionStorage.getItem('sensors_heatmap_type');
+              }else{
+                type = null;
+              }
+          }        
+      }
+      isReady(match[1],type);
+    } else if(typeof window.sessionStorage === 'object' && sessionStorage.setItem && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string'){
+      sd.is_heatmap_render_mode = true;      
+      isReady(sessionStorage.getItem('sensors_heatmap_id'),sessionStorage.getItem('sensors_heatmap_type'),location.href);
+    }else{
+      todo();
+      //进入热力图采集模式
+      if (_.isObject(sd.para.heatmap)) {
+        this.initHeatmap();
+        this.initScrollmap();
+      }
+    }   
+      
+      
+      
+    }  
+  };
+
+
     
   sd.init = function(para){
     if((!para && has_declare) || (para && !has_declare)){

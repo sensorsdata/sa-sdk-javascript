@@ -84,10 +84,15 @@ try{
       search: null,
       social: null
     },
-    callback_timeout: 1500,
+    callback_timeout: 1000,
     is_track_device_id: false,
 
-    use_app_track: false
+    use_app_track: false,
+
+    heatmap: {
+      clickmap:'default',
+      scroll_notice_map:'default'
+    }
 
   };
 
@@ -101,6 +106,18 @@ sd.initPara = function(para){
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
+  }
+
+  sd.para.heatmap_url = sd.para.heatmap_url || sd.para.sdk_url.replace(/[^\/]+\.min\.js/,'heatmap.min.js');
+  
+  if(_.isObject(sd.para.heatmap)) {
+    if(_.isEmptyObject(sd.para.heatmap)){
+      sd.para.heatmap = sd.para_default.heatmap;
+    }else{
+      sd.para.heatmap = _.extend(sd.para_default.heatmap,sd.para.heatmap);
+    }
+   
+    sd.para.heatmap.scroll_delay_time = sd.para.heatmap.scroll_delay_time || 4000;
   }
   // 优化配置
   if(typeof sd.para.server_url === 'object' && sd.para.server_url.length){
