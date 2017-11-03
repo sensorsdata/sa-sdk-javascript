@@ -2962,6 +2962,13 @@ saEvent.send = function(p, callback) {
         var prop = _.getEleInfo({target:target});
     
         prop.$element_selector = selector ? selector : '';
+
+        if(sd.para.heatmap && sd.para.heatmap.custom_property) {
+          var customP = sd.para.heatmap.custom_property(target);
+          if(_.isObject(customP)){
+            prop = _.extend(prop,customP);
+          }
+        }        
     
         if(tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true){
           _.trackLink({event:ev,target:target},'$WebClick',prop);

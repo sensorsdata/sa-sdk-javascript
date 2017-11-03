@@ -8553,17 +8553,16 @@ var heatmap_render = {
   renderHeatData: function(selector,data,key){
     var dom =  _.ry(selector[0]);
     // 优化input不支持伪类的样式
-    /*
-    if(dom.ele.tagName.toLowerCase() === 'input' || dom.ele.tagName.toLowerCase() === 'textarea'){
-        var width = dom.getCssStyle('width');
-        dom = dom.wrap('span');        
-        if(typeof width === 'string' && width.slice(-1) === '%'){
+    var tagName = dom.ele.tagName.toLowerCase();
+    if( tagName === 'input' || tagName === 'textarea' || tagName === 'img'){
+        var width = $(selector[0]).width();
+        dom = dom.wrap('span');
+        if(typeof width === 'number'){
           dom.ele.style.width = width;
         }
         dom.ele.style.display = 'inline-block';
-
-    } */   
-    this.heatDataElement.push(dom);
+    }
+    this.heatDataElement.push(dom); 
     dom.attr('data-heat-place',String(key))
     .addClass('sa-click-area')
 //    .attr('title',this.heatDataTitle(data))
