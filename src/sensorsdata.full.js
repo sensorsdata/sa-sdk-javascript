@@ -1602,8 +1602,12 @@ _.ry.init.prototype = {
   },
   children: function( elem ) {
     return this.siblings( this.ele.firstChild );
+  },
+  parent: function(){
+    var parent = this.ele.parentNode;
+    parent = parent && parent.nodeType !== 11 ? parent : null;
+    return _.ry(parent);
   }
-
 };
 
 _.jssdkDebug = function(recevie_prop,has_prop){
@@ -2449,60 +2453,6 @@ saEvent.send = function(p, callback) {
         _referrer: _.getReferrer(),
         _referring_host: _.info.pageProp.referrer_host
       });
-    },
-    allTrack: function(){
- // 避免没有ready
-      if(!document || !document.body){
-        setTimeout(this.allTrack,1000);
-        return false;
-      }
-
-      if(sd.para.heatmap){
-        return false;
-      }
-
-      sd.para.heatmap = {};
-      heatmap.init();
-      return false;
-
-
-      if(sd.allTrack === 'has_init'){
-        return false;
-      }
-      sd.allTrack = 'has_init';
-
-      var trackAll = {
-
-        clickEvents: function(e){
-          var props = {};
-          var target = e.target;
-          var tagName = target.tagName.toLowerCase();         
-
-          if(' button a input '.indexOf(' '+ tagName + ' ') !== -1 ){
-
-            if(tagName === 'input'){
-              if(target.getAttribute('type') === 'button' || target.getAttribute('type') === 'submit'){
-                props.$element_content = target.value;                
-              }else{
-                return false;
-              }
-            }
-            
-            _.extend(props, _.getEleInfo({target:target}));
-
-            if(tagName === 'a' && sd.para.is_trackLink === true){
-              _.trackLink({event:e},'$WebClick',props);
-            }else{
-              sd.track('$WebClick',props);     
-            }
-          }
-
-        }
-      };
-
-
-      _.addEvent(document,'click',function(e){trackAll.clickEvents(e);});
-
     },
     trackHeatMap: function(target){
       if((typeof target === 'object') && target.tagName){

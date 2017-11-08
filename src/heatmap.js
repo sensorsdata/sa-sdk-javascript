@@ -8552,30 +8552,47 @@ var heatmap_render = {
   },
   renderHeatData: function(selector,data,key){
     var dom =  _.ry(selector[0]);
+    var wrap = null;
     // 优化input不支持伪类的样式
+
     var tagName = dom.ele.tagName.toLowerCase();
-    if( tagName === 'input' || tagName === 'textarea' || tagName === 'img'){
+    // 针对百联的map/area现在是img 以及 input的优化
+    if(tagName === 'input' || tagName === 'textarea' || tagName === 'img'){
         var width = $(selector[0]).width();
-        dom = dom.wrap('span');
+        wrap = dom.wrap('span');
         if(typeof width === 'number'){
-          dom.ele.style.width = width;
+          wrap.ele.style.width = width;
         }
-        dom.ele.style.display = 'inline-block';
+        wrap.ele.style.display = 'inline-block';            
+
+    }else{
+        wrap = dom;        
     }
-    this.heatDataElement.push(dom); 
-    dom.attr('data-heat-place',String(key))
+    this.heatDataElement.push(dom);
+    wrap.attr('data-heat-place',String(key))
     .addClass('sa-click-area')
 //    .attr('title',this.heatDataTitle(data))
     .attr('data-click',data.data_click_percent)
     .addClass('sa-click-area' + this.heatData(data.data_click));
-    if(dom.getStyle('display') === 'inline'){
+    if(wrap.getStyle('display') === 'inline'){
       selector[0].style.display = 'inline-block';
     }
 
   },
   refreshHeatData: function(){
+
     _.each(this.heatDataElement,function(ele){
-      ele.removeClass('sa-click-area');
+
+        var tagName = ele.ele.tagName.toLowerCase();
+        // 针对百联的map/area现在是img 以及 input的优化
+        if( tagName === 'input' || tagName === 'textarea' || tagName === 'img'){
+            var parent = ele.parent();
+            if(parent && parent.ele.tagName.toLowerCase() === 'span' && parent.ele.className.indexOf('sa-click-area') !== -1){
+                $(ele.ele).unwrap();
+            }
+        }else{
+          ele.removeClass('sa-click-area');
+        }
     });
     this.heatDataElement = [];
     this.calculateHeatData(this.ajaxHeatData);
