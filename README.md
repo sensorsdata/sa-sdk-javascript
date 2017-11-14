@@ -2,7 +2,7 @@
 
 Sensors Analytics JavaScript SDK
 
-完整文档请[点击这里](http://www.sensorsdata.cn/manual/js_sdk.html)，如有疑问请联系邮箱 shengyonggen@sensorsdata.cn，着急联系qq=522370351。
+完整文档请[点击这里](http://www.sensorsdata.cn/manual/js_sdk.html)，如有疑问请联系邮箱 shengyonggen@sensorsdata.cn。
 
 目录说明：
 

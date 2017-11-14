@@ -8110,7 +8110,13 @@ var heatmap_render = {
         if(!type){
             type = 1;
         }
-        href.addQueryString({'sa-request-id':data,'sa-request-type':type});
+        var obj = {'sa-request-id':data,'sa-request-type':type};
+        /*
+        if(sessionStorage && sessionStorage.getItem && sessionStorage.getItem('sensors_heatmap_url')){
+          obj['sa-request-url'] = sessionStorage.getItem('sensors_heatmap_url');
+        }*/
+
+        href.addQueryString(obj);
         location.href = href.getUrl();      
 
     }
@@ -8912,6 +8918,9 @@ var heatmap = {
     var me = this;
     _.bindReady(
       function(){
+        
+        
+
         if (window && window.parent && window.parent.window && (window !== window.parent.window)) {
           window.parent.window.postMessage({
             method: 'setHeight',
@@ -8932,18 +8941,44 @@ var heatmap = {
   },
   prepare: function(data,type,url){
     var me = this;
-    
-      if(!document.querySelectorAll){
+      if(!document.querySelectorAll ){
         alert('请更新到最新版浏览器,建议用chrome或者firefox');
         return false;
       }
+      var web_url = sd.para.web_url || null;
+      if(_.sessionStorage.isSupport() && sessionStorage.getItem && sessionStorage.getItem('sensors_heatmap_url')){
+        web_url = sessionStorage.getItem('sensors_heatmap_url') || null;
+      }
+
+      function hasGetWebUrl(){
+          setTimeout(function(){
+            heatmap_render.setToolbar(data,type,url);
+          },sd.para.heatmap.loadTimeout || 0);
+      }    
+      /*
+      window.addEventListener("message", function(data){
+        if(data && typeof data.data === 'object' && data.data.web_url){
+         web_url = data.data.web_url;   
+        }
+      });
+*/
+
+      me.sendIframeData();
       //进入渲染模式
       heatmap_render.setCssStyle();
-      setTimeout(function(){
-        heatmap_render.setToolbar(data,type,url);
-        me.sendIframeData();
-      },sd.para.heatmap.loadTimeout || 0);
-    
+
+      function getWebUrl(){
+        if(web_url){
+          sd.para.web_url = web_url;
+          sessionStorage.setItem('sensors_heatmap_url',web_url);
+          hasGetWebUrl();  
+        }else{
+          heatmap_render.showErrorInfo(2,{error:'获取web_url超时'});  
+          return false;
+        }
+      }
+      getWebUrl();
+
   }
 };  
   

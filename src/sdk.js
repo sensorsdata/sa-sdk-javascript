@@ -1027,8 +1027,8 @@ _.localStorage = {
   isSupport: function() {
     var supported = true;
     try {
-      var key = '__sensorsdatasupport__',
-        val = 'testIsSupportStorage';
+      var key = '__sensorsdatasupport__';
+      var val = 'testIsSupportStorage';
       _.localStorage.set(key, val);
       if (_.localStorage.get(key) !== val) {
         supported = false;
@@ -1040,6 +1040,28 @@ _.localStorage = {
     return supported;
   }
 
+};
+
+_.sessionStorage = {
+
+  isSupport:function(){
+      var supported = true;
+
+      var key = '__sensorsdatasupport__';
+      var val = 'testIsSupportStorage';
+      try{
+        if(sessionStorage && sessionStorage.setItem){
+          sessionStorage.setItem(key,val);
+          sessionStorage.removeItem(key,val);
+          supported = true;
+        }else{
+          supported = false;          
+        }
+      }catch(e){
+        supported = false;
+      }
+      return supported;
+  }
 };
 
 _.xhr = function(cors) {
@@ -3085,8 +3107,9 @@ saEvent.send = function(p, callback) {
 
   },
   prepare:function(todo){
-    var match = location.search.match(/sa-request-id=([^&]+)/);
-    var type = location.search.match(/sa-request-type=([^&]+)/);
+    var match = location.search.match(/sa-request-id=([^&#]+)/);
+    var type = location.search.match(/sa-request-type=([^&#]+)/);
+    var web_url = location.search.match(/sa-request-url=([^&#]+)/);
     
     var me = this;
     function isReady(data,type,url){
@@ -3107,10 +3130,14 @@ saEvent.send = function(p, callback) {
        })
         
     }
-    
+    // 如果有id，才有可能是首次，首次的时候把web_url存进去
     if(match && match[0] && match[1]){
       sd.is_heatmap_render_mode = true;
-      if(typeof window.sessionStorage === 'object' && sessionStorage.setItem){
+      if(_.sessionStorage.isSupport()){
+        if(web_url && web_url[0] && web_url[1]){
+          sessionStorage.setItem('sensors_heatmap_url',decodeURIComponent(web_url[1]));
+        }
+
         sessionStorage.setItem('sensors_heatmap_id',match[1]);
          
           if(type && type[0] && type[1]){
@@ -3129,7 +3156,7 @@ saEvent.send = function(p, callback) {
           }        
       }
       isReady(match[1],type);
-    } else if(typeof window.sessionStorage === 'object' && sessionStorage.setItem && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string'){
+    } else if(_.sessionStorage.isSupport() && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string'){
       sd.is_heatmap_render_mode = true;      
       isReady(sessionStorage.getItem('sensors_heatmap_id'),sessionStorage.getItem('sensors_heatmap_type'),location.href);
     }else{
