@@ -8918,9 +8918,6 @@ var heatmap = {
     var me = this;
     _.bindReady(
       function(){
-        
-        
-
         if (window && window.parent && window.parent.window && (window !== window.parent.window)) {
           window.parent.window.postMessage({
             method: 'setHeight',
@@ -8953,6 +8950,7 @@ var heatmap = {
       function hasGetWebUrl(){
           setTimeout(function(){
             heatmap_render.setToolbar(data,type,url);
+            me.sendIframeData();
           },sd.para.heatmap.loadTimeout || 0);
       }    
       /*
@@ -8963,21 +8961,18 @@ var heatmap = {
       });
 */
 
-      me.sendIframeData();
       //进入渲染模式
       heatmap_render.setCssStyle();
 
-      function getWebUrl(){
-        if(web_url){
-          sd.para.web_url = web_url;
-          sessionStorage.setItem('sensors_heatmap_url',web_url);
-          hasGetWebUrl();  
-        }else{
-          heatmap_render.showErrorInfo(2,{error:'获取web_url超时'});  
-          return false;
-        }
-      }
-      getWebUrl();
+
+    if(web_url){
+      sd.para.web_url = web_url;
+      sessionStorage.setItem('sensors_heatmap_url',web_url);
+      hasGetWebUrl();  
+    }else{
+      heatmap_render.showErrorInfo(2,{error:'获取web_url超时'});  
+      return false;
+    }
 
   }
 };  
