@@ -11,16 +11,12 @@ Sensors Analytics JavaScript SDK
 
 ## 获取发行版
 
-> 注意 SDK 可能不完全向前兼容，请阅读具体的 Release Log。如果不确定是否支持，请联系神策技术支持人员。
+> 注意 SDK 可能不完全向前兼容，请阅读具体的 Release Log。如果不确定是否支持，请联系神策技术支持人员！例如使用 1.9 版本 SDK ，神策分析系统必须也升级到 1.9 以上！
  
 请根据需要 [Releases](https://github.com/sensorsdata/sa-sdk-javascript/releases) 里下载对应的文件：
 
-* sensorsdata.min.js：代码埋点的主文件，如果用可视化埋点不需要。
-* vtrack.min.js：可视化埋点的主文件，启用可视化埋点需要。
-* vendor.min.css：可视化埋点配置界面的样式文件。
-* vendor.min.js：可视化埋点配置界面的代码文件。
-
-可视化埋点代码里包含了代码埋点的所有功能，所以使用可视化埋点的话，也可以使用代码埋点的功能。建议代码埋点为主，可视化埋点为辅。
+* sensorsdata.min.js：数据采集文件。
+* heatmap.min.js：点击图渲染时候需要用的文件。
 
 
 
