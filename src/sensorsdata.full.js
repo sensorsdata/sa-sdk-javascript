@@ -2475,6 +2475,21 @@ saEvent.send = function(p, callback) {
     },
     autoTrackSinglePage:function(para,callback){
       var url = _.info.pageProp.url;
+
+      function getUtm(){    
+         var utms = _.info.campaignParams();   
+         var $utms = {};   
+         for (var i in utms) {   
+           if ((' ' + source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {    
+             $utms['$' + i] = utms[i];   
+           } else {    
+             $utms[i] = utms[i];   
+           }   
+         }   
+         return $utms;   
+       }
+
+
       function closure(){
         sd.track('$pageview', _.extend({
             $referrer: url,
@@ -2482,7 +2497,7 @@ saEvent.send = function(p, callback) {
             $url: location.href,
             $url_path: location.pathname,
             $title: document.title
-          }, para),callback
+          }, para, getUtm()),callback
         );
         url = location.href;
       }
@@ -2534,7 +2549,7 @@ saEvent.send = function(p, callback) {
               $url: location.href,
               $url_path: location.pathname,
               $title: document.title
-            }, para),callback
+            }, $utms, para),callback
           );        
           current_page_url = location.href;
         });
@@ -2546,7 +2561,7 @@ saEvent.send = function(p, callback) {
           $url: location.href,
           $url_path: location.pathname,
           $title: document.title
-        },para),callback
+        }, $utms, para),callback
       );
 
     }
