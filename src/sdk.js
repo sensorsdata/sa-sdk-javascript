@@ -1866,20 +1866,6 @@ var saNewUser = {
   },
   //检查是否是latest
   checkIsFirstLatest: function() {
-    //去除以前的$latest_utm_source相关
-    var latest_utms = ['$latest_utm_source','$latest_utm_medium', '$latest_utm_campaign', '$latest_utm_content', '$latest_utm_term'];
-    var props = store.getProps();
-    for(var i =0;i<latest_utms.length;i++){
-      if(latest_utms[i] in props){
-        if(!(latest_utms[i].replace('latest_','') in props)){
-          props[latest_utms[i].replace('latest_','')] = props[latest_utms[i]];          
-        }
-        delete props[latest_utms[i]];
-      }
-    }
-    store.setProps(props,true);
-
-
     var url_domain = _.info.pageProp.url_domain;
     var referrer_domain = _.info.pageProp.referrer_domain;
     // 判断最近一次，如果前向地址跟自己域名一致，且cookie中取不到值，认为有异常
@@ -1893,7 +1879,7 @@ var saNewUser = {
       });
     }
     // utm
-    var allUtms = _.info.campaignParamsStandard('$','_latest_');
+    var allUtms = _.info.campaignParamsStandard('$latest_','_latest_');
     var $utms = allUtms.$utms;
     var otherUtms = allUtms.otherUtms;
     if (!_.isEmptyObject($utms)) {
@@ -1902,6 +1888,8 @@ var saNewUser = {
     if (!_.isEmptyObject(otherUtms)) {
       sd.register(otherUtms);
     }
+
+
   }
 
 };
