@@ -1517,12 +1517,37 @@ _.jssdkDebug = function(recevie_prop,has_prop){
     }
   }
 };
+_.strToUnicode = function(str){
+  if(typeof str !== 'string'){
+    logger.info('转换unicode错误',str);
+    return str;    
+  }
+  var nstr = '';
+  for(var i = 0; i<str.length; i++){
+    nstr += '\\'+str.charCodeAt(i).toString(16);
+  }
+  return nstr;
+};
 
 _.querySelectorAll = function(val){
+
   if(typeof val !== 'string'){
-    logger.info('错误',val);
+    logger.info('选择器错误',val);
     return [];    
   }
+  // 替换纯数字的id
+  var sp = val.split(' ');
+  if(sp.length === 1){
+    if(/^#\d+$/.test(sp[0])){
+      val = '#' + _.strToUnicode(sp[0].slice(1));
+    }
+  }else{
+    if(/^#\d+$/.test(sp[0])){
+      sp[0] = '#' + _.strToUnicode(sp[0].slice(1));
+      val = sp.join(' ');
+    }
+  }
+
   try{
      return document.querySelectorAll(val);
   }catch(e){
@@ -1701,7 +1726,7 @@ sd.sendState.getSendCall = function(data, callback) {
   data = JSON.stringify(data);
   logger.info(originData);
   // 打通app传数据给app
-  if(sd.para.use_app_track){
+  if(sd.para.use_app_track === true || sd.para.use_app_track === 'only'){
     if((typeof SensorsData_APP_JS_Bridge === 'object') && SensorsData_APP_JS_Bridge.sensorsdata_track){
       SensorsData_APP_JS_Bridge.sensorsdata_track(data);
       (typeof callback === 'function') && callback();      
@@ -1713,9 +1738,15 @@ sd.sendState.getSendCall = function(data, callback) {
       iframe = null;
       (typeof callback === 'function') && callback();      
     }else{
-      this.prepareServerUrl(data,callback);      
+      if(sd.para.use_app_track === true){
+        this.prepareServerUrl(data,callback);
+      }
     }
-  }else{
+  }else if(sd.para.use_app_track === 'mui'){
+    if(_.isObject(window.plus) && window.plus.SDAnalytics && window.plus.SDAnalytics.trackH5Event){
+      window.plus.SDAnalytics.trackH5Event(data);
+    }
+  } else{
     this.prepareServerUrl(data,callback);
   }
 };
@@ -1868,6 +1899,18 @@ var saNewUser = {
   checkIsFirstLatest: function() {
     var url_domain = _.info.pageProp.url_domain;
     var referrer_domain = _.info.pageProp.referrer_domain;
+
+    //去除详叔的坑，utm_source相关   
+     var latest_utms = ['$utm_source','$utm_medium', '$utm_campaign', '$utm_content', '$utm_term'];   
+     var props = store.getProps();
+     for(var i =0;i<latest_utms.length;i++){   
+       if(latest_utms[i] in props){    
+         delete props[latest_utms[i]];   
+       }   
+     }   
+     store.setProps(props,true);
+
+
     // 判断最近一次，如果前向地址跟自己域名一致，且cookie中取不到值，认为有异常
     // 最近一次站外前向地址，如果域名不一致，就register为latest
     if(url_domain !== referrer_domain){
