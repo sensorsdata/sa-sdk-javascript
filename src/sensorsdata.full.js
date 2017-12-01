@@ -99,8 +99,10 @@ sd.initPara = function(para){
       sd.para[i] = sd.para_default[i];
     }
   }
-
-  sd.para.heatmap_url = sd.para.heatmap_url || sd.para.sdk_url.replace(/[^\/]+\.min\.js/,'heatmap.min.js');
+  //优化自动取heatmap.min.js
+  if(!sd.para.heatmap_url && sd.para.sdk_url){
+    sd.para.heatmap_url = sd.para.sdk_url.replace(/[^\/]+\.js$/,'heatmap.min.js');
+  }
   
   if(_.isObject(sd.para.heatmap)) {
     if(_.isEmptyObject(sd.para.heatmap)){
@@ -139,7 +141,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.9.4';
+var LIB_VERSION = '1.9.5';
 
 sd.lib_version = LIB_VERSION;
 
@@ -3288,21 +3290,22 @@ saEvent.send = function(p, callback) {
     
     var me = this;
     function isReady(data,type,url){
-       
-       _.loadScript({
+      if(sd.para.heatmap_url){
+        _.loadScript({
            success:function(){
-        
                setTimeout(function(){
                   if(typeof sa_jssdk_heatmap_render !== 'undefined'){
                    sa_jssdk_heatmap_render(sd,data,type,url);   
                   }
-               },0)
-               
+               },0);
            },
            error:function(){},
            type:'js',
            url: sd.para.heatmap_url
-       })
+       });
+     }else{
+       logger.info('没有指定heatmap_url的路径');
+     }
         
     }
     // 如果有id，才有可能是首次，首次的时候把web_url存进去

@@ -107,8 +107,10 @@ sd.initPara = function(para){
       sd.para[i] = sd.para_default[i];
     }
   }
-
-  sd.para.heatmap_url = sd.para.heatmap_url || sd.para.sdk_url.replace(/[^\/]+\.min\.js/,'heatmap.min.js');
+  //优化自动取heatmap.min.js
+  if(!sd.para.heatmap_url && sd.para.sdk_url){
+    sd.para.heatmap_url = sd.para.sdk_url.replace(/[^\/]+\.js$/,'heatmap.min.js');
+  }
   
   if(_.isObject(sd.para.heatmap)) {
     if(_.isEmptyObject(sd.para.heatmap)){

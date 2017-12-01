@@ -3159,21 +3159,22 @@ saEvent.send = function(p, callback) {
     
     var me = this;
     function isReady(data,type,url){
-       
-       _.loadScript({
+      if(sd.para.heatmap_url){
+        _.loadScript({
            success:function(){
-        
                setTimeout(function(){
                   if(typeof sa_jssdk_heatmap_render !== 'undefined'){
                    sa_jssdk_heatmap_render(sd,data,type,url);   
                   }
-               },0)
-               
+               },0);
            },
            error:function(){},
            type:'js',
            url: sd.para.heatmap_url
-       })
+       });
+     }else{
+       logger.info('没有指定heatmap_url的路径');
+     }
         
     }
     // 如果有id，才有可能是首次，首次的时候把web_url存进去
