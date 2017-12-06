@@ -141,7 +141,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.9.5';
+var LIB_VERSION = '1.9.6';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1675,11 +1675,11 @@ _.querySelectorAll = function(val){
   // 替换纯数字的id
   var sp = val.split(' ');
   if(sp.length === 1){
-    if(/^#\d+$/.test(sp[0])){
+    if(/^#\d+/.test(sp[0])){
       val = '#' + _.strToUnicode(sp[0].slice(1));
     }
   }else{
-    if(/^#\d+$/.test(sp[0])){
+    if(/^#\d+/.test(sp[0])){
       sp[0] = '#' + _.strToUnicode(sp[0].slice(1));
       val = sp.join(' ');
     }
@@ -3229,7 +3229,10 @@ saEvent.send = function(p, callback) {
           return false;
         }        
         var target = ev.target || ev.srcElement;
-        if(!target){
+        if(typeof target !== 'object'){
+          return false;
+        }
+        if(typeof target.tagName !== 'string'){
           return false;
         }
         var tagName = target.tagName.toLowerCase();
@@ -3254,7 +3257,10 @@ saEvent.send = function(p, callback) {
           return false;
         }
         var target = ev.target || ev.srcElement;
-        if(!target){
+        if(typeof target !== 'object'){
+          return false;
+        }
+        if(typeof target.tagName !== 'string'){
           return false;
         }
         var tagName = target.tagName.toLowerCase();

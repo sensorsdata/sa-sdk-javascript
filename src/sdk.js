@@ -1538,11 +1538,11 @@ _.querySelectorAll = function(val){
   // 替换纯数字的id
   var sp = val.split(' ');
   if(sp.length === 1){
-    if(/^#\d+$/.test(sp[0])){
+    if(/^#\d+/.test(sp[0])){
       val = '#' + _.strToUnicode(sp[0].slice(1));
     }
   }else{
-    if(/^#\d+$/.test(sp[0])){
+    if(/^#\d+/.test(sp[0])){
       sp[0] = '#' + _.strToUnicode(sp[0].slice(1));
       val = sp.join(' ');
     }
@@ -3098,7 +3098,10 @@ saEvent.send = function(p, callback) {
           return false;
         }        
         var target = ev.target || ev.srcElement;
-        if(!target){
+        if(typeof target !== 'object'){
+          return false;
+        }
+        if(typeof target.tagName !== 'string'){
           return false;
         }
         var tagName = target.tagName.toLowerCase();
@@ -3123,7 +3126,10 @@ saEvent.send = function(p, callback) {
           return false;
         }
         var target = ev.target || ev.srcElement;
-        if(!target){
+        if(typeof target !== 'object'){
+          return false;
+        }
+        if(typeof target.tagName !== 'string'){
           return false;
         }
         var tagName = target.tagName.toLowerCase();
