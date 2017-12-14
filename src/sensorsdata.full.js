@@ -79,13 +79,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     callback_timeout: 1000,
     is_track_device_id: false,
 
-    use_app_track: false,
-
-    heatmap: {
-      clickmap:'default',
-      scroll_notice_map:'default'
-    }
-
+    use_app_track: false
   };
 
 sd.initPara = function(para){
@@ -101,16 +95,12 @@ sd.initPara = function(para){
   }
   //优化自动取heatmap.min.js
   if(!sd.para.heatmap_url && sd.para.sdk_url){
-    sd.para.heatmap_url = sd.para.sdk_url.replace(/[^\/]+\.js$/,'heatmap.min.js');
+    sd.para.heatmap_url = sd.para.sdk_url.replace(/[^\/]+\.js[^\/]*$/,'heatmap.min.js');
   }
   
   if(_.isObject(sd.para.heatmap)) {
-    if(_.isEmptyObject(sd.para.heatmap)){
-      sd.para.heatmap = sd.para_default.heatmap;
-    }else{
-      sd.para.heatmap = _.extend(sd.para_default.heatmap,sd.para.heatmap);
-    }
-   
+    sd.para.heatmap.clickmap = sd.para.heatmap.clickmap || 'default';
+    sd.para.heatmap.scroll_notice_map = sd.para.heatmap.scroll_notice_map || 'default';   
     sd.para.heatmap.scroll_delay_time = sd.para.heatmap.scroll_delay_time || 4000;
   }
   // 优化配置
