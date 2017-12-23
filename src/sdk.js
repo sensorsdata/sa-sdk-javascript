@@ -24,19 +24,20 @@ var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content ut
 
 var logger = typeof logger === 'object' ? logger : {};
 logger.info = function() {
-  if (!sd.para.show_log) {
-    return false;
-  }
-  if(sd.para.show_log === true || sd.para.show_log === 'string'){
-    arguments[0] = _.formatJsonString(arguments[0]);
-  }
+  if((_.sessionStorage.isSupport() && sessionStorage.getItem('sensorsdata_jssdk_debug') === 'true') || sd.para.show_log){
 
-  if (typeof console === 'object' && console.log) {
-    try {
-      return console.log.apply(console, arguments);
-    } catch (e) {
-      console.log(arguments[0]);
+    if(sd.para.show_log === true || sd.para.show_log === 'string' || sd.para.show_log === false){
+      arguments[0] = _.formatJsonString(arguments[0]);
     }
+
+    if (typeof console === 'object' && console.log) {
+      try {
+        return console.log.apply(console, arguments);
+      } catch (e) {
+        console.log(arguments[0]);
+      }
+    }
+
   }
 };
 
@@ -902,7 +903,7 @@ _.cookie = {
     //
     if (days !== 0) {
       var date = new Date();
-      // 默认是填，可以是秒
+      // 默认是天，可以是秒
       if (String(days).slice(-1) === 's') {
         date.setTime(date.getTime() + (Number(String(days).slice(0, -1)) * 1000));
       } else {
@@ -1728,11 +1729,11 @@ sd.sendState.getSendCall = function(data, callback) {
   // 打通app传数据给app
   if(sd.para.use_app_track === true || sd.para.use_app_track === 'only'){
     if((typeof SensorsData_APP_JS_Bridge === 'object') && SensorsData_APP_JS_Bridge.sensorsdata_track){
-      SensorsData_APP_JS_Bridge.sensorsdata_track(data);
-      (typeof callback === 'function') && callback();      
+      SensorsData_APP_JS_Bridge.sensorsdata_track(JSON.stringify(_.extend({server_url:sd.para.server_url},originData)));
+      (typeof callback === 'function') && callback();
     }else if(/sa-sdk-ios/.test(navigator.userAgent) && !window.MSStream){
       var iframe = document.createElement('iframe');
-      iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(data));
+      iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(JSON.stringify(_.extend({server_url:sd.para.server_url},originData))));
       document.documentElement.appendChild(iframe);
       iframe.parentNode.removeChild(iframe);
       iframe = null;
@@ -1805,6 +1806,12 @@ sd.sendState.stateInfo.prototype.start = function(){
   };
   this.img.src = this.server_url;
 };
+
+sd.sendState.ajaxCall = function(){
+//  _.ajax({});
+
+};
+
 
 sd.sendState.sendCall = function(server_url,callback){
   ++this._receive;
@@ -2404,21 +2411,22 @@ saEvent.send = function(p, callback) {
        }
 
 
-      function closure(){
+      function closure(p,c){
         sd.track('$pageview', _.extend({
             $referrer: url,
             $referrer_host: _.url('hostname',url) || '',
             $url: location.href,
             $url_path: location.pathname,
             $title: document.title
-          }, para, getUtm()),callback
+          }, p, getUtm()),c
         );
         url = location.href;
       }
-      closure();
+      closure(para,callback);
       this.autoTrackSinglePage = closure;
     },
-    autoTrackWithoutProfile:function(para,callback){
+    autoTrackWithoutProfile: function(para,callback){
+      para = _.isObject(para) ? para : {};
       this.autoTrack(_.extend(para,{not_set_profile:true}),callback);
     },
     autoTrack: function(para, callback) {
@@ -2440,7 +2448,7 @@ saEvent.send = function(p, callback) {
             $first_visit_time: new Date(),
             $first_referrer: _.getReferrer(),
             $first_browser_language: navigator.language || '取值异常',
-            $first_browser_charset: document.charset || '取值异常',
+            $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
             $first_referrer_host: _.info.pageProp.referrer_host,
             $first_traffic_source_type: _.getSourceFromReferrer(),
             $first_search_keyword: _.getKeywordFromReferrer()
