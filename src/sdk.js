@@ -2361,6 +2361,32 @@ saEvent.send = function(p, callback) {
     getStayTime: function() {
       return ((new Date()) - sd._t) / 1000;
     },
+    setProfileLocal: function(obj){
+      if(!_.localStorage.isSupport()){
+        sd.setProfile(obj);
+        return false;
+      }
+      if(!_.isObject(obj) || _.isEmptyObject(obj)){
+        return false;
+      }
+      var saveData = _.localStorage.parse('sensorsdata_2015_jssdk_profile');
+      var isNeedSend = false;
+      if(_.isObject(saveData) && !_.isEmptyObject(saveData)){
+        for(var i in obj){
+          if((i in saveData && saveData[i] !== obj[i]) || !(i in saveData)){
+            saveData[i] = obj[i];
+            isNeedSend = true;
+          }
+        }
+        if(isNeedSend){
+          _.localStorage.set('sensorsdata_2015_jssdk_profile',JSON.stringify(saveData));
+          sd.setProfile(obj);          
+        }
+      }else{
+        _.localStorage.set('sensorsdata_2015_jssdk_profile',JSON.stringify(obj));
+        sd.setProfile(obj);
+      }
+     },
     //set init referrer
     setInitReferrer: function() {
       var _referrer = _.getReferrer();
@@ -2385,6 +2411,9 @@ saEvent.send = function(p, callback) {
         _referring_host: _.info.pageProp.referrer_host
       });
     },
+    trackHeatmap: function(){
+      this.trackHeatMap.apply(arguments);
+    },
     trackHeatMap: function(target){
       if((typeof target === 'object') && target.tagName){
         var tagName = target.tagName.toLowerCase();
@@ -2397,8 +2426,8 @@ saEvent.send = function(p, callback) {
     autoTrackSinglePage:function(para,callback){
       var url = _.info.pageProp.url;
 
-      function getUtm(){    
-         var utms = _.info.campaignParams();   
+      function getUtm(){
+         var utms = _.info.campaignParams();
          var $utms = {};   
          for (var i in utms) {   
            if ((' ' + source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {    
@@ -2904,7 +2933,31 @@ saEvent.send = function(p, callback) {
       }
     };
   };
+  sd.getPresetProperties = function(){
+    function getUtm(){
+       var utms = _.info.campaignParams();
+       var $utms = {};   
+       for (var i in utms) {   
+         if ((' ' + source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {    
+           $utms['$' + i] = utms[i];   
+         } else {    
+           $utms[i] = utms[i];   
+         }   
+       }    
+       return $utms;   
+     }
 
+    var obj = {
+      $referrer: typeof document.referrer === 'string' ? document.referrer.slice(0,100) : '',
+      $referrer_host: _.url('hostname',document.referrer) || '',
+      $url: location.href,
+      $url_path: location.pathname,
+      $title: document.title || '',    
+      _distinct_id: store.getDistinctId()
+    }
+
+    return _.extend({}, _.info.properties(),sa.store.getProps(),getUtm(),obj);
+  };
 
   var heatmap = { 
       getDomIndex: function (el){
@@ -3240,6 +3293,7 @@ saEvent.send = function(p, callback) {
     if((!para && has_declare) || (para && !has_declare)){
       sd.initPara(para);
       sd._init();
+      sd.readyState = 2;
     }
   };
 
