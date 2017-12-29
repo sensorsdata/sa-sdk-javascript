@@ -14,7 +14,7 @@ Sensors Analytics JavaScript SDK
 请根据需要 [Releases](https://github.com/sensorsdata/sa-sdk-javascript/releases) 里下载对应的文件     
 
 插播广告一条：
- * 紧急招聘前端工程师，运维工程师，大数据工程师等，各种级别的都需要，求发送到我[邮箱](shengyonggen@sensorsdata.cn)，我会严格保密，谢谢
+ * 紧急招聘前端工程师，运维工程师，大数据工程师等，各种级别的都需要，求发送到我邮箱 (shengyonggen@sensorsdata.cn) ，我会严格保密，谢谢
 
 
 
