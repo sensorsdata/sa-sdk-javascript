@@ -1,6 +1,7 @@
 /**
  * @fileoverview sensors analytic javascript sdk
  * @author shengyonggen@sensorsdata.cn
+ * 紧急招聘前端工程师，运维工程师，大数据工程师等，各种级别的都可以，求发送到我邮箱，我会严格保密，谢谢
  */
 
 ;(function(root,factory) {

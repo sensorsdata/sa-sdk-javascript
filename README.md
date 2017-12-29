@@ -11,7 +11,10 @@ Sensors Analytics JavaScript SDK
 
 > 注意 SDK 可能不完全向前兼容，请阅读具体的 Release Log。如果不确定是否支持，请联系神策技术支持人员！例如使用 1.9 版本 SDK ，神策分析系统必须也升级到 1.9 以上！
  
-请根据需要 [Releases](https://github.com/sensorsdata/sa-sdk-javascript/releases) 里下载对应的文件：
+请根据需要 [Releases](https://github.com/sensorsdata/sa-sdk-javascript/releases) 里下载对应的文件     
+
+插播广告一条：
+ * 紧急招聘前端工程师，运维工程师，大数据工程师等，各种级别的都需要，求发送到我[邮箱](shengyonggen@sensorsdata.cn)，我会严格保密，谢谢
 
 
 
