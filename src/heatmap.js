@@ -8968,7 +8968,7 @@ var heatmap_render = {
 
     var current_url = this.getCurrentUrl();
     var getQrHtml = function (){
-        var qrHtml = $('<div style="width:260px;height:260px;position:fixed;right:2px;top:55px;background:#FFF;box-shadow:0 2px 9px 3px rgba(168,173,178,.39);border-radius:3px;"><div style="height:44px;line-height:44px;border-bottom:1px solid #E9F0F7;text-align:center;color:#475669;font-size:14px;position:relative;">分享链接<span style="position:absolute;top:4px;color:#99A9BF;cursor:pointer;right:4px"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g><g transform="translate(-1.000000, -1.000000)"><polygon fill="#99A9BF" transform="translate(11.106602, 11.106602) rotate(-45.000000) translate(-11.106602, -11.106602) " points="12.3566017 12.3566017 12.3566017 18.6066017 9.85660172 18.6066017 9.85660172 12.3566017 3.60660172 12.3566017 3.60660172 9.85660172 9.85660172 9.85660172 9.85660172 3.60660172 12.3566017 3.60660172 12.3566017 9.85660172 18.6066017 9.85660172 18.6066017 12.3566017"></polygon><rect x="1" y="1" width="20" height="20"></rect></g></g></g></svg></span></div><div style="width:128px;height:128px;margin-left:66px;margin-top:16px"></div><div style="margin:20px"><input style="font-size:14px;outline:none;color:#475669;width:92%;border:1px solid #D3DCE6;border-radius:3px;height:32px;line-height:32px;padding:0 10px;" type="text" value=""></div></div>');
+        var qrHtml = $('<div style="z-index:999999;width:260px;height:260px;position:fixed;right:2px;top:55px;background:#FFF;box-shadow:0 2px 9px 3px rgba(168,173,178,.39);border-radius:3px;"><div style="height:44px;line-height:44px;border-bottom:1px solid #E9F0F7;text-align:center;color:#475669;font-size:14px;position:relative;">分享链接<span style="position:absolute;top:4px;color:#99A9BF;cursor:pointer;right:4px"><svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g><g transform="translate(-1.000000, -1.000000)"><polygon fill="#99A9BF" transform="translate(11.106602, 11.106602) rotate(-45.000000) translate(-11.106602, -11.106602) " points="12.3566017 12.3566017 12.3566017 18.6066017 9.85660172 18.6066017 9.85660172 12.3566017 3.60660172 12.3566017 3.60660172 9.85660172 9.85660172 9.85660172 9.85660172 3.60660172 12.3566017 3.60660172 12.3566017 9.85660172 18.6066017 9.85660172 18.6066017 12.3566017"></polygon><rect x="1" y="1" width="20" height="20"></rect></g></g></g></svg></span></div><div style="width:128px;height:128px;margin-left:66px;margin-top:16px"></div><div style="margin:20px"><input style="font-size:14px;outline:none;color:#475669;width:92%;border:1px solid #D3DCE6;border-radius:3px;height:32px;line-height:32px;padding:0 10px;" type="text" value=""></div></div>');
         $(document.body).append(qrHtml);
         var qrCodeEle = qrHtml.find('div:eq(1)')[0];
         qrHtml.find('input').val(current_url);
@@ -8983,6 +8983,8 @@ var heatmap_render = {
           colorLight : "#ffffff",
           correctLevel : QRCode.CorrectLevel.L
         });
+
+        qrHtml.css('top',$(div).height()+1);
         getQrHtml = function(){
             return qrHtml;
         }
