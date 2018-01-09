@@ -366,7 +366,7 @@ _.isJSONString = function(str) {
 };
 // gbk等编码decode会异常
 _.decodeURIComponent = function(val){
-  var result = '';
+  var result = val;
   try{
     result = decodeURIComponent(val);
   }catch(e){
@@ -691,6 +691,7 @@ _.UUID = (function() {
 
 _.getQueryParam = function(url, param) {
   param = param.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+  url = _.decodeURIComponent(url);
   var regexS = "[\\?&]" + param + "=([^&#]*)",
     regex = new RegExp(regexS),
     results = regex.exec(url);
@@ -1224,6 +1225,7 @@ _.xhr = function(cors) {
 };
 
 _.ajax = function(para) {
+  para.credentials =  (typeof para.credentials) === 'undefined' ? true : para.credentials;
   function getJSON(data) {
     try {
       return JSON.parse(data);
@@ -1258,7 +1260,10 @@ _.ajax = function(para) {
   g.open(para.type, para.url, true);
 
   try {
-    g.withCredentials = true;
+
+    if(para.credentials){
+      g.withCredentials = true;
+    }
 
     if (_.isObject(para.header)) {
       for (var i in para.header) {
@@ -1938,9 +1943,21 @@ sd.sendState.stateInfo.prototype.start = function(){
   this.img.src = this.server_url;
 };
 
-sd.sendState.ajaxCall = function(){
-//  _.ajax({});
 
+sd.sendState.beaconCall = function(url,callback){
+
+  navigator.sendBeacon(url);
+
+}
+
+sd.sendState.ajaxCall = function(url,callback){
+  url = url.replace('https://sensorswww.cloud.sensorsdata.cn:4006/sa.gif?token=6b551cb59b1c1973&data=','https://zhaohaiying.cloud.sensorsdata.cn:4006/sa.gif?token=9d8f18c23084485f&data=');
+  _.ajax({
+    url: url,
+    type: 'GET',
+    credentials: false,
+    cors:true
+  });
 };
 
 
@@ -1948,6 +1965,10 @@ sd.sendState.sendCall = function(server_url,callback){
   ++this._receive;
   var state = '_state' + this._receive;
   var me = this;
+
+//  this.ajaxCall(server_url,callback);
+//  this.beaconCall(server_url,callback);
+
   this[state] = new this.stateInfo({
     callback: callback,
     server_url: server_url,

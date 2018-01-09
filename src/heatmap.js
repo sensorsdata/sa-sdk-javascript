@@ -8820,7 +8820,7 @@ var heatmap_render = {
 
       var urlParse2 = new _.urlParse(sd.para.web_url);
       urlParse2._values.Path = '/api/scroll_heat_map/report/' + id;
-      urlParse2.addQueryString({pathUrl:url});
+      urlParse2.addQueryString({pathUrl:encodeURIComponent(url)});
       var urlParse2Value = urlParse2.getUrl();
       
         _.ajax({
@@ -9109,9 +9109,9 @@ var heatmap_render = {
       urlParse2._values.Path = '/api/heat_map/report/path/' + id;
       var urlParse2Value = urlParse2.getUrl();
       if(urlParse2Value.indexOf('?') === -1){
-        urlParse2Value = urlParse2Value + '?pathUrl=' + url;
+        urlParse2Value = urlParse2Value + '?pathUrl=' + encodeURIComponent(url);
       }else{
-        urlParse2Value = urlParse2Value + '&pathUrl=' + url;
+        urlParse2Value = urlParse2Value + '&pathUrl=' + encodeURIComponent(url);
       }
 
       if(url){
