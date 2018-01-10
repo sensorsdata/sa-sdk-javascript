@@ -1782,6 +1782,8 @@ sd.sendState.stateInfo = function(para){
   this.callback = para.callback;
   this.hasCalled = false;
   this.img = document.createElement('img');
+  this.img.width = 1;
+  this.img.height = 1;
   this.server_url = para.server_url;
   this.sendState = para.sendState;
   this.start();

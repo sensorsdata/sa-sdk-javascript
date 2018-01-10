@@ -135,7 +135,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.9.10';
+var LIB_VERSION = '1.9.11';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1913,6 +1913,8 @@ sd.sendState.stateInfo = function(para){
   this.callback = para.callback;
   this.hasCalled = false;
   this.img = document.createElement('img');
+  this.img.width = 1;
+  this.img.height = 1;
   this.server_url = para.server_url;
   this.sendState = para.sendState;
   this.start();

@@ -9209,7 +9209,7 @@ var heatmap_render = {
 
         var urlParse = new _.urlParse(sd.para.web_url);
         urlParse._values.Path = '/web-click/users';
-        obj.data_user_link = urlParse.getUrl() + '#heat_map_id=' + heat_map_id + '&element_selector=' + encodeURIComponent(obj.by_values[0]);
+        obj.data_user_link = urlParse.getUrl() + '#heat_map_id=' + heat_map_id + '&detail=true&element_selector=' + encodeURIComponent(obj.by_values[0]);
 
         if(String(obj.top_values[0]) === 'null'){
           obj.data_top_value = '没有值';          
