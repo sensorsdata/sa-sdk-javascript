@@ -150,20 +150,21 @@ sd.initPara = function(para){
   if (typeof console === 'object' && console.log) {
     try {console.log(err)} catch (e) {};
   }
-/*
+
   (function(){
 
     var sd = window['sensorsDataAnalytic201505'];
     if(typeof sd === 'string'){
       sd = window[sd];
-      if((sd != null) && (typeof sd === 'function' || typeof sd === 'object')){
-        sd.track && sd.track('_js_sdk_error',{_js_sdk_error_msg:err,$url:location.href}); 
+      if((sd != null) && (typeof sd === 'function' || typeof sd === 'object') && (typeof sd.para === 'object') && sd.para.is_debug){
+        sd.track && sd.track('_js_sdk_error',{_js_sdk_error_msg:JSON.stringify(err),$url:location.href}); 
       }
     }
 
 
   })();
-*/
+
+
 }
 
 

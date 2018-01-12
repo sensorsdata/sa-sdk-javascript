@@ -1966,13 +1966,15 @@ sd.sendState.sendCall = function(server_url,callback){
   var me = this;
 
 //  this.ajaxCall(server_url,callback);
-//  this.beaconCall(server_url,callback);
-
-  this[state] = new this.stateInfo({
-    callback: callback,
-    server_url: server_url,
-    sendState: this
-  });  
+//  if(typeof navigator === 'object' && typeof navigator.sendBeacon === 'function'){
+//    this.beaconCall(server_url,callback);    
+//  }else{
+    this[state] = new this.stateInfo({
+      callback: callback,
+      server_url: server_url,
+      sendState: this
+    });  
+//  }
 };
 
 // 检查是否是新用户（第一次种cookie，且在8个小时内的）
@@ -3481,20 +3483,21 @@ saEvent.send = function(p, callback) {
   if (typeof console === 'object' && console.log) {
     try {console.log(err)} catch (e) {};
   }
-/*
+
   (function(){
 
     var sd = window['sensorsDataAnalytic201505'];
     if(typeof sd === 'string'){
       sd = window[sd];
-      if((sd != null) && (typeof sd === 'function' || typeof sd === 'object')){
-        sd.track && sd.track('_js_sdk_error',{_js_sdk_error_msg:err,$url:location.href}); 
+      if((sd != null) && (typeof sd === 'function' || typeof sd === 'object') && (typeof sd.para === 'object') && sd.para.is_debug){
+        sd.track && sd.track('_js_sdk_error',{_js_sdk_error_msg:JSON.stringify(err),$url:location.href}); 
       }
     }
 
 
   })();
-*/
+
+
 }
 
 

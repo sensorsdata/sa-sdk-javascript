@@ -1838,13 +1838,15 @@ sd.sendState.sendCall = function(server_url,callback){
   var me = this;
 
 //  this.ajaxCall(server_url,callback);
-//  this.beaconCall(server_url,callback);
-
-  this[state] = new this.stateInfo({
-    callback: callback,
-    server_url: server_url,
-    sendState: this
-  });  
+//  if(typeof navigator === 'object' && typeof navigator.sendBeacon === 'function'){
+//    this.beaconCall(server_url,callback);    
+//  }else{
+    this[state] = new this.stateInfo({
+      callback: callback,
+      server_url: server_url,
+      sendState: this
+    });  
+//  }
 };
 
 // 检查是否是新用户（第一次种cookie，且在8个小时内的）
