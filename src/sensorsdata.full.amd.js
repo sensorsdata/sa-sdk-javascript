@@ -75,10 +75,10 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
     is_trackLink:true,
     // 如果要设置，设置数组
-    source_type_config:{
+    source_type:{
       utm: null,
-      search: null,
-      social: null
+      search: ['www.baidu.','m.baidu.','m.sm.cn','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'],
+      social: ['weibo.com','renren.com','kaixin001.com','douban.com','qzone.qq.com','zhihu.com','tieba.baidu.com','weixin.qq.com']
     },
     callback_timeout: 1000,
     is_track_device_id: false,
@@ -135,7 +135,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.9.11';
+var LIB_VERSION = '1.9.12';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1739,9 +1739,8 @@ _.getSourceFromReferrer = function(){
       }
     }
   }
-
-  var search_engine = ['www.baidu.','m.baidu.','m.sm.cn','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'];
-  var social_engine = ['weibo.com','renren.com','kaixin001.com','douban.com','qzone.qq.com','zhihu.com','tieba.baidu.com','weixin.qq.com'];
+  var search_engine = sd.para.source_type.search;
+  var social_engine = sd.para.source_type.social;
 
   var referrer = document.referrer || '';
   var url = _.info.pageProp.url;
@@ -3031,7 +3030,7 @@ saEvent.send = function(p, callback) {
     }
   };
 
-  function app_js_bridge(){
+ function app_js_bridge(){
     var app_info = null;
     var todo = null;
     function setAppInfo(data){
@@ -3041,6 +3040,8 @@ saEvent.send = function(p, callback) {
       }
       if(todo){
         todo(app_info);
+        todo = null;
+        app_info = null;
       }
     }
     //android
@@ -3073,16 +3074,19 @@ saEvent.send = function(p, callback) {
       // 不传参数，直接返回数据
       if(!func){
         return app_info;
+        app_info = null;
       }else{
         //如果传参数，保存参数。如果有数据直接执行，没数据时保存
         if(app_info === null){
           todo = func;
         }else{
           func(app_info);
+          app_info = null;
         }
       }
     };
   };
+
   sd.getPresetProperties = function(){
     function getUtm(){
        var utms = _.info.campaignParams();

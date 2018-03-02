@@ -80,10 +80,10 @@ try{
 
     is_trackLink:true,
     // 如果要设置，设置数组
-    source_type_config:{
+    source_type:{
       utm: null,
-      search: null,
-      social: null
+      search: ['www.baidu.','m.baidu.','m.sm.cn','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'],
+      social: ['weibo.com','renren.com','kaixin001.com','douban.com','qzone.qq.com','zhihu.com','tieba.baidu.com','weixin.qq.com']
     },
     callback_timeout: 1000,
     is_track_device_id: false,
