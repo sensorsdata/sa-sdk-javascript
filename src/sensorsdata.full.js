@@ -72,11 +72,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
     is_trackLink:true,
     // 如果要设置，设置数组
-    source_type:{
-      utm: null,
-      search: ['www.baidu.','m.baidu.','m.sm.cn','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'],
-      social: ['weibo.com','renren.com','kaixin001.com','douban.com','qzone.qq.com','zhihu.com','tieba.baidu.com','weixin.qq.com']
-    },
+    source_type: {},
     callback_timeout: 1000,
     is_track_device_id: false,
 
@@ -99,6 +95,14 @@ sd.initPara = function(para){
     sd.para.heatmap_url = sd.para.sdk_url.replace(/[^\/]+\.js[^\/]*$/,'heatmap.min.js');
   }
   
+  var search_type = ['www.baidu.','m.baidu.','m.sm.cn','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'];
+  var social_type = ['weibo.com','renren.com','kaixin001.com','douban.com','qzone.qq.com','zhihu.com','tieba.baidu.com','weixin.qq.com'];
+
+  if(typeof sd.para.source_type === 'object'){
+    sd.para.source_type.search = _.isArray(sd.para.source_type.search) ? sd.para.source_type.search.concat(search_type) : search_type;
+    sd.para.source_type.social = _.isArray(sd.para.source_type.social) ? sd.para.source_type.social.concat(social_type) : social_type;
+  }
+
   if(_.isObject(sd.para.heatmap)) {
     sd.para.heatmap.clickmap = sd.para.heatmap.clickmap || 'default';
     sd.para.heatmap.scroll_notice_map = sd.para.heatmap.scroll_notice_map || 'default';   
@@ -132,7 +136,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.9.12';
+var LIB_VERSION = '1.9.13';
 
 sd.lib_version = LIB_VERSION;
 
