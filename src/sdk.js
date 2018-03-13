@@ -1732,16 +1732,50 @@ sd.sendState.getSendCall = function(data, callback) {
   logger.info(originData);
   // 打通app传数据给app
   if(sd.para.use_app_track === true || sd.para.use_app_track === 'only'){
-    if((typeof SensorsData_APP_JS_Bridge === 'object') && SensorsData_APP_JS_Bridge.sensorsdata_track){
-      SensorsData_APP_JS_Bridge.sensorsdata_track(JSON.stringify(_.extend({server_url:sd.para.server_url},originData)));
-      (typeof callback === 'function') && callback();
-    }else if(/sa-sdk-ios/.test(navigator.userAgent) && !window.MSStream){
-      var iframe = document.createElement('iframe');
-      iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(JSON.stringify(_.extend({server_url:sd.para.server_url},originData))));
-      document.documentElement.appendChild(iframe);
-      iframe.parentNode.removeChild(iframe);
-      iframe = null;
-      (typeof callback === 'function') && callback();      
+    if((typeof SensorsData_APP_JS_Bridge === 'object') && (SensorsData_APP_JS_Bridge.sensorsdata_verify || SensorsData_APP_JS_Bridge.sensorsdata_track)){
+      // 如果有新版方式，优先用新版
+      if(SensorsData_APP_JS_Bridge.sensorsdata_verify){
+        // 如果校验通过则结束，不通过则降级改成h5继续发送
+        if(!SensorsData_APP_JS_Bridge.sensorsdata_verify(JSON.stringify(_.extend({server_url:sd.para.server_url},originData)))){
+          this.prepareServerUrl(data,callback);
+        }else{
+          (typeof callback === 'function') && callback();
+        }
+      }else{
+        SensorsData_APP_JS_Bridge.sensorsdata_track(JSON.stringify(_.extend({server_url:sd.para.server_url},originData)));   
+        (typeof callback === 'function') && callback();             
+      }
+    }else if((/sensors-verify/.test(navigator.userAgent) || /sa-sdk-ios/.test(navigator.userAgent)) && !window.MSStream){
+      var iframe = null;
+      if(/sensors-verify/.test(navigator.userAgent)){
+        var match = navigator.userAgent.match(/sensors-verify\/([^\s]+)/);
+        if(match && match[0] && (typeof match[1] === 'string') && (match[1].split('?').length === 2)){
+          match = match[1].split('?');
+          var hostname = null;
+          var project = null;
+          try{
+            hostname = _.url('hostname',sd.para.server_url);
+            project = _.url('?project',sd.para.server_url) || 'default';
+          }catch(e){};
+          if (hostname && hostname === match[0] && project && project === match[1]) {
+            iframe = document.createElement('iframe');
+            iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(JSON.stringify(_.extend({server_url:sd.para.server_url},originData))));
+            document.documentElement.appendChild(iframe);
+            iframe.parentNode.removeChild(iframe);
+            iframe = null;
+            (typeof callback === 'function') && callback();
+          }else{
+            this.prepareServerUrl(data,callback);
+          }
+        }
+      }else{
+        iframe = document.createElement('iframe');
+        iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(JSON.stringify(_.extend({server_url:sd.para.server_url},originData))));
+        document.documentElement.appendChild(iframe);
+        iframe.parentNode.removeChild(iframe);
+        iframe = null;
+        (typeof callback === 'function') && callback(); 
+      }    
     }else{
       if(sd.para.use_app_track === true){
         this.prepareServerUrl(data,callback);
