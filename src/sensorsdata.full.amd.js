@@ -66,6 +66,8 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
     //来源参数名字
     source_channel: [],
 
+    send_type: 'image',
+
     // 七鱼过滤id
     vtrack_ignore: {},
 
@@ -73,10 +75,9 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
     is_single_page: false,
 
-    is_trackLink:true,
     // 如果要设置，设置数组
     source_type: {},
-    callback_timeout: 1000,
+    callback_timeout: 200,
     is_track_device_id: false,
 
     use_app_track: false
@@ -92,6 +93,9 @@ sd.initPara = function(para){
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
+  }
+  if(sd.para.send_type !== 'image' && sd.para.send_type !== 'ajax' && sd.para.send_type !== 'beacon'){
+    sd.para.send_type = 'image';
   }
   //优化自动取heatmap.min.js
   if(!sd.para.heatmap_url && sd.para.sdk_url){
@@ -139,7 +143,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.9.13';
+var LIB_VERSION = '1.11.1';
 
 sd.lib_version = LIB_VERSION;
 
@@ -505,6 +509,17 @@ _.searchObjString = function(o) {
   }
 };
 
+// 去除$option的配置数据
+_.searchConfigData = function(data){
+  if(typeof data === 'object' && data.$option){
+    var data_config = data.$option;
+    delete data.$option;
+    return data_config;
+  }else{
+    return {};
+  }
+}
+
 
 // 数组去重复
 _.unique = function(ar) {
@@ -543,7 +558,7 @@ _.strip_sa_properties = function(p) {
       }
     }
     // 只能是字符串，数字，日期,布尔，数组
-    if (!(_.isString(v) || _.isNumber(v) || _.isDate(v) || _.isBoolean(v) || _.isArray(v))) {
+    if (!(_.isString(v) || _.isNumber(v) || _.isDate(v) || _.isBoolean(v) || _.isArray(v) || (k === '$option') )) {
       logger.info('您的数据-',k, v, '-格式不满足要求，我们已经将其删除');
       delete p[k];
     }
@@ -1231,6 +1246,9 @@ _.xhr = function(cors) {
 _.ajax = function(para) {
   para.credentials =  (typeof para.credentials) === 'undefined' ? true : para.credentials;
   function getJSON(data) {
+    if(!data){
+      return '';
+    }
     try {
       return JSON.parse(data);
     } catch (e) {
@@ -1276,7 +1294,9 @@ _.ajax = function(para) {
     }
 
     if (para.data) {
-      g.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+      if(!para.cors){
+        g.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+      }
       if (para.contentType === 'application/json') {
         g.setRequestHeader("Content-type", "application/json; charset=UTF-8");
       } else {
@@ -1710,7 +1730,7 @@ _.getReferrer = function(referrer){
 };
 
 _.getKeywordFromReferrer = function(){
-  var search_keyword = {baidu:'wd',google:'q',bing:'q',yahoo:'p',sogou:'query',so:'q'};
+  var search_keyword = {baidu:'wd',google:'q',bing:'q',yahoo:'p',sogou:'query',so:'q',sm:'q'};
   if(document && typeof document.referrer === 'string'){
     if(document.referrer.indexOf('http') === 0) {
       var domain = _.url('domain',document.referrer);
@@ -1847,24 +1867,182 @@ _.info = {
   }
 };
 
-// 数据发送状态
-sd.sendState = {}
-//成功发送数
-sd.sendState._complete = 0;
-//接受发送数
-sd.sendState._receive = 0;
 
-sd.sendState.getSendCall = function(data, callback) {
+
+
+// 发送队列
+_.autoExeQueue = function(){
+  var queue = {
+    // 简单队列
+    items : [],
+    enqueue: function(val){
+      this.items.push(val);
+      this.start();
+    },
+    dequeue: function(){
+      return this.items.shift();
+    },
+    getCurrentItem: function(){
+      return this.items[0];
+    },
+    // 自动循环执行队列
+    isRun: false,
+    start: function(){
+      if(this.items.length > 0 && !this.isRun){
+        this.isRun = true;
+        this.getCurrentItem().start();
+      }
+    },
+    close: function(){
+      this.dequeue();
+      this.isRun = false;
+      this.start();
+    }
+  };
+  return queue;
+};
+
+// 各种发送方式
+var dataSend = {};
+
+dataSend.getSendUrl = function(url,data){
+  var base64Data = _.base64Encode(data);
+  var crc = 'crc=' + _.hashCode(base64Data);
+  if (url.indexOf('?') !== -1) {
+    return url + '&data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
+  }else{
+    return url + '?data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
+  }
+};
+
+dataSend.getSendData = function(data){
+  var base64Data = _.base64Encode(data);
+  var crc = 'crc=' + _.hashCode(base64Data);
+  return 'data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
+};
+
+
+dataSend.getInstance = function(data){
+  var obj = {};
+  if(data.config && (data.config.send_type === 'image' || data.config.send_type === 'ajax' || data.config.send_type === 'beacon')){
+    obj = new this[data.config.send_type](data);
+  }else{
+    obj = new this[sd.para.send_type](data);
+  }
+  // 代理模式，重置原方法，统一设置超时
+  var start = obj.start;
+  obj.start = function(){
+    var me = this;
+    start.apply(this, arguments);
+    setTimeout(function(){
+      me.isEnd();
+    },sd.para.callback_timeout);
+  };
+  obj.end = function(){
+    this.callback && this.callback();
+  };
+  obj.isEnd = function(){
+    if(!this.received){
+      this.received =  true;
+      this.end();
+      this.close();
+    }
+  };
+
+  return obj;
+
+};
+
+dataSend.image = function(para){
+  this.callback = para.callback;
+  this.img = document.createElement('img');
+  this.img.width = 1;
+  this.img.height = 1;
+  this.data = para.data;
+  this.server_url = dataSend.getSendUrl(para.server_url,para.data);
+};
+dataSend.image.prototype.start = function(){
+  var me = this;
+    var temp = new Date();
+  this.img.onload = function(e) {
+    this.onload = null;
+    me.isEnd(); 
+  };
+  this.img.onerror = function(e) {
+    this.onerror = null;
+    me.isEnd(); 
+  };
+  this.img.onabort = function(e) {
+    this.onabort = null;
+    me.isEnd(); 
+  };
+  this.img.src = this.server_url;
+};
+
+dataSend.ajax = function(para){
+  this.callback = para.callback;
+  this.server_url = para.server_url;
+  this.data = dataSend.getSendData(para.data);
+};
+dataSend.ajax.prototype.start = function(){
+  var me = this;
+      var temp = new Date();
+  _.ajax({
+    url: this.server_url,
+    type: 'POST',
+    data: this.data,
+    credentials: false,
+    cors:true,
+    success:function(){
+      me.isEnd();
+    },
+    error:function(){
+      me.isEnd();
+    }
+  });
+};
+
+dataSend.beacon = function(para){
+  this.callback = para.callback;
+  this.server_url = para.server_url;
+  this.data = dataSend.getSendData(para.data);
+};
+dataSend.beacon.prototype.start = function(){
+  var me = this;
+  if(typeof navigator === 'object' && typeof navigator.sendBeacon === 'function'){
+    navigator.sendBeacon(this.server_url,this.data);
+  }
+  setTimeout(function(){
+    me.isEnd();
+  },40);
+};
+
+
+// 数据发送流程控制
+
+var sendState = {};
+sd.sendState = sendState;
+// 发送队列
+sendState.queue = _.autoExeQueue();
+
+sendState.requestData = null;
+
+sendState.getSendCall = function(data, config, callback) {
   // 点击图渲染模式不发数据
   if(sd.is_heatmap_render_mode){
     return false;
   }
 
-  // 加cache防止缓存
-  data._nocache = (String(Math.random()) + String(Math.random()) + String(Math.random())).replace(/\./g,'').slice(0,15);
   var originData = data;
   data = JSON.stringify(data);
   logger.info(originData);
+
+  this.requestData = {
+    data: data,
+    config: config,
+    callback: callback
+  };
+
   // 打通app传数据给app
   if(sd.para.use_app_track === true || sd.para.use_app_track === 'only'){
     if((typeof SensorsData_APP_JS_Bridge === 'object') && (SensorsData_APP_JS_Bridge.sensorsdata_verify || SensorsData_APP_JS_Bridge.sensorsdata_track)){
@@ -1872,7 +2050,7 @@ sd.sendState.getSendCall = function(data, callback) {
       if(SensorsData_APP_JS_Bridge.sensorsdata_verify){
         // 如果校验通过则结束，不通过则降级改成h5继续发送
         if(!SensorsData_APP_JS_Bridge.sensorsdata_verify(JSON.stringify(_.extend({server_url:sd.para.server_url},originData)))){
-          this.prepareServerUrl(data,callback);
+          this.prepareServerUrl();
         }else{
           (typeof callback === 'function') && callback();
         }
@@ -1900,7 +2078,7 @@ sd.sendState.getSendCall = function(data, callback) {
             iframe = null;
             (typeof callback === 'function') && callback();
           }else{
-            this.prepareServerUrl(data,callback);
+            this.prepareServerUrl();
           }
         }
       }else{
@@ -1913,7 +2091,7 @@ sd.sendState.getSendCall = function(data, callback) {
       }    
     }else{
       if(sd.para.use_app_track === true){
-        this.prepareServerUrl(data,callback);
+        this.prepareServerUrl();
       }
     }
   }else if(sd.para.use_app_track === 'mui'){
@@ -1921,100 +2099,34 @@ sd.sendState.getSendCall = function(data, callback) {
       window.plus.SDAnalytics.trackH5Event(data);
     }
   } else{
-    this.prepareServerUrl(data,callback);
+    this.prepareServerUrl();
   }
 };
 
-sd.sendState.getUrlPara = function(url,data){
-  var base64Data = _.base64Encode(data);
-  var crc = 'crc=' + _.hashCode(base64Data);
-  if (url.indexOf('?') !== -1) {
-    return url + '&data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
-  }else{
-    return url + '?data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
-  }
-
-};
-
-sd.sendState.prepareServerUrl = function(data,callback){
-  if(_.isArray(sd.para.server_url)){
+sendState.prepareServerUrl = function(){
+  if (typeof this.requestData.config === 'object' && this.requestData.config.server_url) {
+    this.sendCall(this.requestData.config.server_url,this.requestData.callback);
+  }else if(_.isArray(sd.para.server_url)){
     for(var i =0; i<sd.para.server_url.length;i++){
-      this.sendCall(this.getUrlPara(sd.para.server_url[i],data),callback);
+      this.sendCall(sd.para.server_url[i]);
     }
   }else{
-    this.sendCall(this.getUrlPara(sd.para.server_url,data),callback);
+    this.sendCall(sd.para.server_url,this.requestData.callback);
   }
 };
 
-sd.sendState.stateInfo = function(para){
-  this.callback = para.callback;
-  this.hasCalled = false;
-  this.img = document.createElement('img');
-  this.img.width = 1;
-  this.img.height = 1;
-  this.server_url = para.server_url;
-  this.sendState = para.sendState;
-  this.start();
-};
-
-sd.sendState.stateInfo.prototype.start = function(){
-  var me = this;
-  function callAndDelete(){
-    if(typeof me === 'object' && typeof me.callback === 'function' && !me.hasCalled){
-      me.hasCalled = true;
-      me.callback();
-    }
-  }
-  setTimeout(callAndDelete, sd.para.callback_timeout);
-  this.img.onload = function(e) {
-    this.onload = null;
-    ++me.sendState._complete;
-    callAndDelete();
-  };
-  this.img.onerror = function(e) {
-    this.onerror = null;
-    callAndDelete();
-  };
-  this.img.onabort = function(e) {
-    this.onabort = null;
-    callAndDelete();
-  };
-  this.img.src = this.server_url;
-};
-
-
-sd.sendState.beaconCall = function(url,callback){
-
-  navigator.sendBeacon(url);
-
-}
-
-sd.sendState.ajaxCall = function(url,callback){
-  url = url.replace('https://sensorswww.cloud.sensorsdata.cn:4006/sa.gif?token=6b551cb59b1c1973&data=','https://zhaohaiying.cloud.sensorsdata.cn:4006/sa.gif?token=9d8f18c23084485f&data=');
-  _.ajax({
-    url: url,
-    type: 'GET',
-    credentials: false,
-    cors:true
+sendState.sendCall = function(server_url,callback){
+  var instance = dataSend.getInstance({
+    server_url: server_url,
+    data: this.requestData.data,
+    callback: callback,
+    config: this.requestData.config
   });
-};
-
-
-sd.sendState.sendCall = function(server_url,callback){
-  ++this._receive;
-  var state = '_state' + this._receive;
   var me = this;
-
-//  this.ajaxCall(server_url,callback);
-//  if(typeof navigator === 'object' && typeof navigator.sendBeacon === 'function'){
-//    this.beaconCall(server_url,callback);    
-//  }else{
-    this[state] = new this.stateInfo({
-      callback: callback,
-      server_url: server_url,
-      sendState: this
-    });  
-//  }
+  instance.close = function(){
+    me.queue.close();
+  };
+  this.queue.enqueue(instance);
 };
 
 // 检查是否是新用户（第一次种cookie，且在8个小时内的）
@@ -2322,6 +2434,9 @@ saEvent.send = function(p, callback) {
   }
   _.searchObjDate(data);
   _.searchObjString(data);
+  //去掉data里的$option
+  var data_config = _.searchConfigData(data.properties);
+
   //判断是否要给数据增加新用户属性
   saNewUser.checkIsAddSign(data);
   saNewUser.checkIsFirstTime(data);
@@ -2331,7 +2446,7 @@ saEvent.send = function(p, callback) {
       logger.info(data);
       this.debugPath(JSON.stringify(data), callback);
     } else {
-      sd.sendState.getSendCall(data, callback);
+      sd.sendState.getSendCall(data,data_config,callback);
     }
 
   };

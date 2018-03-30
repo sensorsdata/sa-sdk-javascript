@@ -71,6 +71,8 @@ try{
     //来源参数名字
     source_channel: [],
 
+    send_type: 'image',
+
     // 七鱼过滤id
     vtrack_ignore: {},
 
@@ -78,10 +80,9 @@ try{
 
     is_single_page: false,
 
-    is_trackLink:true,
     // 如果要设置，设置数组
     source_type: {},
-    callback_timeout: 1000,
+    callback_timeout: 200,
     is_track_device_id: false,
 
     use_app_track: false
@@ -97,6 +98,9 @@ sd.initPara = function(para){
     if (sd.para[i] === void 0) {
       sd.para[i] = sd.para_default[i];
     }
+  }
+  if(sd.para.send_type !== 'image' && sd.para.send_type !== 'ajax' && sd.para.send_type !== 'beacon'){
+    sd.para.send_type = 'image';
   }
   //优化自动取heatmap.min.js
   if(!sd.para.heatmap_url && sd.para.sdk_url){
