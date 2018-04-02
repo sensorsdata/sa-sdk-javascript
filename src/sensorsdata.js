@@ -109,10 +109,12 @@ sd.initPara = function(para){
   
   var search_type = ['www.baidu.','m.baidu.','m.sm.cn','so.com','sogou.com','youdao.com','google.','yahoo.com/','bing.com/','ask.com/'];
   var social_type = ['weibo.com','renren.com','kaixin001.com','douban.com','qzone.qq.com','zhihu.com','tieba.baidu.com','weixin.qq.com'];
+  var search_keyword = {baidu:['wd','word','kw','keyword'],google:'q',bing:'q',yahoo:'p',sogou:'query',so:'q',sm:'q'};
 
   if(typeof sd.para.source_type === 'object'){
     sd.para.source_type.search = _.isArray(sd.para.source_type.search) ? sd.para.source_type.search.concat(search_type) : search_type;
     sd.para.source_type.social = _.isArray(sd.para.source_type.social) ? sd.para.source_type.social.concat(social_type) : social_type;
+    sd.para.source_type.keyword = _.isObject(sd.para.source_type.keyword) ?  _.extend(search_keyword,sd.para.source_type.keyword) : search_keyword;
   }
 
   if(_.isObject(sd.para.heatmap)) {

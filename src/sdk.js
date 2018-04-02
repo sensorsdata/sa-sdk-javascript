@@ -1591,15 +1591,25 @@ _.getReferrer = function(referrer){
 };
 
 _.getKeywordFromReferrer = function(){
-  var search_keyword = {baidu:'wd',google:'q',bing:'q',yahoo:'p',sogou:'query',so:'q',sm:'q'};
+  var search_keyword = sd.para.source_type.keyword;
   if(document && typeof document.referrer === 'string'){
     if(document.referrer.indexOf('http') === 0) {
       var domain = _.url('domain',document.referrer);
       var query = _.url('?',document.referrer);
+      var temp = null;
       for(var i in search_keyword){
-        if(domain.indexOf(i) === 0){
-          if(typeof query === 'object' && query[search_keyword[i]]){
-            return query[search_keyword[i]];
+        if(domain.indexOf(i) === 0){          
+          if(typeof query === 'object'){            
+            temp = search_keyword[i];
+            if(_.isArray(temp)){
+              for(var i = 0; i < temp.length; i++){
+                if(query[temp[i]]){
+                  return query[temp[i]];
+                }
+              }
+            }else if(query[temp]){
+              return query[temp];              
+            }
           }
         }
       }
