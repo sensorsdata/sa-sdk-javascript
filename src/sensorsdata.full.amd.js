@@ -145,7 +145,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.10.1';
+var LIB_VERSION = '1.10.2';
 
 sd.lib_version = LIB_VERSION;
 
