@@ -94,6 +94,14 @@ sd.initPara = function(para){
       sd.para[i] = sd.para_default[i];
     }
   }
+  // 修复没有配置协议的问题，自动取当前页面的协议
+  if(typeof sd.para.server_url === 'string' && sd.para.server_url.slice(0,3) === '://'){
+    sd.para.server_url = location.protocol + sd.para.server_url;
+  }
+  if(typeof sd.para.web_url === 'string' && sd.para.web_url.slice(0,3) === '://'){
+    sd.para.web_url = location.protocol + sd.para.web_url;
+  }
+
   if(sd.para.send_type !== 'image' && sd.para.send_type !== 'ajax' && sd.para.send_type !== 'beacon'){
     sd.para.send_type = 'image';
   }
@@ -145,7 +153,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.10.2';
+var LIB_VERSION = '1.10.4';
 
 sd.lib_version = LIB_VERSION;
 
@@ -3275,7 +3283,7 @@ saEvent.send = function(p, callback) {
       _distinct_id: store.getDistinctId()
     }
 
-    return _.extend({}, _.info.properties(),sa.store.getProps(),getUtm(),obj);
+    return _.extend({}, _.info.properties(),sd.store.getProps(),getUtm(),obj);
   };
 
   var heatmap = { 
@@ -3294,13 +3302,11 @@ saEvent.send = function(p, callback) {
         return -1;
       },
        selector:function (el){
-        //var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
         var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
         if(el.id){
           return '#' + el.id;
         }else{
-          return el.tagName.toLowerCase()      //+ (classname ? classname.replace(/^| +/g, '.') : '')
-            + (~i ? ':nth-child(' + (i + 1) + ')' : '');
+          return el.tagName.toLowerCase() + (~i ? ':nth-child(' + (i + 1) + ')' : '');
         }
       },
       getDomSelector : function(el,arr) {
@@ -3520,7 +3526,7 @@ saEvent.send = function(p, callback) {
           return false;
         }
 
-        parent_ele = target.parentNode;
+        var parent_ele = target.parentNode;
 
         if(tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea'){
           that.start(ev, target, tagName);

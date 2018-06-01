@@ -3140,7 +3140,7 @@ saEvent.send = function(p, callback) {
       _distinct_id: store.getDistinctId()
     }
 
-    return _.extend({}, _.info.properties(),sa.store.getProps(),getUtm(),obj);
+    return _.extend({}, _.info.properties(),sd.store.getProps(),getUtm(),obj);
   };
 
   var heatmap = { 
@@ -3159,13 +3159,11 @@ saEvent.send = function(p, callback) {
         return -1;
       },
        selector:function (el){
-        //var classname = _.trim(el.className.baseVal ? el.className.baseVal : el.className);
         var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
         if(el.id){
           return '#' + el.id;
         }else{
-          return el.tagName.toLowerCase()      //+ (classname ? classname.replace(/^| +/g, '.') : '')
-            + (~i ? ':nth-child(' + (i + 1) + ')' : '');
+          return el.tagName.toLowerCase() + (~i ? ':nth-child(' + (i + 1) + ')' : '');
         }
       },
       getDomSelector : function(el,arr) {
@@ -3385,7 +3383,7 @@ saEvent.send = function(p, callback) {
           return false;
         }
 
-        parent_ele = target.parentNode;
+        var parent_ele = target.parentNode;
 
         if(tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea'){
           that.start(ev, target, tagName);
