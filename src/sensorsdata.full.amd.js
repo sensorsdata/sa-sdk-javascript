@@ -153,7 +153,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.10.4';
+var LIB_VERSION = '1.10.5';
 
 sd.lib_version = LIB_VERSION;
 
@@ -3440,7 +3440,7 @@ saEvent.send = function(p, callback) {
           para.$url = location.href;
           para.$title = document.title;
           para.$url_path = location.pathname;
-          para.event_duration = parseInt(delay_time);
+          para.event_duration = parseInt(delay_time)/1000;
           sd.track('$WebStay',para);
         }
         this.current_time = current_time;
