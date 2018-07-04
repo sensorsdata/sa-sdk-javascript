@@ -344,7 +344,7 @@ _.searchZZAppStyle = function(data){
   }
   if(typeof data.properties.$token !== 'undefined'){
     data.$token = data.properties.$token;
-    delete data.properties.$project;
+    delete data.properties.$token;
   }
 };
 

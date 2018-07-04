@@ -153,7 +153,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.10.5';
+var LIB_VERSION = '1.10.6';
 
 sd.lib_version = LIB_VERSION;
 
@@ -493,7 +493,7 @@ _.searchZZAppStyle = function(data){
   }
   if(typeof data.properties.$token !== 'undefined'){
     data.$token = data.properties.$token;
-    delete data.properties.$project;
+    delete data.properties.$token;
   }
 };
 
