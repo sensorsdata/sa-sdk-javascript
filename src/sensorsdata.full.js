@@ -483,6 +483,17 @@ _.searchObjDate = function(o) {
   }
 };
 
+_.searchZZAppStyle = function(data){
+  if(typeof data.properties.$project !== 'undefined'){
+    data.$project = data.properties.$project;
+    delete data.properties.$project;
+  }
+  if(typeof data.properties.$token !== 'undefined'){
+    data.$token = data.properties.$token;
+    delete data.properties.$project;
+  }
+};
+
 _.formatJsonString = function(obj){
   try{
     return JSON.stringify(obj, null, '  ');
@@ -2451,6 +2462,9 @@ saEvent.send = function(p, callback) {
   }
   _.searchObjDate(data);
   _.searchObjString(data);
+  // 兼容灼洲app端做的$project和$token而加的代码
+  _.searchZZAppStyle(data);
+
   //去掉data里的$option
   var data_config = _.searchConfigData(data.properties);
 
