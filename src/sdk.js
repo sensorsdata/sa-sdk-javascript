@@ -339,11 +339,11 @@ _.searchObjDate = function(o) {
 
 _.searchZZAppStyle = function(data){
   if(typeof data.properties.$project !== 'undefined'){
-    data.$project = data.properties.$project;
+    data.project = data.properties.$project;
     delete data.properties.$project;
   }
   if(typeof data.properties.$token !== 'undefined'){
-    data.$token = data.properties.$token;
+    data.token = data.properties.$token;
     delete data.properties.$token;
   }
 };

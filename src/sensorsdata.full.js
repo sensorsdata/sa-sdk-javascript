@@ -150,7 +150,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.10.6';
+var LIB_VERSION = '1.10.7';
 
 sd.lib_version = LIB_VERSION;
 
@@ -485,11 +485,11 @@ _.searchObjDate = function(o) {
 
 _.searchZZAppStyle = function(data){
   if(typeof data.properties.$project !== 'undefined'){
-    data.$project = data.properties.$project;
+    data.project = data.properties.$project;
     delete data.properties.$project;
   }
   if(typeof data.properties.$token !== 'undefined'){
-    data.$token = data.properties.$token;
+    data.token = data.properties.$token;
     delete data.properties.$token;
   }
 };
