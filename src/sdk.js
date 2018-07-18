@@ -255,7 +255,7 @@ _.encodeDates = function(obj) {
   return obj;
 };
 
-_.now = Date.now || function() {
+/* _.now = Date.now || function() {
   return new Date().getTime();
 };
 
@@ -289,7 +289,7 @@ _.throttle = function(func, wait, options) {
       }
       return result;
     };
-};
+}; */
 
 _.hashCode = function(str){
   if(typeof str !== 'string'){
@@ -703,7 +703,7 @@ _.getDomainByHost = function(url) {
 }
 */
 
-_.draggable = function(elementToDrag, event) {
+/* _.draggable = function(elementToDrag, event) {
   function getScrollOffsets() {
     var w = document;
     if (w.pageXOffset != null) {
@@ -760,10 +760,10 @@ _.draggable = function(elementToDrag, event) {
     if (e.stopPropagation) e.stopPropagation();
     else e.cancelBubble = true; 
   }
-}
+} */
 
 // 是否有标准的浏览器环境,如果不是发送$errorEnviroment:{$errorReson:'没有window'}
-_.hasStandardBrowserEnviroment = function() {
+/* _.hasStandardBrowserEnviroment = function() {
   if (!window) {
     return 'window';
   }
@@ -777,9 +777,9 @@ _.hasStandardBrowserEnviroment = function() {
     return 'screen';
   }
 
-};
+}; */
 
-_.bindReady = function(fn,win) {
+/* _.bindReady = function(fn,win) {
   win = win || window;
   var done = false, 
   top = true,
@@ -810,7 +810,7 @@ _.bindReady = function(fn,win) {
     win[add](pre + 'load', init, false);
   }
 
-};
+}; */
 
 
 _.addEvent = function() {
