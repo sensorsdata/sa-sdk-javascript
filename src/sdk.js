@@ -1562,7 +1562,7 @@ _.strToUnicode = function(str){
   return nstr;
 };
 
-_.querySelectorAll = function(val){
+/* _.querySelectorAll = function(val){
 
   if(typeof val !== 'string'){
     logger.info('选择器错误',val);
@@ -1587,7 +1587,7 @@ _.querySelectorAll = function(val){
     logger.info('错误',val);
     return [];
   }
-};
+}; */
 
 _.getReferrer = function(referrer){
   var referrer = referrer || document.referrer;

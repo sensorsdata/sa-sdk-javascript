@@ -9737,6 +9737,33 @@ window.sa_jssdk_heatmap_render = function(se,data,type,url){
         }
     
     };
+
+    _.querySelectorAll = function(val){
+
+        if(typeof val !== 'string'){
+          logger.info('选择器错误',val);
+          return [];    
+        }
+        // 替换纯数字的id
+        var sp = val.split(' ');
+        if(sp.length === 1){
+          if(/^#\d+/.test(sp[0])){
+            val = '#' + _.strToUnicode(sp[0].slice(1));
+          }
+        }else{
+          if(/^#\d+/.test(sp[0])){
+            sp[0] = '#' + _.strToUnicode(sp[0].slice(1));
+            val = sp.join(' ');
+          }
+        }
+      
+        try{
+           return document.querySelectorAll(val);
+        }catch(e){
+          logger.info('错误',val);
+          return [];
+        }
+      };
     heatmap.prepare(data,type,url);
 };
 

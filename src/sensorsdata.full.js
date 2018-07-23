@@ -150,7 +150,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.10.8';
+var LIB_VERSION = '1.10.9';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1708,7 +1708,7 @@ _.strToUnicode = function(str){
   return nstr;
 };
 
-_.querySelectorAll = function(val){
+/* _.querySelectorAll = function(val){
 
   if(typeof val !== 'string'){
     logger.info('选择器错误',val);
@@ -1733,7 +1733,7 @@ _.querySelectorAll = function(val){
     logger.info('错误',val);
     return [];
   }
-};
+}; */
 
 _.getReferrer = function(referrer){
   var referrer = referrer || document.referrer;
