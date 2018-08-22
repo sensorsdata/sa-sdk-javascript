@@ -9177,11 +9177,31 @@ var heatmap_render = {
 
     var dataPageTotal = 0;
     var usableData = [];
-    
+    var usableElem = [];
+    // 去除找不到对应元素的已经无效的选择器
     _.each(data,function(obj){
-      if( obj.by_values[0] && _.querySelectorAll(obj.by_values[0])[0] ){
+      var elem = null; 
+      if( obj.by_values[0] && (elem = _.querySelectorAll(obj.by_values[0])[0]) ){
         usableData.push(obj);
+        usableElem.push(elem);
       }
+    });
+
+    // 多个选择器对应一个元素,使用最后的元素
+    if(usableData.length > 1){
+        for(var i =0; i < usableElem.length; i++){
+          for(var j = (i+1); j < usableElem.length; j++){
+            if(usableElem[i] === usableElem[j]){
+              usableData[j].values[0][0] += usableData[i].values[0][0];
+              delete usableData[i];
+              break;
+            }
+          }
+        }
+    }
+
+    usableData = _.filter(usableData,function(a){
+        return a;
     });
 
     if(usableData.length === 0){

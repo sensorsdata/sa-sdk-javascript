@@ -174,6 +174,24 @@ logger.info = function() {
 
 })();
 
+_.filter = function (arr, fn, self) {
+  var hasOwn = Object.prototype.hasOwnProperty;
+  if (arr.filter) {
+    return arr.filter(fn);
+  }
+  var ret = [];
+  for (var i = 0; i < arr.length; i++) {
+    if (!hasOwn.call(arr, i)) {
+      continue;
+    }
+    var val = arr[i];
+    if (fn.call(self, val, i, arr)) {
+      ret.push(val);
+    }
+  }
+  return ret;
+};
+
 _.inherit = function(subclass, superclass) {
   subclass.prototype = new superclass();
   subclass.prototype.constructor = subclass;
