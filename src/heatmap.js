@@ -9761,7 +9761,7 @@ window.sa_jssdk_heatmap_render = function(se,data,type,url){
     _.querySelectorAll = function(val){
 
         if(typeof val !== 'string'){
-          logger.info('选择器错误',val);
+          _.logger.info('选择器错误',val);
           return [];    
         }
         // 替换纯数字的id
@@ -9780,7 +9780,7 @@ window.sa_jssdk_heatmap_render = function(se,data,type,url){
         try{
            return document.querySelectorAll(val);
         }catch(e){
-          logger.info('错误',val);
+          _.logger.info('错误',val);
           return [];
         }
       };

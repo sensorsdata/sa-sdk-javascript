@@ -1,1 +1,1 @@
-var sensorsdata_js_sdk_latest_version = '1.11.2';
+var sensorsdata_js_sdk_latest_version = '1.11.3';
