@@ -153,7 +153,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.11.3';
+var LIB_VERSION = '1.11.4';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1989,6 +1989,7 @@ dataSend.getInstance = function(data){
   };
   obj.end = function(){
     this.callback && this.callback();
+    this.lastClear && this.lastClear();
   };
   obj.isEnd = function(){
     if(!this.received){
@@ -2028,6 +2029,10 @@ dataSend.image.prototype.start = function(){
   this.img.src = this.server_url;
 };
 
+dataSend.image.prototype.lastClear=function(){
+  this.img.src="";
+}
+
 dataSend.ajax = function(para){
   this.callback = para.callback;
   this.server_url = para.server_url;
@@ -2056,6 +2061,7 @@ dataSend.beacon = function(para){
   this.server_url = para.server_url;
   this.data = dataSend.getSendData(para.data);
 };
+
 dataSend.beacon.prototype.start = function(){
   var me = this;
   if(typeof navigator === 'object' && typeof navigator.sendBeacon === 'function'){
