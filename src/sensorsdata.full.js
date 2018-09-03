@@ -150,7 +150,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.11.4';
+var LIB_VERSION = '1.11.5';
 
 sd.lib_version = LIB_VERSION;
 
@@ -1301,6 +1301,9 @@ _.ajax = function(para) {
     error: function() {}
   }, para);
 
+  if(para.timeout){
+    g.timeout = para.timeout;
+  }
 
   g.onreadystatechange = function() {
     if (g.readyState == 4) {
@@ -2043,6 +2046,7 @@ dataSend.ajax.prototype.start = function(){
     type: 'POST',
     data: this.data,
     credentials: false,
+      timeout:sd.para.ajax_timeout || 1000,
     cors:true,
     success:function(){
       me.isEnd();
