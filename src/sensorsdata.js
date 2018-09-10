@@ -82,7 +82,7 @@ try{
 
     // 如果要设置，设置数组
     source_type: {},
-    callback_timeout: 200,
+    callback_timeout: 600,
     is_track_device_id: false,
 
     use_app_track: false

@@ -77,7 +77,7 @@ if(typeof JSON!=='object'){JSON={}}(function(){'use strict';var rx_one=/^[\],:{}
 
     // 如果要设置，设置数组
     source_type: {},
-    callback_timeout: 200,
+    callback_timeout: 600,
     is_track_device_id: false,
 
     use_app_track: false
@@ -153,7 +153,7 @@ var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
-var LIB_VERSION = '1.11.5';
+var LIB_VERSION = '1.11.6';
 
 sd.lib_version = LIB_VERSION;
 
