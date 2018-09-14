@@ -1,6 +1,6 @@
 {
   "name": "sa-sdk-javascript",
-  "version": "1.10.3",
+  "version": "1.11.6",
   "description": "official sensorsdata javascript sdk",
   "main": "sensorsdata.min.js",
   "scripts": {
@@ -20,8 +20,5 @@
   "bugs": {
     "url": "https://github.com/sensorsdata/sa-sdk-javascript/issues"
   },
-  "homepage": "https://github.com/sensorsdata/sa-sdk-javascript#readme",
-  "dependencies": {
-    "gulp": "^3.9.1"
-  }
+  "homepage": "https://github.com/sensorsdata/sa-sdk-javascript#readme"
 }
