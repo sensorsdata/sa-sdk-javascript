@@ -16,3 +16,10 @@ Sensors Analytics JavaScript SDK
 插播广告一条：
  * 紧急招聘前端工程师，求发送到我邮箱 (shengyonggen@sensorsdata.cn)
 
+ 
+最近更新：
+1.11.6 优化超时机制，增加自定义域名
+1.11.7 使用npm模块引入时候，多次init的判断。
+1.11.8 必须更新！firefox等浏览器下，发送相同数据导致丢失数据的问题！
+
+
