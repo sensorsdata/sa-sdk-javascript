@@ -24,5 +24,6 @@ Sensors Analytics JavaScript SDK
 1.11.9 heatmap增加了setContent参数，setContent是一个函数，有一个element参数，用户可以对元素内容进行操作，然后返回想要显示的内容，返回的内容会在点击图中的"当前内容"中显示  
 1.11.10 增加autoTrackSinglePage首次可以触发profile_set_once的功能  
 1.12.1 增加点击图第二版，按快捷键z和x，可切换点击图的渲染模式，用于解决某些点击图页面的样式冲突问题。增加配置heatmap:{element_selector:'not_use_id'} 不会使用id做为选择器，防止随机id导致的点击图不能使用。增加触达率图左右滚动的检查，禁止左右滚动触发scroll。增加scrollmap:{collect_url:false}{collect_url:function(){}}的配置。配置false的话，不采集$WebStay也就没有触达率图，配置function的话，会执行fucntion看返回值，返回真就采集，返回假不采集。  
+1.12.2 增加点击图采集数据时候，采集浏览器宽度。调整点击图开始渲染的时间为1秒间隔。
 
 
