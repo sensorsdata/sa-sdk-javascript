@@ -28,4 +28,5 @@ Sensors Analytics JavaScript SDK
 1.12.3 去除1.12.1增加的$WebStay的$viewport_left属性导致的埋点管理报错。    
 1.12.5 优化关闭页面前，如果有多次发数据时候的性能，queue_timeout 设置成 0 的时候，不再使用setTimeout 0发送，改成直接发送。会脱离队列数据发送的流程，变为直接发送数据。     
 1.12.6 去掉_nocache的防止静态缓存，默认增加_track_id的防止静态缓存，同时_track_id包含去重的功能，但是必须开启use_client_time。use_client_time如果使用客户端时间的话，会自动增加_flush_time来做客户端时间校准。另外完善ajax的timeout在ie6，7，8，9，10，11，edge下的各种异常处理。修复获取domain异常时候，设置cookie的domain再某些浏览器异常的问题。  
-1.12.7 增加判断heatmap.js和sensorsdata.js版本是否一致的判断，打印log
+1.12.7 增加判断heatmap.js和sensorsdata.js版本是否一致的判断，打印log  
+1.12.8 增加了第二版点击图对于opacity=0的元素的判断
