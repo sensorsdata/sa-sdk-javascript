@@ -30,3 +30,4 @@ Sensors Analytics JavaScript SDK
 1.12.6 去掉_nocache的防止静态缓存，默认增加_track_id的防止静态缓存，同时_track_id包含去重的功能，但是必须开启use_client_time。use_client_time如果使用客户端时间的话，会自动增加_flush_time来做客户端时间校准。另外完善ajax的timeout在ie6，7，8，9，10，11，edge下的各种异常处理。修复获取domain异常时候，设置cookie的domain再某些浏览器异常的问题。  
 1.12.7 增加判断heatmap.js和sensorsdata.js版本是否一致的判断，打印log  
 1.12.8 增加了第二版点击图对于opacity=0的元素的判断
+1.12.9 完善$WebStay对于横向滚动的判断
