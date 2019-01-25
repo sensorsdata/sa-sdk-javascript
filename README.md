@@ -31,3 +31,4 @@ Sensors Analytics JavaScript SDK
 1.12.7 增加判断heatmap.js和sensorsdata.js版本是否一致的判断，打印log  
 1.12.8 增加了第二版点击图对于opacity=0的元素的判断
 1.12.9 完善$WebStay对于横向滚动的判断
+1.12.10 $WebClick采集元素id的改进
