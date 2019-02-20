@@ -37,6 +37,3 @@ Sensors Analytics JavaScript SDK
 1.12.13 autoTrackSinglePage修改了当前referrer为url的问题  
 1.12.14 trackHeatMap增加新方法trackAllHeatMap可以采集a，input，button标签  
 
-
-
-
