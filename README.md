@@ -36,4 +36,7 @@ Sensors Analytics JavaScript SDK
 1.12.12 trackHeatMap方法增加callback属性，第一版点击图给点击元素的after和before伪元素增加了pointer-events:none属性  
 1.12.13 autoTrackSinglePage修改了当前referrer为url的问题  
 1.12.14 trackHeatMap增加新方法trackAllHeatMap可以采集a，input，button标签  
+1.12.15 referrer_domain参数修改，domain解析库增加ai后缀
+
+
 

@@ -1,4 +1,4 @@
-var sensorsdata_js_sdk_latest_version = '1.12.14';
+var sensorsdata_js_sdk_latest_version = '1.12.15';
 if(typeof module ==='object' && typeof module.exports === 'object'){
 module.exports = sensorsdata_js_sdk_latest_version;
 }
