@@ -39,7 +39,10 @@ Sensors Analytics JavaScript SDK
 1.12.15 referrer_domain参数修改，domain解析库增加ai后缀  
 1.12.16 增加了is_track_latest配置属性，用于控制是否采集$latest相关属性，并且增加了$latest_landing_page用于表示最近一次落地页。     
 1.12.17 修复了获取搜索引擎关键字sogou和so产生的问题   
-1.12.18 增加is_track_single_page 自动采集url切换   
+1.12.18 增加is_track_single_page 自动采集url切换  
+1.13.1  点击图的优化，增加https里发http请求的错误提示，增加heatmap_url没配置时候自动获取cdn，增加heatmap没配置时候无法查看点击图的错误提示  
+
+
 
 
 
