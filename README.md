@@ -40,5 +40,6 @@ Sensors Analytics JavaScript SDK
 |1.13.2| 增加渠道类型中自定义付费广告的相关参数 souce_type.utm 配置，修改$latest_landing_page属性取值异常的情况，增加对.top的域名解析|
 |1.13.3| 增加了新版的域名解析系统|
 |1.13.4| 1.增加了获取匿名ID的方法 sensors.quick('getAnonymousID') ,返回匿名 id ; 2.在存储 cookie 时会截取 register 的字符串 max_referrer_string_length 长度;|
+|1.13.5| 增加了简化版本的JSAPP功能，提供了存储和发送数据的接口，客户自己实现存储，来达到离线存储的目的，支持file协议|
 
 
