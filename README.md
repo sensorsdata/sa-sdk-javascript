@@ -41,5 +41,7 @@ Sensors Analytics JavaScript SDK
 |1.13.3| 增加了新版的域名解析系统|
 |1.13.4| 1.增加了获取匿名ID的方法 sensors.quick('getAnonymousID') ,返回匿名 id ; 2.在存储 cookie 时会截取 register 的字符串 max_referrer_string_length 长度;|
 |1.13.5| 增加了简化版本的JSAPP功能，提供了存储和发送数据的接口，客户自己实现存储，来达到离线存储的目的，支持file协议|
+|1.13.6| 修改微信浏览器中获取不到document.documentElement.scrollTop而报错的异常, 增加了浏览器发送数据不支持 beacon 时的适配，自动切换为 image 模式|
+|1.13.7| trackHeatMap 和 trackAllHeatMap 方法增加了自定义属性支持|
 
 
