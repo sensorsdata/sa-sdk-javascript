@@ -45,4 +45,5 @@ Sensors Analytics JavaScript SDK
 |1.13.7| trackHeatMap 和 trackAllHeatMap 方法增加了自定义属性支持|
 |1.13.8| 1. 修改了trackAllHeatMap必须设置heatmap属性否则会报错的BUG; 2. 去掉了callback 是对象类型时扩展 lib 属性的功能; 3. 增加了事件捕获模式支持 4. 修复了$WebStay在关闭页面前没有发数据的bug|
 |1.13.9| 增加了APP与H5打通时的日志信息|
+|1.13.10| 1.解决了网页热力分析中点击图浮层样式被覆盖的问题; 2. 解决了设置 send_type: ajax 在 IE6 和 IE7 不工作的问题|
 
