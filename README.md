@@ -46,4 +46,25 @@ Sensors Analytics JavaScript SDK
 |1.13.8| 1. 修改了trackAllHeatMap必须设置heatmap属性否则会报错的BUG; 2. 去掉了callback 是对象类型时扩展 lib 属性的功能; 3. 增加了事件捕获模式支持 4. 修复了$WebStay在关闭页面前没有发数据的bug|
 |1.13.9| 增加了APP与H5打通时的日志信息|
 |1.13.10| 1.解决了网页热力分析中点击图浮层样式被覆盖的问题; 2. 解决了设置 send_type: ajax 在 IE6 和 IE7 不工作的问题; 3.修复了1.13.9引入的没有开启APP与H5打通时显示打通失败的问题|
-|1.13.11| 以图片方式向神策后台发送数据时不带上 cookie |
+|1.13.11| 减小请求大小，以图片方式向神策后台发送数据时不带上 cookie |
+|1.13.12| 优化属性不规范的错误提示，优化非amd模式下js去掉支持require方式 |
+
+
+
+## License
+
+Copyright 2015－2019 Sensors Data Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+**禁止一切基于神策数据开源 SDK 的所有商业活动！**
