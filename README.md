@@ -9,7 +9,7 @@ Sensors Analytics JavaScript SDK
 完整文档 http://www.sensorsdata.cn/manual/js_sdk.html  
 如有疑问请联系邮箱 shengyonggen@sensorsdata.cn  
 注意 SDK 可能不完全向前兼容，请查看版本更新说明 [CHANGELOG.md](CHANGELOG.md) ，如果有说明不兼容的话，需要升级神策分析对应的版本    
-请根据需要前往 [Releases](https://github.com/sensorsdata/sa-sdk-miniprogram/releases) 里下载对应的文件  
+请根据需要前往 [Releases](https://github.com/sensorsdata/sa-sdk-javascript/releases) 里下载对应的文件  
 
 ## 长期招聘
  * 招聘 JavaScript SDK 开发工程师，JavaScript SDK 技术顾问，简历发送到邮箱 (shengyonggen@sensorsdata.cn)
