@@ -1,3 +1,9 @@
+## 1.14.1
+
+* 大幅优化代码结构。增加重复引入的判断，彻底解决各种异常重复引入问题
+* is_track_single_page 参数增加支持 callback 类型
+* 增加 img_use_crossorigin 配置项，如果设置为 true 以图片方式发送数据时请求不会附带 cookie，默认值为 false
+
 ## 1.13.14
 
 * 回退 1.13.11 增加的 corssOrigin，如果客户在 nginx 转发配置中，去掉了我们原有的 access-allow-origin 会导致请求失败
