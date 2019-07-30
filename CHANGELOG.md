@@ -1,8 +1,10 @@
+## 1.14.3
+
+* 修复了不能获取搜索引擎关键词的问题
+
 ## 1.14.2
 
-* 优化，增加debug模式
 * 修复，1.14.1中isReady不能保证sdk已经执行
-
 
 ## 1.14.1
 
@@ -59,7 +61,7 @@
 
 ## 1.13.4
 
-* 增加了获取匿名ID的方法 sensors.quick('getAnonymousID') ,返回匿名 id 
+* 增加了获取匿名ID的方法 sensors.quick('getAnonymousID') ,返回匿名 id
 * 在存储 cookie 时会截取 register 的字符串 max_referrer_string_length 长度
 
 ## 1.13.3
