@@ -1,3 +1,10 @@
+## 1.14.7
+* 新增：先存localStorage再发数据的功能，详细用法参考   
+1.可以解决本地网络如果暂时不好，发不出的话，可以先存储后发   
+2.可以解决关闭页面发数据丢失问题（通过先存本地，下次打开再发）    
+[详细文档](https://www.sensorsdata.cn/manual/js_sdk.html#81-batchsend)  
+ 
+
 ## 1.14.6
 
 * 新增：enableLocalLog() 和 disableLocalLog() 方法开启和关闭控制台日志输出
