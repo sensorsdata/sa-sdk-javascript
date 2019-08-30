@@ -1,3 +1,8 @@
+## 1.14.8
+* 优化：sensors.login(id,callback) 增加 callback 功能
+* 优化：referrer_host的取值是在发数据前通过referrer解析，不是在触发时候取值
+
+
 ## 1.14.7
 * 新增：先存localStorage再发数据的功能，详细用法参考   
 1.可以解决本地网络如果暂时不好，发不出的话，可以先存储后发   
