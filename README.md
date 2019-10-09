@@ -19,4 +19,4 @@ Sensors Analytics JavaScript SDK
 ## 稳定版  
 我们的正式发布的版本都是经过测试的正式版，但是难免也有可能出现 bug    
 因此，我们会定期更新，把超过1个月以上没有反馈 bug 的最新版本作为稳定版，在这里通知    
-如果目前你想使用一个经过时间考验的版本，建议使用此版本 [V1.13.14](https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.13.14)    
+如果目前你想使用一个经过时间考验的版本，建议使用此版本 [V1.14.9](https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.14.9)    
