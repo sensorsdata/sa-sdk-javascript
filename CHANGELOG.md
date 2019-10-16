@@ -1,3 +1,8 @@
+## 1.14.12 (2019-10-16)
+
+* 优化：$WebStay 的停留时长，增加最大值的配置 scroll_event_duration，默认5小时。
+* 修复：heatmap 配置中 element_selector 设置为 'not_use_id' 时候，$element_selector 取值错误。
+
 ## 1.14.11 (2019-10-09)
 
 * 优化：$latest_referrer 为空时，$latest_referrer_host 也为空；只有在含有 $referrer 属性时才增加 $referrer_host 属性
