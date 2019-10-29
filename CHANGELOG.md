@@ -1,3 +1,8 @@
+## 1.14.13 (2019-10-28)
+
+* 优化：新版用户关联，每条数据中会有匿名id和真实id。
+* 优化：如果单页面中设置了is_track_single_page:true，获取预置属性的接口getPresetProperties得到的$referrer会更新。
+
 ## 1.14.12 (2019-10-16)
 
 * 优化：$WebStay 的停留时长，增加最大值的配置 scroll_event_duration，默认5小时。
