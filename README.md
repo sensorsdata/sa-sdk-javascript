@@ -18,10 +18,7 @@
 ## 更新日志
 请参见 [CHANGELOG.md](CHANGELOG.md)
 
-## 稳定版  
-我们的正式发布的版本都是经过测试的正式版，但是难免也有可能出现 bug    
-因此，我们会定期更新，把超过1个月以上没有反馈 bug 的最新版本作为稳定版，在这里通知    
-如果目前你想使用一个经过时间考验的版本，建议使用此版本 [V1.14.9](https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.14.9)    
-## 招聘信息
-招聘 JavaScript SDK 开发工程师，JavaScript SDK 技术顾问，简历发送到邮箱 (shengyonggen@sensorsdata.cn)<br>
-详情可访问官网https://www.sensorsdata.cn/about/joinus.html 
+## 开源社区
+神策正在组建开源社区，所以相应的源码也会放在 Github 上，针对 JavaScript SDK 源码的问题请不要在 Github 上提问。
+请加微信 free__dom ,备注开源社区，我会拉你暂时到微信群中讨论。
+在开源社区组建完成后，会转移到开源社区中讨论。
