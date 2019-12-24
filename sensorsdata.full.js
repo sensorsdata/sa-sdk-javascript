@@ -2128,7 +2128,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.14.17';
+      sd.lib_version = '1.14.18';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -2734,8 +2734,11 @@
         $title: document.title || '',
         _distinct_id: store.getDistinctId()
       };
-
-      return _.extend({}, _.info.properties(), sd.store.getProps(), getUtm(), obj);
+      var result = _.extend({}, _.info.properties(), sd.store.getProps(), getUtm(), obj);
+      if (sd.para.preset_properties.latest_referrer && sd.para.preset_properties.latest_referrer_host) {
+        result.$latest_referrer_host = result.$latest_referrer === "" ? "" : _.getHostname(result.$latest_referrer);
+      }
+      return result;
     };
 
 
@@ -2776,6 +2779,11 @@
           cors: true,
           success: function() {
             me.remove(data.keys);
+          },
+          error: function() {
+            if (me.sendingData > 0) {
+              --me.sendingData;
+            }
           }
         });
 

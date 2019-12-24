@@ -6802,9 +6802,6 @@
     return jQuery;
 
   }(window);
-
-
-
   var QRCode;
 
   (function() {
@@ -8101,13 +8098,12 @@
     QRCode.CorrectLevel = QRErrorCorrectLevel;
   })();
 
-
-
-
   var sd = null;
   var _ = null;
 
   var heatmap_render = {
+    originalHeatData: null,
+    ajaxHeatData: null,
     heatDataElement: [],
     heatMapList: [],
     heatMode: 1,
@@ -8274,6 +8270,7 @@
         name: "type",
         click: function(state, isFirst) {
           me.setHeatState(request_id, state, url, isFirst);
+          $('#sa_sdk_heatmap_toolbar_filter').toggle(state == "1");
         }
       });
 
@@ -8447,7 +8444,7 @@
       var me = this;
       var div = document.createElement('div');
       div.setAttribute('style', 'height:50px !important;z-index:999999;background:#272727;width:100%;position:fixed;top:0;left:0; font-size:14px;color:#EFF2F7;margin:0;clear: both;');
-      div.innerHTML = '<div style="height:39px;line-height:39px;padding:3px 15px 9px"><div class="sa-sdk-heatmap-toolbar-selectmap"  id="chooseType" style="position:relative;width:70px;float:left" title="选择查看类型"><div style="cursor:pointer"><span>点击图</span> <svg style="position:absolute;top:9px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="icon" transform="translate(-199.000000, -18.000000)" fill="#99A9BF"><polygon id="Triangle-1-Copy-29" transform="translate(209.000000, 28.000000) scale(1, -1) translate(-209.000000, -28.000000) " points="209 26 213 30 205 30"></polygon></g></g></svg></div><ul style="display:none;list-style:none;margin:0;padding:0;width:100px"><li data-state="1">点击图</li><li data-state="2">触达率图</li></ul></div><div class="sa-sdk-heatmap-toolbar-selectmap" id="chooseVersion" style="display:none;position:relative;width:70px;float:left" title="切换点击图方案"><div style="cursor:pointer"><span>方案一</span> <svg style="position:absolute;top:9px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="icon" transform="translate(-199.000000, -18.000000)" fill="#99A9BF"><polygon id="Triangle-1-Copy-29" transform="translate(209.000000, 28.000000) scale(1, -1) translate(-209.000000, -28.000000) " points="209 26 213 30 205 30"></polygon></g></g></svg></div><ul style="display:none;list-style:none;margin:0;padding:0;width:100px"><li data-state="1">方案一</li><li data-state="2">方案二</li></ul></div><div id="sa_sdk_heatmap_toolbar_close" style="float:right;position:relative;width:30px;height:100%;cursor:pointer" title="收起打开"><svg style="position:absolute;top:9px;right:0" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-129.000000, -260.000000)" fill-rule="nonzero" fill="#99A9BF"><polygon points="132.110192 274.35347 130.5 272.842901 138.860144 265 147.23 272.842902 145.619784 274.35347 138.864999 268.016603"></polygon></g></g></svg></div><div style="float:right;padding:0 10px;width:1px;color:#99A9BF">|</div><div id="sa_sdk_heatmap_toolbar_refresh" style="float:right;position:relative;cursor:pointer;width:30px;height:100%" title="刷新数据"><svg style="position:absolute;top:9px;left:5px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g><g><path d="M18.1201298,5.45190941 L15.7071603,6.65839414 C14.3331082,3.91029003 11.3336531,2.11731966 7.94879319,2.56975143 C4.59744671,3.02218321 1.91636953,5.78704405 1.54772141,9.13839053 C1.04501944,13.6627083 4.58068998,17.5 9.00446733,17.5 C12.1882465,17.5 14.8693237,15.5227056 15.9585113,12.7243313 L14.098514,12.1043322 L14.0817572,12.1043322 C13.1098668,14.433518 10.5796002,15.9416239 7.7979826,15.3551383 C5.73690451,14.9194632 4.06123127,13.24379 3.62555623,11.1659552 C2.88826001,7.61352789 5.56933719,4.48001893 9.00446733,4.48001893 C11.1660858,4.48001893 13.0093264,5.72001713 13.9141899,7.52974422 L11.4006801,8.80325589 C11.3336531,8.83676935 11.3336531,8.95406648 11.4174368,8.97082321 L16.4612132,10.6297397 C16.5114834,10.6464964 16.5617536,10.612983 16.5785104,10.5627128 L18.2374269,5.51893634 C18.2876971,5.48542287 18.2039134,5.41839594 18.1201298,5.45190941 L18.1201298,5.45190941 Z" fill="#99A9BF"></path><rect x="0" y="0" width="20" height="20"></rect></g></g></g></svg></div><div style="float:right;padding:0 10px;width:1px;color:#99A9BF">|</div><div id="sa_sdk_heatmap_toolbar_share" style="float:right;position:relative;width:30px;height:100%;cursor:pointer" title="收起打开"><svg style="position:absolute;top:11px;" width="14px" height="15px" viewBox="0 0 14 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-42.000000, -62.000000)"><g transform="translate(39.000000, 60.000000)"><rect x="0" y="0" width="20" height="20"></rect><path d="M12.9177778,12.725 L7.76833333,9.72777778 C7.80444444,9.56166667 7.83333333,9.39555556 7.83333333,9.22222222 C7.83333333,9.04888889 7.80444444,8.88277778 7.76833333,8.71666667 L12.86,5.74833333 C13.25,6.10944444 13.7627778,6.33333333 14.3333333,6.33333333 C15.5322222,6.33333333 16.5,5.36555556 16.5,4.16666667 C16.5,2.96777778 15.5322222,2 14.3333333,2 C13.1344444,2 12.1666667,2.96777778 12.1666667,4.16666667 C12.1666667,4.34 12.1955556,4.50611111 12.2316667,4.67222222 L7.14,7.64055556 C6.75,7.27944444 6.23722222,7.05555556 5.66666667,7.05555556 C4.46777778,7.05555556 3.5,8.02333333 3.5,9.22222222 C3.5,10.4211111 4.46777778,11.3888889 5.66666667,11.3888889 C6.23722222,11.3888889 6.75,11.165 7.14,10.8038889 L12.2822222,13.8083333 C12.2461111,13.96 12.2244444,14.1188889 12.2244444,14.2777778 C12.2244444,15.4405556 13.1705556,16.3866667 14.3333333,16.3866667 C15.4961111,16.3866667 16.4422222,15.4405556 16.4422222,14.2777778 C16.4422222,13.115 15.4961111,12.1688889 14.3333333,12.1688889 C13.7844444,12.1688889 13.2933333,12.3855556 12.9177778,12.725 Z" id="Shape" fill="#99A9BF"></path></g></g></g></svg></div></div>';
+      div.innerHTML = '<div style="height:39px;line-height:39px;padding:3px 15px 9px"><div class="sa-sdk-heatmap-toolbar-selectmap"  id="chooseType" style="position:relative;width:70px;float:left" title="选择查看类型"><div style="cursor:pointer"><span>点击图</span> <svg style="position:absolute;top:9px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="icon" transform="translate(-199.000000, -18.000000)" fill="#99A9BF"><polygon id="Triangle-1-Copy-29" transform="translate(209.000000, 28.000000) scale(1, -1) translate(-209.000000, -28.000000) " points="209 26 213 30 205 30"></polygon></g></g></svg></div><ul style="display:none;list-style:none;margin:0;padding:0;width:100px"><li data-state="1">点击图</li><li data-state="2">触达率图</li></ul></div><div class="sa-sdk-heatmap-toolbar-selectmap" id="chooseVersion" style="display:none;position:relative;width:70px;float:left" title="切换点击图方案"><div style="cursor:pointer"><span>方案一</span> <svg style="position:absolute;top:9px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="icon" transform="translate(-199.000000, -18.000000)" fill="#99A9BF"><polygon id="Triangle-1-Copy-29" transform="translate(209.000000, 28.000000) scale(1, -1) translate(-209.000000, -28.000000) " points="209 26 213 30 205 30"></polygon></g></g></svg></div><ul style="display:none;list-style:none;margin:0;padding:0;width:100px"><li data-state="1">方案一</li><li data-state="2">方案二</li></ul></div><div id="sa_sdk_heatmap_toolbar_close" style="float:right;position:relative;width:30px;height:100%;cursor:pointer" title="收起打开"><svg style="position:absolute;top:9px;right:0" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-129.000000, -260.000000)" fill-rule="nonzero" fill="#99A9BF"><polygon points="132.110192 274.35347 130.5 272.842901 138.860144 265 147.23 272.842902 145.619784 274.35347 138.864999 268.016603"></polygon></g></g></svg></div><div style="float:right;padding:0 10px;width:1px;color:#99A9BF">|</div><div id="sa_sdk_heatmap_toolbar_refresh" style="float:right;position:relative;cursor:pointer;width:30px;height:100%" title="刷新数据"><svg style="position:absolute;top:9px;left:5px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g><g><path d="M18.1201298,5.45190941 L15.7071603,6.65839414 C14.3331082,3.91029003 11.3336531,2.11731966 7.94879319,2.56975143 C4.59744671,3.02218321 1.91636953,5.78704405 1.54772141,9.13839053 C1.04501944,13.6627083 4.58068998,17.5 9.00446733,17.5 C12.1882465,17.5 14.8693237,15.5227056 15.9585113,12.7243313 L14.098514,12.1043322 L14.0817572,12.1043322 C13.1098668,14.433518 10.5796002,15.9416239 7.7979826,15.3551383 C5.73690451,14.9194632 4.06123127,13.24379 3.62555623,11.1659552 C2.88826001,7.61352789 5.56933719,4.48001893 9.00446733,4.48001893 C11.1660858,4.48001893 13.0093264,5.72001713 13.9141899,7.52974422 L11.4006801,8.80325589 C11.3336531,8.83676935 11.3336531,8.95406648 11.4174368,8.97082321 L16.4612132,10.6297397 C16.5114834,10.6464964 16.5617536,10.612983 16.5785104,10.5627128 L18.2374269,5.51893634 C18.2876971,5.48542287 18.2039134,5.41839594 18.1201298,5.45190941 L18.1201298,5.45190941 Z" fill="#99A9BF"></path><rect x="0" y="0" width="20" height="20"></rect></g></g></g></svg></div><div style="float:right;padding:0 10px;width:1px;color:#99A9BF">|</div><div id="sa_sdk_heatmap_toolbar_share" style="float:right;position:relative;width:30px;height:100%;cursor:pointer" title="收起打开"><svg style="position:absolute;top:11px; left: 5px;" width="14px" height="15px" viewBox="0 0 14 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-42.000000, -62.000000)"><g transform="translate(39.000000, 60.000000)"><rect x="0" y="0" width="20" height="20"></rect><path d="M12.9177778,12.725 L7.76833333,9.72777778 C7.80444444,9.56166667 7.83333333,9.39555556 7.83333333,9.22222222 C7.83333333,9.04888889 7.80444444,8.88277778 7.76833333,8.71666667 L12.86,5.74833333 C13.25,6.10944444 13.7627778,6.33333333 14.3333333,6.33333333 C15.5322222,6.33333333 16.5,5.36555556 16.5,4.16666667 C16.5,2.96777778 15.5322222,2 14.3333333,2 C13.1344444,2 12.1666667,2.96777778 12.1666667,4.16666667 C12.1666667,4.34 12.1955556,4.50611111 12.2316667,4.67222222 L7.14,7.64055556 C6.75,7.27944444 6.23722222,7.05555556 5.66666667,7.05555556 C4.46777778,7.05555556 3.5,8.02333333 3.5,9.22222222 C3.5,10.4211111 4.46777778,11.3888889 5.66666667,11.3888889 C6.23722222,11.3888889 6.75,11.165 7.14,10.8038889 L12.2822222,13.8083333 C12.2461111,13.96 12.2244444,14.1188889 12.2244444,14.2777778 C12.2244444,15.4405556 13.1705556,16.3866667 14.3333333,16.3866667 C15.4961111,16.3866667 16.4422222,15.4405556 16.4422222,14.2777778 C16.4422222,13.115 15.4961111,12.1688889 14.3333333,12.1688889 C13.7844444,12.1688889 13.2933333,12.3855556 12.9177778,12.725 Z" id="Shape" fill="#99A9BF"></path></g></g></g></svg></div><div style="float:right;padding:0 10px;width:1px;color:#99A9BF">|</div><div id="sa_sdk_heatmap_toolbar_filter" style="float:right;position:relative;cursor:pointer;width:30px;height:100%;" title="筛选"><svg style="position: absolute; top: 11px; left: 5px;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="17px" height="15px" viewBox="0 0 17 15" version="1.1"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="操作栏" transform="translate(-1068.000000, -341.000000)" fill="#99A9BF" fill-rule="nonzero"><g id="screen" transform="translate(1068.000000, 341.000000)"><polygon id="路径" points="9.13824444 13.2863778 9.13824444 6.65411111 12.5159778 2.08801111 4.52081111 2.08801111 7.8378 6.56684444 7.8378 12.6447111 6.23534444 11.8541778 6.23534444 7.20851111 0.8 0.4 16.2 0.4 10.7646556 7.2299 10.7646556 14.0888889 9.13824444 13.2863778"/></g></g></g></svg></div></div>';
       document.body.appendChild(div);
 
       this.setDropDown(requrest_id, type, url);
@@ -8500,6 +8497,136 @@
         }, 1);
 
 
+      });
+
+      var filterFlyout = '<div id="sa_sdk_heatmap_filterFlyout" style="z-index: 999999; position: fixed; right: 2px; top: 51px; width:432.5px; height: 171px; background:rgba(255,255,255,1);box-shadow:0px 2px 9px 3px; rgba(10,10,10,0.39); border-radius:3px;"><form>';
+      filterFlyout += '<div style="height: 45px; text-align: center; line-height: 45px; font-size:14px; font-family:PingFangSC-Medium,PingFang SC; font-weight:500; color:rgba(32,45,61,1); border-bottom: 1px solid #E9F0F7;">';
+      filterFlyout += "筛选展示元素";
+      filterFlyout += '</div>';
+      filterFlyout += '<div style="height: 78px; border-bottom: 1px solid #E9F0F7;">';
+      filterFlyout += '<p style="margin: 0; line-height: 78px; padding-left: 20px; font-size:14px; font-family:PingFangSC-Regular,PingFang SC; font-weight:400; color:rgba(71,86,105,1);">点击数 <select name="filter_type"><option value="gt" selected>&gt;</option><option value="lt">&lt;</option><option value="between">在区间</option></select><input type="text" name="filterValue"><span class="filter_between_span" style="display:none;"><input type="text" name="filterValueStart" style="margin-right: 5px;">至<input type="text" name="filterValueEnd" style="margin-left: 5px;"></span> 的元素</p>';
+      filterFlyout += '</div>';
+      filterFlyout += '<div style="height: 47px; overflow: hidden; padding: 10px 15px; box-sizing: border-box;">';
+      filterFlyout += '<div class="sa-sdk-heatmap-filterflyout-submitbtn" style="display: inline-block; float: right; width:56px; height:28px; background:rgba(4,203,148,1); border-radius:3px; font-size:13px; font-family:PingFangSC-Medium,PingFang SC; font-weight:500; color:rgba(255,255,255,1); text-align: center; line-height: 28px; cursor: pointer;">确定</div><a class="sa-sdk-heatmap-filterflyout-cancelbtn" href="#" style="float: right; display: inline-block; line-height: 28px; margin-right: 6px; font-size:13px; font-family:PingFangSC-Regular,PingFang SC; font-weight:400; color:rgba(71,86,105,1); text-decoration: none;">取消</a>';
+      filterFlyout += '</div>';
+      filterFlyout += '</form></div>';
+
+      $(div).on('click', '#sa_sdk_heatmap_toolbar_filter', function(e) {
+        e.stopPropagation();
+        if ($('#sa_sdk_heatmap_filterFlyout').length) {
+          $('#sa_sdk_heatmap_filterFlyout').toggle();
+        } else {
+          $(document.body).append(filterFlyout);
+        }
+      });
+
+      $(document.body).on('change', '#sa_sdk_heatmap_filterFlyout select[name="filter_type"]', function() {
+        var type = $(this).val();
+        var control1 = $('#sa_sdk_heatmap_filterFlyout input[name="filterValue"]');
+        var control2 = $('#sa_sdk_heatmap_filterFlyout .filter_between_span');
+        if (type === 'between') {
+          control1.hide();
+          control2.show();
+        } else {
+          control1.show();
+          control2.hide();
+        }
+      });
+
+      $(document.body).on('click', '#sa_sdk_heatmap_filterFlyout .sa-sdk-heatmap-filterflyout-cancelbtn', function(e) {
+        $('#sa_sdk_heatmap_filterFlyout').hide();
+        $('#sa_sdk_heatmap_filterFlyout form')[0].reset();
+        var control1 = $('#sa_sdk_heatmap_filterFlyout input[name="filterValue"]');
+        var control2 = $('#sa_sdk_heatmap_filterFlyout .filter_between_span');
+        control1.show();
+        control2.hide();
+        var copyData = JSON.parse(JSON.stringify(me.originalHeatData));
+        me.ajaxHeatData = copyData;
+        refreshClickMap();
+        return false;
+      });
+
+      $(document.body).on('click', '#sa_sdk_heatmap_filterFlyout .sa-sdk-heatmap-filterflyout-submitbtn', function() {
+        var type = $('#sa_sdk_heatmap_filterFlyout select[name="filter_type"]').val();
+        var filterInput = $('#sa_sdk_heatmap_filterFlyout input[name="filterValue"]');
+        var startInput = $('#sa_sdk_heatmap_filterFlyout input[name="filterValueStart"]');
+        var endInput = $('#sa_sdk_heatmap_filterFlyout input[name="filterValueEnd"]');
+        var isInRange = function(x) {
+          if (!$.isNumeric(x)) return false;
+          var numberX = Number(x);
+          return Math.floor(numberX) === numberX && numberX >= 0;
+        };
+        var errMsg1 = '输入的数值不合法，请输入大于等于 0 的整数';
+        var errMsg2 = '区间左侧的数字大于右侧的数字，无法筛选，请修改数值';
+        if (type === 'between') {
+          if (!isInRange(startInput.val())) {
+            me.showErrorInfo(2, {
+              error: errMsg1
+            });
+            return;
+          }
+          if (!isInRange(endInput.val())) {
+            me.showErrorInfo(2, {
+              error: errMsg1
+            });
+            return;
+          }
+          if (Number(startInput.val()) > Number(endInput.val())) {
+            me.showErrorInfo(2, {
+              error: errMsg2
+            });
+            return;
+          }
+          filterClickMap(type, startInput.val(), endInput.val());
+        } else {
+          if (!isInRange(filterInput.val())) {
+            me.showErrorInfo(2, {
+              error: errMsg1
+            });
+            return;
+          }
+          filterClickMap(type, filterInput.val())
+        }
+      });
+
+      function filterClickMap(type, val1, val2) {
+        var inRange = function(x) {
+          var n1 = Number(val1),
+            n2 = Number(val2);
+          if (type === 'gt') {
+            return x > n1;
+          } else if (type === 'lt') {
+            return x < n1;
+          } else {
+            return x > Math.min(n1, n2) && x < Math.max(n1, n2);
+          }
+        };
+        var copyData = JSON.parse(JSON.stringify(me.processOriginalHeatData2()));
+        var origArr = copyData.rows;
+        var newArr = [];
+        for (var i = 0, len = origArr.length; i < len; i++) {
+          if (inRange(origArr[i].values[0][0])) {
+            newArr.push(origArr[i]);
+          }
+        }
+        copyData.rows = newArr;
+        me.ajaxHeatData = copyData;
+        refreshClickMap();
+      }
+
+      function refreshClickMap() {
+        var state = '' + heatmap_render.heatMode;
+        if (state === '1') {
+          heatmap_render.refreshHeatData(1);
+        } else if (state === '2') {
+          heatmap_render.refreshHeatData(2);
+        }
+      }
+
+      $('#sa_sdk_heatmap_toolbar_filter').on('mouseenter', function() {
+        $('#sa_sdk_heatmap_toolbar_filter g[fill^="#"]').attr('fill', '#559FF0');
+      }).on('mouseleave', function() {
+        $('#sa_sdk_heatmap_toolbar_filter g[fill^="#"]').attr('fill', '#99A9BF');
       });
 
 
@@ -8595,7 +8722,6 @@
         }
 
         $('body').append('<div id="heatMapContainer"></div>');
-
         if (url) {
           this.requestType = 3;
           _.ajax({
@@ -8606,6 +8732,7 @@
               cors: "true"
             },
             success: function(data) {
+              me.originalHeatData = me.processOriginalHeatData(data);
               me.bindEffect();
               me.calculateHeatData(data);
             },
@@ -8629,6 +8756,7 @@
               cors: "true"
             },
             success: function(data) {
+              me.originalHeatData = me.processOriginalHeatData(data);
               me.bindEffect();
               me.calculateHeatData(data);
             },
@@ -8647,7 +8775,37 @@
         sd.log('缺少web_url');
       }
     },
+    processOriginalHeatData: function(data) {
+      var result = JSON.parse(JSON.stringify(data));
+      $.each(result.rows, function(index, value) {
+        var ele = $(value.by_values[0]);
+        if (ele.length) {
+          value.ele = ele[0];
+        }
+      });
+      return result;
+    },
+    processOriginalHeatData2: function() {
+      var data = this.originalHeatData;
+      var result = JSON.parse(JSON.stringify(data));
+      var tmp = [];
+      var eletmp = [];
+      var copyRows = data.rows.slice();
+      $.each(copyRows, function(index, value) {
+        if (!value.ele) return true;
+        var idx = $.inArray(value.ele, eletmp);
+        if (idx === -1) {
+          eletmp.push(value.ele);
+          tmp.push(JSON.parse(JSON.stringify(value)));
+        } else {
+          tmp[idx].values[0][0] += value.values[0][0];
+        }
+      });
+      result.rows = tmp;
+      return result;
+    },
     calculateHeatData: function(data) {
+      data = JSON.parse(JSON.stringify(data));
       this.ajaxHeatData = data;
       var me = this;
 
@@ -8735,7 +8893,9 @@
 
           var selector = _.querySelectorAll(obj.by_values[0]);
           if (typeof selector === 'object' && selector.length > 0) {
-            me.renderHeatData(selector, obj, key);
+            setTimeout(function() {
+              me.renderHeatData(selector, obj, key);
+            }, 100);
           }
         }
       });
@@ -8776,6 +8936,7 @@
           wrap = dom;
         }
         this.heatDataElement.push(dom);
+        $(wrap.ele).data('clickdata', JSON.parse(JSON.stringify(data)));
         wrap.attr('data-heat-place', String(key))
           .addClass('sa-click-area')
           .attr('data-click', data.data_click_percent)
@@ -8816,6 +8977,7 @@
           }
 
           dom.addClass("sa-click-area-v2");
+          $(dom.ele).data('clickdata', JSON.parse(JSON.stringify(data)));
           if (eleHeight && eleWidth) {
 
             var mapDivObj = {
@@ -8963,7 +9125,7 @@
       function showBoxDetailContent(e) {
         var target = e.currentTarget;
         var pos = target.getAttribute('data-heat-place');
-        var data = me.data_render[pos];
+        var data = $(target).data('clickdata');
         if (!data) {
           return false;
         }
@@ -9038,6 +9200,12 @@
     setCssStyle: function() {
       var css = '.sa-click-area video{visibility:hidden;}.sa-sdk-heatmap-toolbar-selectmap ul{position:absolute;top:40px;left:0;background:#fff;box-shadow:1px 1px 1px rgba(200,200,200,.6);border-radius:3px;}.sa-sdk-heatmap-toolbar-selectmap ul li{cursor:pointer;height:32px;color:#475669;line-height:32px;padding-left:8px}.sa-sdk-heatmap-toolbar-selectmap ul li:hover{background:#00cd90;color:#fff;}.sa-sdk-heatmap-toolbar-selectmap ul li a{text-decoration:none}.sa-heat-box-head-2017322{border-bottom:1px solid rgba(0, 0, 0, .06);cursor:move;height:30px;background:#e1e1e1;color:#999;clear:both}.sa-heat-box-effect-2017314{animation-duration:.5s;animation-fill-mode:both;animation-iteration-count:1;animation-name:sa-heat-box-effect-2017314}@keyframes "sa-heat-box-effect-2017314"{0%{opacity:.6;}to{opacity:1;}}.sa-click-area{position:relative}.sa-click-area:before{pointer-events:none;cursor:pointer;content:"";width:100%;position:absolute;left:0;top:0;bottom:0}.sa-click-area.sa-click-area0:before{background:hsla(60, 98%, 80%, .75);box-shadow:0 0 0 2px #fefe9b inset}img.sa-click-area.sa-click-area0{border:2px solid #fefe9b}.sa-click-area.sa-click-area0:hover:before,input.sa-click-area.sa-click-area0,textarea.sa-click-area.sa-click-area0{background:hsla(60, 98%, 80%, .85)}.sa-click-area.sa-click-area1:before{background:rgba(255, 236, 142, .75);box-shadow:0 0 0 2px #ffec8e inset}img.sa-click-area.sa-click-area1{border:2px solid #ffec8e}.sa-click-area.sa-click-area1:hover:before,input.sa-click-area.sa-click-area1,textarea.sa-click-area.sa-click-area1{background:rgba(255, 236, 142, .85)}.sa-click-area.sa-click-area2:before{background:rgba(255, 188, 113, .75);box-shadow:0 0 0 2px #ffbc71 inset}img.sa-click-area.sa-click-area2{border:2px solid #ffbc71}.sa-click-area.sa-click-area2:hover:before,input.sa-click-area.sa-click-area2,textarea.sa-click-area.sa-click-area2{background:rgba(255, 188, 113, .85)}.sa-click-area.sa-click-area3:before{background:rgba(255, 120, 82, .75);box-shadow:0 0 0 2px #ff7852 inset}img.sa-click-area.sa-click-area3{border:2px solid #ff7852}.sa-click-area.sa-click-area3:hover:before,input.sa-click-area.sa-click-area3,textarea.sa-click-area.sa-click-area3{background:rgba(255, 120, 82, .85)}.sa-click-area.sa-click-area4:before{background:rgba(255, 65, 90, .75);box-shadow:0 0 0 2px #ff415a inset}img.sa-click-area.sa-click-area4{border:2px solid #ff415a}.sa-click-area.sa-click-area4:hover:before,input.sa-click-area.sa-click-area4,textarea.sa-click-area.sa-click-area4{background:rgba(255, 65, 90, .85)}.sa-click-area.sa-click-area5:before{background:rgba(199, 0, 18, .75);box-shadow:0 0 0 2px #c70012 inset}img.sa-click-area.sa-click-area5{border:2px solid #c70012}.sa-click-area.sa-click-area5:hover:before,input.sa-click-area.sa-click-area5,textarea.sa-click-area.sa-click-area5{background:rgba(199, 0, 18, .85)}.sa-click-area.sa-click-area6:before{background:rgba(127, 0, 79, .75);box-shadow:0 0 0 3px #7f004f inset}img.sa-click-area.sa-click-area6{border:2px solid #7f004f}.sa-click-area.sa-click-area6:hover:before,input.sa-click-area.sa-click-area6,textarea.sa-click-area.sa-click-area6{background:rgba(127, 0, 79, .85)}.sa-click-area .sa-click-area:before{background:0 0 !important}.sa-click-area:after{pointer-events:none;height:14px;line-height:14px;margin:-7px 0 0 -28px;width:56px;color:#fff;content:attr(data-click);font-size:14px;font-weight:700;left:50%;line-height:1em;position:absolute;text-align:center;text-indent:0;text-shadow:1px 1px 2px #000;top:50%;z-index:10}';
       css += '#sa_heat_float_right_box_content table td { color: #fff !important; font-size: 13px !important;}';
+      css += '#sa_sdk_heatmap_filterFlyout select {padding-left: 10px;width: 82px; height: 32px;background:rgba(255,255,255,1); border-radius:3px; border:1px solid rgba(211,220,230,1); margin-right: 10px; margin-left: 10px; outline: none;}';
+      css += '#sa_sdk_heatmap_filterFlyout select:hover {border:1px solid rgba(4,203,148,1);}';
+      css += '#sa_sdk_heatmap_filterFlyout select:active, #sa_sdk_heatmap_filterFlyout select:focus {border:2px solid rgba(4,203,148,0.2);}';
+      css += '#sa_sdk_heatmap_filterFlyout input {outline:none;box-sizing: border-box; width:77px; height:32px; background:rgba(255,255,255,1); border-radius:3px; border:1px solid rgba(211,220,230,1); padding-left:10px; padding-right:10px;}';
+      css += '#sa_sdk_heatmap_filterFlyout input:hover {border:1px solid rgba(4,203,148,1);}';
+      css += '#sa_sdk_heatmap_filterFlyout input:active #sa_sdk_heatmap_filterFlyout input:focus {border:2px solid rgba(4,203,148,0.2);}';
 
       var style = document.createElement('style');
       style.type = 'text/css';
@@ -9135,7 +9303,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.14.17';
+    sd.heatmap_version = '1.14.18';
     _ = sd._;
 
     _.bindReady = function(fn, win) {
