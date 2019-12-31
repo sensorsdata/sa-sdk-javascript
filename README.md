@@ -21,5 +21,5 @@
 ## 开源社区
 神策正在组建开源社区，所以相应的源码也会放在 GitHub 上。    
 针对 JavaScript SDK 源码的问题请不要在 GitHub 上提问，请加微信号 free__dom (两个下划线)私聊。    
-如果是咨询神策收费，以及 SDK 使用问题，请扫码加入神策官方 SDK QQ 讨论群：<br><br>    
+如果是咨询神策收费，以及 SDK 使用问题，请扫码加入神策官方 SDK QQ 讨论群，群号 785122381：<br><br>    
 ![ QQ 讨论群](https://raw.githubusercontent.com/sensorsdata/sa-sdk-android/master/docs/qrCode.jpeg)  
