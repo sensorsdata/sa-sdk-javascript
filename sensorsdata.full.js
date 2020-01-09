@@ -2128,7 +2128,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.14.19';
+      sd.lib_version = '1.14.20';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -3846,7 +3846,7 @@
         }
 
         var checkPage = function() {
-          if (_.isFunction(sd.para.scrollmap.collect_url) && !sd.para.scrollmap.collect_url()) {
+          if (sd.para.scrollmap && _.isFunction(sd.para.scrollmap.collect_url) && !sd.para.scrollmap.collect_url()) {
             return false;
           }
           return true;
