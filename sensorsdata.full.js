@@ -2128,7 +2128,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.14.18';
+      sd.lib_version = '1.14.19';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -3845,9 +3845,12 @@
           return false;
         }
 
-        if (sd.para.scrollmap && _.isFunction(sd.para.scrollmap.collect_url) && !sd.para.scrollmap.collect_url()) {
-          return false;
-        }
+        var checkPage = function() {
+          if (_.isFunction(sd.para.scrollmap.collect_url) && !sd.para.scrollmap.collect_url()) {
+            return false;
+          }
+          return true;
+        };
 
         var interDelay = function(param) {
           var interDelay = {};
@@ -3903,10 +3906,16 @@
 
 
         _.addEvent(window, 'scroll', function() {
+          if (!checkPage()) {
+            return false;
+          }
           delayTime.go();
         });
 
         _.addEvent(window, 'unload', function() {
+          if (!checkPage()) {
+            return false;
+          }
           delayTime.go('notime');
         });
 
