@@ -8754,11 +8754,6 @@
             error: function(res) {
               me.showErrorInfo(2, res);
               sessionStorage.removeItem('sensors_heatmap_id');
-
-              if (location.href.indexOf('http://www.notrack.com:8080/sdk_test.html') === 0) {
-                me.bindEffect();
-                me.calculateHeatData(window.data_sa_heat_test_data_test_201703130440 || {});
-              }
             }
           });
         } else {
@@ -8778,11 +8773,6 @@
             error: function(res) {
               me.showErrorInfo(4, res);
               sessionStorage.removeItem('sensors_heatmap_id');
-
-              if (location.href.indexOf('http://www.notrack.com:8080/sdk_test.html') === 0) {
-                me.bindEffect();
-                me.calculateHeatData(window.data_sa_heat_test_data_test_201703130440 || {});
-              }
             }
           });
         }
@@ -9322,7 +9312,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.14.21';
+    sd.heatmap_version = '1.14.22';
     _ = sd._;
 
     _.bindReady = function(fn, win) {

@@ -577,6 +577,25 @@ if (typeof JSON !== 'object') {
     }
   };
 
+
+  _.filterReservedProperties = function(obj) {
+    var reservedFields = ['distinct_id', 'user_id', 'id', 'date', 'datetime', 'event', 'events', 'first_id', 'original_id', 'device_id', 'properties', 'second_id', 'time', 'users'];
+    if (!_.isObject(obj)) {
+      return;
+    }
+    _.each(reservedFields, function(key, index) {
+      if (!(key in obj)) {
+        return;
+      }
+      if (index < 3) {
+        delete obj[key];
+        sd.log("您的属性- " + key + '是保留字段，我们已经将其删除')
+      } else {
+        sd.log("您的属性- " + key + '是保留字段，请避免其作为属性名')
+      }
+    });
+  }
+
   _.searchConfigData = function(data) {
     if (typeof data === 'object' && data.$option) {
       var data_config = data.$option;
@@ -1956,6 +1975,7 @@ sd.para_default = {
   queue_timeout: 300,
   is_track_device_id: false,
   use_app_track: false,
+  use_app_track_is_send: true,
   ignore_oom: true
 };
 
@@ -2119,7 +2139,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.14.21';
+  sd.lib_version = '1.14.22';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -2387,7 +2407,7 @@ var commonWays = {
     if (_.isEmptyObject(sd.store._state)) {
       return '请先初始化SDK';
     } else {
-      return sd.store._state.first_id ? sd.store._state.first_id : sd.store._state.distinct_id;
+      return sd.store._state._first_id || sd.store._state.first_id || sd.store._state._distinct_id || sd.store._state.distinct_id;
     }
   }
 
@@ -3070,12 +3090,14 @@ sendState.getSendCall = function(data, config, callback) {
         if (!SensorsData_APP_JS_Bridge.sensorsdata_verify(JSON.stringify(_.extend({
             server_url: sd.para.server_url
           }, originData)))) {
-          sd.debug.apph5({
-            data: originData,
-            step: '3.1',
-            output: 'all'
-          });
-          this.prepareServerUrl();
+          if (sd.para.use_app_track_is_send) {
+            sd.debug.apph5({
+              data: originData,
+              step: '3.1',
+              output: 'all'
+            });
+            this.prepareServerUrl();
+          }
         } else {
           (typeof callback === 'function') && callback();
         }
@@ -3107,12 +3129,14 @@ sendState.getSendCall = function(data, config, callback) {
             iframe = null;
             (typeof callback === 'function') && callback();
           } else {
-            sd.debug.apph5({
-              data: originData,
-              step: '3.2',
-              output: 'all'
-            });
-            this.prepareServerUrl();
+            if (sd.para.use_app_track_is_send) {
+              sd.debug.apph5({
+                data: originData,
+                step: '3.2',
+                output: 'all'
+              });
+              this.prepareServerUrl();
+            }
           }
         }
       } else {
@@ -3126,7 +3150,7 @@ sendState.getSendCall = function(data, config, callback) {
         (typeof callback === 'function') && callback();
       }
     } else {
-      if (sd.para.use_app_track === true) {
+      if (sd.para.use_app_track === true && sd.para.use_app_track_is_send === true) {
         sd.debug.apph5({
           data: originData,
           step: '2',
@@ -3330,6 +3354,7 @@ saEvent.send = function(p, callback) {
   }
   _.parseSuperProperties(data.properties);
 
+  _.filterReservedProperties(data.properties);
   _.searchObjDate(data);
   _.searchObjString(data);
   _.searchZZAppStyle(data);
@@ -3390,12 +3415,12 @@ var store = sd.store = {
     return this._sessionState;
   },
   getDistinctId: function() {
-    return this._state.distinct_id;
+    return this._state._distinct_id || this._state.distinct_id;
   },
   getUnionId: function() {
     var obj = {};
-    var firstId = this._state.first_id,
-      distinct_id = this._state.distinct_id;
+    var firstId = this._state._first_id || this._state.first_id,
+      distinct_id = this._state._distinct_id || this._state.distinct_id;
     if (firstId && distinct_id) {
       obj.login_id = distinct_id;
       obj.anonymous_id = firstId;
@@ -3405,7 +3430,7 @@ var store = sd.store = {
     return obj;
   },
   getFirstId: function() {
-    return this._state.first_id;
+    return this._state._first_id || this._state.first_id;
   },
   toState: function(ds) {
     var state = null;
@@ -3447,10 +3472,15 @@ var store = sd.store = {
   set: function(name, value) {
     this._state = this._state || {};
     this._state[name] = value;
+    if (name === 'first_id') {
+      delete this._state._first_id;
+    } else if (name === 'distinct_id') {
+      delete this._state._distinct_id;
+    }
     this.save();
   },
   change: function(name, value) {
-    this._state[name] = value;
+    this._state['_' + name] = value;
   },
   setSessionProps: function(newp) {
     var props = this._sessionState;
@@ -3504,7 +3534,10 @@ var store = sd.store = {
     _.cookie.set('sensorsdata2015session', JSON.stringify(this._sessionState), 0);
   },
   save: function() {
-    _.cookie.set(this.getCookieName(), JSON.stringify(this._state), 73000, sd.para.cross_subdomain);
+    var copyState = JSON.parse(JSON.stringify(this._state));
+    delete copyState._first_id;
+    delete copyState._distinct_id;
+    _.cookie.set(this.getCookieName(), JSON.stringify(copyState), 73000, sd.para.cross_subdomain);
   },
   getCookieName: function() {
     var sub = '';
