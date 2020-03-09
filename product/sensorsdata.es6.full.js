@@ -299,9 +299,13 @@ if (typeof JSON !== 'object') {
     }
   };
 
-
-
-
+  _.hasAttribute = function(ele, attr) {
+    if (ele.hasAttribute) {
+      return ele.hasAttribute(attr);
+    } else {
+      return !!(ele.attributes[attr] && ele.attributes[attr].specified);
+    }
+  };
 
   _.filter = function(arr, fn, self) {
     var hasOwn = Object.prototype.hasOwnProperty;
@@ -1426,6 +1430,16 @@ if (typeof JSON !== 'object') {
     };
     if (typeof window.URL === 'function' && isURLAPIWorking()) {
       result = new URL(url);
+      if (!result.searchParams) {
+        result.searchParams = (function() {
+          var params = _.getURLSearchParams(result.search);
+          return {
+            get: function(searchParam) {
+              return params[searchParam];
+            }
+          };
+        })();
+      }
     } else {
       var _regex = /^https?:\/\/.+/;
       if (_regex.test(url) === false) {
@@ -2139,7 +2153,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.14.22';
+  sd.lib_version = '1.14.23';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -2284,7 +2298,7 @@ var commonWays = {
     if ((typeof target === 'object') && target.tagName) {
       var tagName = target.tagName.toLowerCase();
       var parent_ele = target.parentNode.tagName.toLowerCase();
-      if (tagName !== 'button' && tagName !== 'a' && parent_ele !== 'a' && parent_ele !== 'button' && tagName !== 'input' && tagName !== 'textarea') {
+      if (tagName !== 'button' && tagName !== 'a' && parent_ele !== 'a' && parent_ele !== 'button' && tagName !== 'input' && tagName !== 'textarea' && !_.hasAttribute(target, 'data-sensors-click')) {
         heatmap.start(null, target, tagName, props, callback);
       }
     }
@@ -4012,7 +4026,7 @@ var heatmap = sd.heatmap = {
 
         var parent_ele = target.parentNode;
 
-        if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea') {
+        if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea' || _.hasAttribute(target, 'data-sensors-click')) {
           that.start(ev, target, tagName);
         } else if (parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a') {
           that.start(ev, parent_ele, target.parentNode.tagName.toLowerCase());

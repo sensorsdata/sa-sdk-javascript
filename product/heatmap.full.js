@@ -8946,7 +8946,6 @@
           .addClass('sa-click-area')
           .attr('data-click', data.data_click_percent)
           .addClass('sa-click-area' + this.heatData(data.data_click))
-        this.setContainer(wrap.ele);
         if (wrap.getStyle('display') === 'inline') {
           selector[0].style.display = 'inline-block';
           $(selector[0]).addClass('sa-heatmap-inlineBlock');
@@ -9312,7 +9311,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.14.22';
+    sd.heatmap_version = '1.14.23';
     _ = sd._;
 
     _.bindReady = function(fn, win) {
