@@ -1078,7 +1078,10 @@ if (typeof JSON !== 'object') {
       if (sd.para.cross_subdomain === false) {
         try {
           sub = _.URL(url).hostname;
-        } catch (e) {}
+        } catch (e) {
+          sd.log(e);
+
+        }
         if (typeof sub === 'string' && sub !== '') {
           sub = 'sajssdk_2015_' + name_prefix + '_' + sub.replace(/\./g, '_');
         } else {
@@ -1156,7 +1159,10 @@ if (typeof JSON !== 'object') {
       var storedValue;
       try {
         storedValue = JSON.parse(_.localStorage.get(name)) || null;
-      } catch (err) {}
+      } catch (err) {
+        sd.log(err);
+
+      }
       return storedValue;
     },
 
@@ -1240,7 +1246,10 @@ if (typeof JSON !== 'object') {
         } catch (d) {
           try {
             return new ActiveXObject('Microsoft.XMLHTTP')
-          } catch (d) {}
+          } catch (d) {
+            sd.log(d);
+
+          }
         }
       }
     }
@@ -1290,7 +1299,10 @@ if (typeof JSON !== 'object') {
         setTimeout(function() {
           g.abort();
         }, para.timeout + 500);
-      } catch (e2) {};
+      } catch (e2) {
+        sd.log(e2);
+
+      };
     };
 
     g.onreadystatechange = function() {
@@ -1334,7 +1346,10 @@ if (typeof JSON !== 'object') {
         }
 
       }
-    } catch (e) {};
+    } catch (e) {
+      sd.log(e);
+
+    };
 
     g.send(para.data || null);
 
@@ -1382,7 +1397,10 @@ if (typeof JSON !== 'object') {
     var hostname = null;
     try {
       hostname = _.URL(url).hostname;
-    } catch (e) {}
+    } catch (e) {
+      sd.log(e);
+
+    }
     return hostname || defaultValue;
   };
 
@@ -1999,7 +2017,7 @@ sd.addReferrerHost = function(data) {
     if (data.properties.$first_referrer) {
       data.properties.$first_referrer_host = _.getHostname(data.properties.$first_referrer, defaultHost);
     }
-    if (data.type === "track") {
+    if (data.type === "track" || data.type === "track_signup") {
       if ('$referrer' in data.properties) {
         data.properties.$referrer_host = data.properties.$referrer === "" ? "" : _.getHostname(data.properties.$referrer, defaultHost);
       }
@@ -2011,10 +2029,10 @@ sd.addReferrerHost = function(data) {
 };
 
 sd.addPropsHook = function(data) {
-  if (sd.para.preset_properties && sd.para.preset_properties.url && data.type === "track" && typeof data.properties.$url === 'undefined') {
+  if (sd.para.preset_properties && sd.para.preset_properties.url && (data.type === "track" || data.type === "track_signup") && typeof data.properties.$url === 'undefined') {
     data.properties.$url = window.location.href;
   }
-  if (sd.para.preset_properties && sd.para.preset_properties.title && data.type === "track" && typeof data.properties.$title === 'undefined') {
+  if (sd.para.preset_properties && sd.para.preset_properties.title && (data.type === "track" || data.type === "track_signup") && typeof data.properties.$title === 'undefined') {
     data.properties.$title = document.title;
   }
 };
@@ -2153,7 +2171,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.14.23';
+  sd.lib_version = '1.14.24';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -2520,7 +2538,7 @@ sd.appendProfile = function(p, c) {
       if (_.isString(value)) {
         p[key] = [value];
       } else if (_.isArray(value)) {
-
+        p[key] = value;
       } else {
         delete p[key];
         sd.log('appendProfile属性的值必须是字符串或者数组');
@@ -3132,7 +3150,9 @@ sendState.getSendCall = function(data, config, callback) {
           try {
             hostname = _.URL(sd.para.server_url).hostname;
             project = _.URL(sd.para.server_url).searchParams.get('project') || 'default';
-          } catch (e) {};
+          } catch (e) {
+            sd.log(e);
+          };
           if (hostname && hostname === match[0] && project && project === match[1]) {
             iframe = document.createElement('iframe');
             iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(JSON.stringify(_.extend({
@@ -3558,7 +3578,9 @@ var store = sd.store = {
     if (sd.para.cross_subdomain === false) {
       try {
         sub = _.URL(location.href).hostname;
-      } catch (e) {}
+      } catch (e) {
+        sd.log(e);
+      }
       if (typeof sub === 'string' && sub !== '') {
         sub = 'sa_jssdk_2015_' + sub.replace(/\./g, '_');
       } else {
@@ -4230,7 +4252,9 @@ _.each(methods, function(method) {
     if (!sd.readyState.getState()) {
       try {
         console.error('请先初始化神策JS SDK');
-      } catch (e) {}
+      } catch (e) {
+        sd.log(e);
+      }
       return;
     }
     return oldFunc.apply(sd, arguments);

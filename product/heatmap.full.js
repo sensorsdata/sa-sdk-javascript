@@ -30,7 +30,15 @@
 
     var support = {};
 
-
+    function salog() {
+      if (typeof console === 'object' && console.log) {
+        try {
+          return console.log.apply(console, arguments);
+        } catch (e) {
+          console.log(arguments[0]);
+        }
+      }
+    }
 
     function DOMEval(code, doc) {
       doc = doc || document;
@@ -676,7 +684,9 @@
                       newContext.querySelectorAll(newSelector)
                     );
                     return results;
-                  } catch (qsaError) {} finally {
+                  } catch (qsaError) {
+                    salog(qsaError);
+                  } finally {
                     if (nid === expando) {
                       context.removeAttribute("id");
                     }
@@ -1158,7 +1168,9 @@
                 elem.document && elem.document.nodeType !== 11) {
                 return ret;
               }
-            } catch (e) {}
+            } catch (e) {
+              salog(e);
+            }
           }
 
           return Sizzle(expr, document, null, [elem]).length > 0;
@@ -3395,7 +3407,9 @@
         if (typeof data === "string") {
           try {
             data = getData(data);
-          } catch (e) {}
+          } catch (e) {
+            salog(e);
+          }
 
           dataUser.set(elem, key, data);
         } else {
@@ -3974,7 +3988,9 @@
     function safeActiveElement() {
       try {
         return document.activeElement;
-      } catch (err) {}
+      } catch (err) {
+        salog(err);
+      }
     }
 
     function on(elem, types, selector, data, fn, one) {
@@ -4960,7 +4976,9 @@
 
               elem = 0;
 
-            } catch (e) {}
+            } catch (e) {
+              salog(e);
+            }
           }
 
           if (elem) {
@@ -9311,7 +9329,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.14.23';
+    sd.heatmap_version = '1.14.24';
     _ = sd._;
 
     _.bindReady = function(fn, win) {
@@ -9344,7 +9362,9 @@
         if (!modern && root.doScroll) {
           try {
             top = !win.frameElement;
-          } catch (e) {}
+          } catch (e) {
+            sd.log(e);
+          }
           if (top) poll();
         }
         doc[add](pre + 'DOMContentLoaded', init, false);
