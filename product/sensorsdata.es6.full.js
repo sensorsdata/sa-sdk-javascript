@@ -1954,7 +1954,59 @@ if (typeof JSON !== 'object') {
     }
   };
 
+  _.eventEmitter = function() {
+    this._events = [];
+    this.pendingEvents = [];
+  }
 
+  _.eventEmitter.prototype = {
+    emit: function(type) {
+      var args = [].slice.call(arguments, 1);
+
+      _.each(this._events, function(val) {
+        if (val.type !== type) {
+          return;
+        }
+        val.callback.apply(val.context, args);
+      })
+    },
+    on: function(event, callback, context) {
+      if (typeof callback !== 'function') {
+        return;
+      }
+      this._events.push({
+        type: event,
+        callback: callback,
+        context: context || this
+      });
+    },
+    tempAdd: function(event, data) {
+      if (!data || !event) {
+        return;
+      }
+
+      this.pendingEvents.push({
+        type: event,
+        data: data
+      });
+      this.pendingEvents.length > 20 ? this.pendingEvents.shift() : null;
+    },
+    isReady: function() {
+      var that = this;
+      this.tempAdd = this.emit;
+
+      if (this.pendingEvents.length === 0) {
+        return;
+      }
+      _.each(this.pendingEvents, function(val) {
+        that.emit(val.type, val.data);
+      })
+
+      this.pendingEvents = [];
+
+    }
+
+  }
 
 
 })();
@@ -2055,10 +2107,10 @@ sd.initPara = function(para) {
     }
   }
   if (typeof sd.para.server_url === 'string' && sd.para.server_url.slice(0, 3) === '://') {
-    sd.para.server_url = location.protocol + sd.para.server_url;
+    sd.para.server_url = location.protocol.slice(-1) + sd.para.server_url;
   }
   if (typeof sd.para.web_url === 'string' && sd.para.web_url.slice(0, 3) === '://') {
-    sd.para.web_url = location.protocol + sd.para.web_url;
+    sd.para.web_url = location.protocol.slice(-1) + sd.para.web_url;
   }
 
   if (sd.para.send_type !== 'image' && sd.para.send_type !== 'ajax' && sd.para.send_type !== 'beacon') {
@@ -2171,7 +2223,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.14.24';
+  sd.lib_version = '1.15.1';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -2441,9 +2493,21 @@ var commonWays = {
     } else {
       return sd.store._state._first_id || sd.store._state.first_id || sd.store._state._distinct_id || sd.store._state.distinct_id;
     }
+  },
+  setPlugin: function(para) {
+    if (!_.isObject(para)) {
+      return false;
+    }
+    _.each(para, function(v, k) {
+      if (_.isFunction(v)) {
+        if (_.isObject(window.SensorsDataWebJSSDKPlugin) && window.SensorsDataWebJSSDKPlugin[k]) {
+          v(window.SensorsDataWebJSSDKPlugin[k]);
+        } else {
+          sd.log(k + '没有获取到,请查阅文档，调整' + k + '的引入顺序！')
+        }
+      }
+    });
   }
-
-
 };
 
 sd.quick = function() {
@@ -2618,10 +2682,11 @@ sd.identify = function(id, isSave) {
   }
   var firstId = store.getFirstId();
   if (typeof id === 'undefined') {
+    var uuid = _.UUID();
     if (firstId) {
-      store.set('first_id', _.UUID());
+      store.set('first_id', uuid);
     } else {
-      store.set('distinct_id', _.UUID());
+      store.set('distinct_id', uuid);
     }
   } else if (saEvent.check({
       distinct_id: id
@@ -2746,10 +2811,12 @@ sd.logout = function(isChangeId) {
   if (firstId) {
     store.set('first_id', '');
     if (isChangeId === true) {
-      store.set('distinct_id', _.UUID());
+      var uuid = _.UUID();
+      store.set('distinct_id', uuid);
     } else {
       store.set('distinct_id', firstId);
     }
+
   } else {
     sd.log('没有first_id，logout失败');
   }
@@ -2783,6 +2850,16 @@ sd.getPresetProperties = function() {
   }
   return result;
 };
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3081,6 +3158,7 @@ dataSend.beacon.prototype.start = function() {
 
 var sendState = {};
 sd.sendState = sendState;
+sd.events = new _.eventEmitter();
 sendState.queue = _.autoExeQueue();
 
 sendState.requestData = null;
@@ -3109,6 +3187,8 @@ sendState.getSendCall = function(data, config, callback) {
     config: config,
     callback: callback
   };
+
+  sd.events.tempAdd('send', originData);
 
   if (!sd.para.use_app_track && sd.para.batch_send && localStorage.length < 200) {
     sd.log(originData);
@@ -3505,6 +3585,9 @@ var store = sd.store = {
   },
   set: function(name, value) {
     this._state = this._state || {};
+    if (name === 'distinct_id' && this._state.distinct_id) {
+      sd.events.tempAdd('changeDistinctId', value);
+    }
     this._state[name] = value;
     if (name === 'first_id') {
       delete this._state._first_id;
@@ -3512,6 +3595,7 @@ var store = sd.store = {
       delete this._state._distinct_id;
     }
     this.save();
+
   },
   change: function(name, value) {
     this._state['_' + name] = value;
@@ -3777,7 +3861,7 @@ var heatmap = sd.heatmap = {
       sd.errorMsg = '您SDK没有配置开启点击图，可能没有数据！';
     }
     if (web_url && web_url[0] && web_url[1]) {
-      if (web_url[1].slice(0, 5) === 'http:' && location.protocol === 'https') {
+      if (web_url[1].slice(0, 5) === 'http:' && location.protocol === 'https:') {
         sd.errorMsg = '您的当前页面是https的地址，神策分析环境也必须是https！';
       }
     }
@@ -4266,8 +4350,8 @@ _.each(methods, function(method) {
 if (typeof window['sensorsDataAnalytic201505'] === 'string') {
   sd.setPreConfig(window[sensorsDataAnalytic201505]);
   window[sensorsDataAnalytic201505] = sd;
-  sd.init();
   window['sensorsDataAnalytic201505'] = sd;
+  sd.init();
 } else if (typeof window['sensorsDataAnalytic201505'] === 'undefined') {
   window['sensorsDataAnalytic201505'] = sd;
 } else {
