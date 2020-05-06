@@ -8417,7 +8417,7 @@
               var y = parseInt((e.pageY + 15) / 10);
               var i = 0;
               if (y <= data.detail.length && data.detail[y]) {
-                i = (data.detail[y] / data.total * 100).toFixed(1);
+                i = Math.floor((data.detail[y] / data.total * 100) * 100) / 100;
               } else {
                 i = 0;
               }
@@ -9329,7 +9329,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.15.1';
+    sd.heatmap_version = '1.15.2';
     _ = sd._;
 
     _.bindReady = function(fn, win) {
