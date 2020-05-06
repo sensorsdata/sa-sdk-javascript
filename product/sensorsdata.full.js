@@ -2236,7 +2236,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.15.2';
+      sd.lib_version = '1.15.3';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4162,6 +4162,7 @@
 
       },
       prepare: function(todo) {
+        var isVtrackMode = false;
         var match = location.search.match(/sa-request-id=([^&#]+)/);
         var type = location.search.match(/sa-request-type=([^&#]+)/);
         var web_url = location.search.match(/sa-request-url=([^&#]+)/);
@@ -4216,9 +4217,63 @@
             }
           }
           isReady(match[1], type);
-        } else if (_.sessionStorage.isSupport() && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string') {
-          heatmap.setNotice();
-          isReady(sessionStorage.getItem('sensors_heatmap_id'), sessionStorage.getItem('sensors_heatmap_type'), location.href);
+        } else if (window.parent !== self) {
+          var messageListener = function(event) {
+            if (event.data.source !== 'sa-fe') {
+              return false;
+            }
+            if (event.data.type === 'v-track-mode') {
+              if (event.data.data && event.data.data.isVtrack) {
+                isVtrackMode = true;
+                loadVtrack();
+              } else {
+                trackMode();
+              }
+              window.removeEventListener("message", messageListener, false);
+            }
+          };
+          if (window.addEventListener) {
+            window.addEventListener("message", messageListener, false);
+          }
+          if (window.parent && window.parent.postMessage) {
+            window.parent.postMessage({
+              source: 'sa-web-sdk',
+              type: 'v-is-vtrack',
+              data: {}
+            }, '*');
+          }
+
+          setTimeout(function() {
+            if (isVtrackMode) {
+              return false;
+            }
+            if (_.sessionStorage.isSupport() && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string') {
+              heatmap.setNotice();
+              isReady(sessionStorage.getItem('sensors_heatmap_id'), sessionStorage.getItem('sensors_heatmap_type'), location.href);
+            } else {
+              trackMode();
+            }
+            if (window.removeEventListener) {
+              window.removeEventListener("message", messageListener, false);
+            }
+          }, 1000);
+
+          function loadVtrack() {
+            _.loadScript({
+              success: function() {},
+              error: function() {},
+              type: 'js',
+              url: location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/vtrack.min.js'
+            });
+          }
+
+          function trackMode() {
+            todo();
+            if (_.isObject(sd.para.heatmap)) {
+              heatmap.initHeatmap();
+              heatmap.initScrollmap();
+            }
+          }
         } else {
           todo();
           if (_.isObject(sd.para.heatmap)) {
