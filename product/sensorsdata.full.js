@@ -10,8 +10,9 @@
   try {
 
 
-
     var sd = {};
+
+    sd.modules = {};
 
     var _ = sd._ = {};
 
@@ -2236,7 +2237,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.15.3';
+      sd.lib_version = '1.15.4';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -2520,6 +2521,12 @@
             }
           }
         });
+      },
+      useModulePlugin: function() {
+        sd.use.apply(sd, arguments);
+      },
+      useAppPlugin: function() {
+        this.setPlugin.apply(this, arguments);
       }
     };
 
@@ -2533,6 +2540,13 @@
         arg0.apply(sd, arg1);
       } else {
         sd.log('quick方法中没有这个功能' + arg[0]);
+      }
+    };
+
+    sd.use = function(name, option) {
+      if (_.isObject(sd.modules) && _.isObject(sd.modules[name]) && _.isFunction(sd.modules[name].init)) {
+        option = option || {};
+        sd.modules[name].init(sd, option);
       }
     };
 
@@ -3340,6 +3354,7 @@
 
 
     var saEvent = {};
+    sd.saEvent = saEvent;
 
     saEvent.checkOption = {
       regChecks: {
