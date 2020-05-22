@@ -1114,7 +1114,28 @@
           }
         }
       };
+      _.getElementContent = function(target, tagName) {
+        var textContent = '';
+        var element_content = '';
+        if (target.textContent) {
+          textContent = _.trim(target.textContent);
+        } else if (target.innerText) {
+          textContent = _.trim(target.innerText);
+        }
+        if (textContent) {
+          textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
+        }
+        element_content = textContent || '';
 
+        if (tagName === 'input' || tagName === 'INPUT') {
+          if (target.type === 'button' || target.type === 'submit') {
+            element_content = target.value || '';
+          } else if (sd.para.heatmap && (typeof sd.para.heatmap.collect_input === 'function') && sd.para.heatmap.collect_input(target)) {
+            element_content = target.value || '';
+          }
+        }
+        return element_content;
+      };
       _.getEleInfo = function(obj) {
         if (!obj.target) {
           return false;
@@ -1131,26 +1152,8 @@
         props.$element_id = target.getAttribute('id');
         props.$element_class_name = typeof target.className === 'string' ? target.className : null;
         props.$element_target_url = target.getAttribute('href');
+        props.$element_content = _.getElementContent(target, tagName);
 
-
-        var textContent = '';
-        if (target.textContent) {
-          textContent = _.trim(target.textContent);
-        } else if (target.innerText) {
-          textContent = _.trim(target.innerText);
-        }
-        if (textContent) {
-          textContent = textContent.replace(/[\r\n]/g, ' ').replace(/[ ]+/g, ' ').substring(0, 255);
-        }
-        props.$element_content = textContent || '';
-
-        if (tagName === 'input') {
-          if (target.type === 'button' || target.type === 'submit') {
-            props.$element_content = target.value || '';
-          } else if (sd.para.heatmap && (typeof sd.para.heatmap.collect_input === 'function') && sd.para.heatmap.collect_input(target)) {
-            props.$element_content = target.value || '';
-          }
-        }
 
         props = _.strip_empty_properties(props);
 
@@ -1402,6 +1405,7 @@
         };
         para.appendCall(g);
       };
+
 
       _.getHostname = function(url, defaultValue) {
         if (!defaultValue || typeof defaultValue !== "string") {
@@ -2071,9 +2075,8 @@
       datasend_timeout: 3000,
       queue_timeout: 300,
       is_track_device_id: false,
-      use_app_track: false,
-      use_app_track_is_send: true,
-      ignore_oom: true
+      ignore_oom: true,
+      app_js_bridge: false
     };
 
     sd.addReferrerHost = function(data) {
@@ -2110,8 +2113,9 @@
           latestObj['latest_' + latestProp] = sd.para.is_track_latest[latestProp];
         }
       }
-
       sd.para.preset_properties = _.extend({}, sd.para_default.preset_properties, latestObj, sd.para.preset_properties || {});
+
+
 
       var i;
       for (i in sd.para_default) {
@@ -2129,6 +2133,8 @@
       if (sd.para.send_type !== 'image' && sd.para.send_type !== 'ajax' && sd.para.send_type !== 'beacon') {
         sd.para.send_type = 'image';
       }
+      sd.bridge.initPara();
+      sd.bridge.initState();
 
       var batch_send_default = {
         datasend_timeout: 6000,
@@ -2288,11 +2294,13 @@
           '1': name + 'use_app_track为false',
           '2': name + 'Android或者iOS，没有暴露相应方法',
           '3.1': name + 'Android校验server_url失败',
-          '3.2': name + 'iOS校验server_url失败'
+          '3.2': name + 'iOS校验server_url失败',
+          '4.1': name + 'H5 校验 iOS server_url 失败',
+          '4.2': name + 'H5 校验 Android server_url 失败'
         };
         var output = obj.output;
         var step = obj.step;
-        var data = obj.data;
+        var data = obj.data || '';
         if (output === 'all' || output === 'console') {
           sd.log(relation[step]);
         }
@@ -2300,6 +2308,39 @@
           if (!data.type || data.type.slice(0, 7) !== 'profile') {
             data.properties._jssdk_debug_info = 'apph5-' + String(step);
           }
+        }
+      },
+      defineMode: function(type) {
+        var debugList = {
+          '1': {
+            "title": "当前页面无法进行可视化全埋点",
+            "message": "App SDK 与 Web JS SDK 没有进行打通，请联系贵方技术人员修正 App SDK 的配置，详细信息请查看文档。",
+            "link_text": "配置文档",
+            "link_url": "https://manual.sensorsdata.cn/sa/latest/tech_sdk_client_link-1573913.html"
+          },
+          '2': {
+            "title": "当前页面无法进行可视化全埋点",
+            "message": "App SDK 与 Web JS SDK 没有进行打通，请联系贵方技术人员修正 Web JS SDK 的配置，详细信息请查看文档。",
+            "link_text": "配置文档",
+            "link_url": "https://manual.sensorsdata.cn/sa/latest/tech_sdk_client_link-1573913.html"
+          },
+          '3': {
+            "title": "当前页面无法进行可视化全埋点",
+            "message": "Web JS SDK 没有开启全埋点配置，请联系贵方工作人员修正 SDK 的配置，详细信息请查看文档。",
+            "link_text": "配置文档",
+            "link_url": "https://manual.sensorsdata.cn/sa/latest/tech_sdk_client_web_all-1573964.html"
+          },
+          '4': {
+            "title": "当前页面无法进行可视化全埋点",
+            "message": "Web JS SDK 配置的数据校验地址与 App SDK 配置的数据校验地址不一致，请联系贵方工作人员修正 SDK 的配置，详细信息请查看文档。",
+            "link_text": "配置文档",
+            "link_url": "https://manual.sensorsdata.cn/sa/latest/tech_sdk_client_link-1573913.html"
+          }
+        };
+        if (type && debugList[type]) {
+          return debugList[type];
+        } else {
+          return false;
         }
       }
     };
@@ -2491,7 +2532,6 @@
             current_page_url = location.href;
           });
         }
-
         sd.track('$pageview', _.extend({
           $referrer: _.getReferrer(),
           $url: location.href,
@@ -2878,7 +2918,263 @@
     };
 
 
+    sd.detectMode = function() {
 
+      var heatmapMode = {
+        searchKeywordMatch: location.search.match(/sa-request-id=([^&#]+)/),
+        isSeachHasKeyword: function() {
+          var match = this.searchKeywordMatch;
+          return (match && match[0] && match[1]);
+        },
+        hasKeywordHandle: function() {
+          var match = this.searchKeywordMatch;
+          var type = location.search.match(/sa-request-type=([^&#]+)/);
+          var web_url = location.search.match(/sa-request-url=([^&#]+)/);
+          heatmap.setNotice(web_url);
+          if (_.sessionStorage.isSupport()) {
+            if (web_url && web_url[0] && web_url[1]) {
+              sessionStorage.setItem('sensors_heatmap_url', decodeURIComponent(web_url[1]));
+            }
+            sessionStorage.setItem('sensors_heatmap_id', match[1]);
+            if (type && type[0] && type[1]) {
+              if (type[1] === '1' || type[1] === '2' || type[1] === '3') {
+                type = type[1];
+                sessionStorage.setItem('sensors_heatmap_type', type);
+              } else {
+                type = null;
+              }
+            } else {
+              if (sessionStorage.getItem('sensors_heatmap_type') !== null) {
+                type = sessionStorage.getItem('sensors_heatmap_type');
+              } else {
+                type = null;
+              }
+            }
+          }
+          this.isReady(match[1], type);
+        },
+        isReady: function(data, type, url) {
+          if (sd.para.heatmap_url) {
+            _.loadScript({
+              success: function() {
+                setTimeout(function() {
+                  if (typeof sa_jssdk_heatmap_render !== 'undefined') {
+                    sa_jssdk_heatmap_render(sd, data, type, url);
+                    if (typeof console === 'object' && typeof console.log === 'function') {
+                      if (!(sd.heatmap_version && (sd.heatmap_version === sd.lib_version))) {
+                        console.log('heatmap.js与sensorsdata.js版本号不一致，可能存在风险!');
+                      }
+                    }
+                  }
+                }, 0);
+              },
+              error: function() {},
+              type: 'js',
+              url: sd.para.heatmap_url
+            });
+          } else {
+            sd.log('没有指定heatmap_url的路径');
+          }
+        },
+        isStoregeHasKeyword: function() {
+          return (_.sessionStorage.isSupport() && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string');
+        },
+        storageHasKeywordHandle: function() {
+          heatmap.setNotice();
+          heatmapMode.isReady(sessionStorage.getItem('sensors_heatmap_id'), sessionStorage.getItem('sensors_heatmap_type'), location.href);
+        }
+      };
+
+      var vtrackMode = {
+        isVtrackMode: false,
+        loadVtrack: function() {
+          _.loadScript({
+            success: function() {},
+            error: function() {},
+            type: 'js',
+            url: location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/vtrack.min.js'
+          });
+        },
+        messageListener: function(event) {
+          if (event.data.source !== 'sa-fe') {
+            return false;
+          }
+          if (event.data.type === 'v-track-mode') {
+            if (event.data.data && event.data.data.isVtrack) {
+              vtrackMode.isVtrackMode = true;
+              vtrackMode.loadVtrack();
+            }
+            window.removeEventListener("message", vtrackMode.messageListener, false);
+          }
+        },
+        removeMessageHandle: function() {
+          if (window.removeEventListener) {
+            window.removeEventListener("message", vtrackMode.messageListener, false);
+          }
+        },
+        verifyVtrackMode: function() {
+          if (window.addEventListener) {
+            window.addEventListener("message", vtrackMode.messageListener, false);
+          }
+          if (window.parent && window.parent.postMessage) {
+            window.parent.postMessage({
+              source: 'sa-web-sdk',
+              type: 'v-is-vtrack',
+              data: {}
+            }, '*');
+          }
+        }
+      };
+
+      var defineMode = function(isLoaded) {
+        var bridgeObj = sd.bridge.initDefineBridgeInfo();
+
+        function getAndPostDebugInfo() {
+          var arr = [];
+          if (!bridgeObj.touch_app_bridge) {
+            arr.push(sd.debug.defineMode('1'));
+          }
+          if (!(_.isObject(sd.para.app_js_bridge))) {
+            arr.push(sd.debug.defineMode('2'));
+            bridgeObj.verify_success = false;
+          }
+          if (!(_.isObject(sd.para.heatmap) && sd.para.heatmap.clickmap == 'default')) {
+            arr.push(sd.debug.defineMode('3'));
+          }
+          if (bridgeObj.verify_success === 'fail') {
+            arr.push(sd.debug.defineMode('4'));
+          }
+          var data = {
+            callType: 'app_alert',
+            data: arr
+          };
+
+          if (SensorsData_App_Visual_Bridge && SensorsData_App_Visual_Bridge.sensorsdata_visualized_alert_info) {
+            SensorsData_App_Visual_Bridge.sensorsdata_visualized_alert_info(JSON.stringify(data));
+          } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage) {
+            window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage(JSON.stringify(data));
+          }
+
+        }
+
+        if (_.isObject(window.SensorsData_App_Visual_Bridge) && window.SensorsData_App_Visual_Bridge.sensorsdata_visualized_mode && ((window.SensorsData_App_Visual_Bridge.sensorsdata_visualized_mode === true) || (window.SensorsData_App_Visual_Bridge.sensorsdata_visualized_mode()))) {
+          if (_.isObject(sd.para.heatmap) && sd.para.heatmap.clickmap == 'default') {
+            if (_.isObject(sd.para.app_js_bridge) && bridgeObj.verify_success === 'success') {
+              if (!isLoaded) {
+                _.loadScript({
+                  success: function() {
+                    setTimeout(function() {
+                      if (typeof sa_jssdk_app_define_mode !== 'undefined') {
+                        sa_jssdk_app_define_mode(sd, isLoaded);
+                      }
+                    }, 0);
+                  },
+                  error: function() {},
+                  type: 'js',
+                  url: location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/vapph5define.min.js'
+                });
+              } else {
+                sa_jssdk_app_define_mode(sd, isLoaded);
+              }
+
+            } else {
+              getAndPostDebugInfo();
+            }
+          } else {
+            getAndPostDebugInfo();
+          }
+
+
+        }
+
+      };
+
+
+      function trackMode() {
+
+        window.sensorsdata_app_call_js = function(type) {
+          if (type && type == 'visualized') {
+            if (typeof sa_jssdk_app_define_mode !== 'undefined') {
+              defineMode(true);
+            } else {
+              defineMode(false);
+            }
+          }
+        };
+
+        defineMode(false);
+
+
+        sd.bridge.app_js_bridge_v1();
+        _.info.initPage();
+
+        if (sd.para.is_track_single_page) {
+          _.addSinglePageEvent(function(last_url) {
+            var sendData = function(extraData) {
+              extraData = extraData || {};
+              if (last_url !== location.href) {
+                _.info.pageProp.referrer = last_url;
+                sd.quick("autoTrack", _.extend({
+                  $url: location.href,
+                  $referrer: last_url
+                }, extraData));
+              }
+            };
+            if (typeof sd.para.is_track_single_page === "boolean") {
+              sendData();
+            } else if (typeof sd.para.is_track_single_page === "function") {
+              var returnValue = sd.para.is_track_single_page();
+              if (_.isObject(returnValue)) {
+                sendData(returnValue);
+              } else if (returnValue === true) {
+                sendData();
+              }
+            }
+          });
+        }
+        if (sd.para.batch_send) {
+          sd.batchSend.batchInterval();
+        }
+        sd.store.init();
+
+        sd.readyState.setState(3);
+        if (sd._q && _.isArray(sd._q) && sd._q.length > 0) {
+          _.each(sd._q, function(content) {
+            sd[content[0]].apply(sd, Array.prototype.slice.call(content[1]));
+          });
+        }
+
+
+
+        if (_.isObject(sd.para.heatmap)) {
+          heatmap.initHeatmap();
+          heatmap.initScrollmap();
+        }
+      }
+
+
+
+      if (heatmapMode.isSeachHasKeyword()) {
+        heatmapMode.hasKeywordHandle();
+      } else if (window.parent !== self) {
+        vtrackMode.verifyVtrackMode();
+        setTimeout(function() {
+          if (vtrackMode.isVtrackMode) {
+            return false;
+          }
+          vtrackMode.removeMessageHandle();
+          if (heatmapMode.isStoregeHasKeyword()) {
+            heatmapMode.storageHasKeywordHandle();
+          } else {
+            trackMode();
+          }
+        }, 1000);
+      } else {
+        trackMode();
+      }
+
+
+    };
 
 
 
@@ -3216,101 +3512,14 @@
 
       sd.events.tempAdd('send', originData);
 
-      if (!sd.para.use_app_track && sd.para.batch_send && localStorage.length < 200) {
+      if (!sd.para.app_js_bridge && sd.para.batch_send && localStorage.length < 200) {
         sd.log(originData);
         sd.batchSend.add(this.requestData.data);
         return false;
       }
 
-      if (sd.para.use_app_track === true || sd.para.use_app_track === 'only') {
-        if ((typeof SensorsData_APP_JS_Bridge === 'object') && (SensorsData_APP_JS_Bridge.sensorsdata_verify || SensorsData_APP_JS_Bridge.sensorsdata_track)) {
-          if (SensorsData_APP_JS_Bridge.sensorsdata_verify) {
-            if (!SensorsData_APP_JS_Bridge.sensorsdata_verify(JSON.stringify(_.extend({
-                server_url: sd.para.server_url
-              }, originData)))) {
-              if (sd.para.use_app_track_is_send) {
-                sd.debug.apph5({
-                  data: originData,
-                  step: '3.1',
-                  output: 'all'
-                });
-                this.prepareServerUrl();
-              }
-            } else {
-              (typeof callback === 'function') && callback();
-            }
-          } else {
-            SensorsData_APP_JS_Bridge.sensorsdata_track(JSON.stringify(_.extend({
-              server_url: sd.para.server_url
-            }, originData)));
-            (typeof callback === 'function') && callback();
-          }
-        } else if ((/sensors-verify/.test(navigator.userAgent) || /sa-sdk-ios/.test(navigator.userAgent)) && !window.MSStream) {
-          var iframe = null;
-          if (/sensors-verify/.test(navigator.userAgent)) {
-            var match = navigator.userAgent.match(/sensors-verify\/([^\s]+)/);
-            if (match && match[0] && (typeof match[1] === 'string') && (match[1].split('?').length === 2)) {
-              match = match[1].split('?');
-              var hostname = null;
-              var project = null;
-              try {
-                hostname = _.URL(sd.para.server_url).hostname;
-                project = _.URL(sd.para.server_url).searchParams.get('project') || 'default';
-              } catch (e) {
-                sd.log(e);
-              };
-              if (hostname && hostname === match[0] && project && project === match[1]) {
-                iframe = document.createElement('iframe');
-                iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(JSON.stringify(_.extend({
-                  server_url: sd.para.server_url
-                }, originData))));
-                document.documentElement.appendChild(iframe);
-                iframe.parentNode.removeChild(iframe);
-                iframe = null;
-                (typeof callback === 'function') && callback();
-              } else {
-                if (sd.para.use_app_track_is_send) {
-                  sd.debug.apph5({
-                    data: originData,
-                    step: '3.2',
-                    output: 'all'
-                  });
-                  this.prepareServerUrl();
-                }
-              }
-            }
-          } else {
-            iframe = document.createElement('iframe');
-            iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(JSON.stringify(_.extend({
-              server_url: sd.para.server_url
-            }, originData))));
-            document.documentElement.appendChild(iframe);
-            iframe.parentNode.removeChild(iframe);
-            iframe = null;
-            (typeof callback === 'function') && callback();
-          }
-        } else {
-          if (sd.para.use_app_track === true && sd.para.use_app_track_is_send === true) {
-            sd.debug.apph5({
-              data: originData,
-              step: '2',
-              output: 'all'
-            });
-            this.prepareServerUrl();
-          }
-        }
-      } else if (sd.para.use_app_track === 'mui') {
-        if (_.isObject(window.plus) && window.plus.SDAnalytics && window.plus.SDAnalytics.trackH5Event) {
-          window.plus.SDAnalytics.trackH5Event(data);
-        }
-      } else {
-        sd.debug.apph5({
-          data: originData,
-          step: '1',
-          output: 'code'
-        });
-        this.prepareServerUrl();
-      }
+      sd.bridge.dataSend(originData, this, callback);
+
       sd.log(originData);
     };
 
@@ -3879,6 +4088,324 @@
     };
 
 
+    sd.bridge = {
+      is_verify_success: false,
+      initPara: function() {
+        var app_js_bridge_default = {
+          is_send: true,
+          white_list: [],
+          is_mui: false
+        };
+        if (typeof sd.para.app_js_bridge === 'object') {
+          sd.para.app_js_bridge = _.extend({}, app_js_bridge_default, sd.para.app_js_bridge);
+        } else if (sd.para.use_app_track === true || sd.para.app_js_bridge === true || sd.para.use_app_track === 'only') {
+          if (sd.para.use_app_track_is_send === false || sd.para.use_app_track === 'only') {
+            app_js_bridge_default.is_send = false;
+          }
+          sd.para.app_js_bridge = _.extend({}, app_js_bridge_default);
+        } else if (sd.para.use_app_track === 'mui') {
+          app_js_bridge_default.is_mui = true;
+          sd.para.app_js_bridge = _.extend({}, app_js_bridge_default);
+        }
+        if (sd.para.app_js_bridge.is_send === false) {
+          sd.log('设置了 is_send:false,如果打通失败，数据将被丢弃！');
+        }
+      },
+      initState: function() {
+        function checkProjectAndHost(appUrl) {
+          function getHostNameAndProject(url) {
+            var obj = {
+              hostname: '',
+              project: ''
+            };
+            try {
+              obj.hostname = _.URL(url).hostname;
+              obj.project = _.URL(url).searchParams.get('project') || 'default';
+            } catch (e) {
+              sd.log(e);
+            }
+            return obj;
+          }
+          var appObj = getHostNameAndProject(appUrl);
+          var H5Obj = getHostNameAndProject(sd.para.server_url);
+          if (appObj.hostname === H5Obj.hostname && appObj.project === H5Obj.project) {
+            return true;
+          } else {
+            if (sd.para.app_js_bridge.white_list.length > 0) {
+              for (var i = 0; i < sd.para.app_js_bridge.white_list.length; i++) {
+                var urlobj = getHostNameAndProject(sd.para.app_js_bridge.white_list[i]);
+                if (urlobj.hostname === appObj.hostname && urlobj.project === appObj.project) {
+                  return true;
+                }
+              }
+            }
+          }
+          return false;
+        }
+
+        if (_.isObject(sd.para.app_js_bridge) && !sd.para.app_js_bridge.is_mui) {
+          if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && _.isObject(window.SensorsData_iOS_JS_Bridge) && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) {
+            if (checkProjectAndHost(window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url)) {
+              sd.bridge.is_verify_success = true;
+            }
+
+          } else if (_.isObject(window.SensorsData_APP_New_H5_Bridge) && window.SensorsData_APP_New_H5_Bridge.sensorsdata_get_server_url && window.SensorsData_APP_New_H5_Bridge.sensorsdata_track) {
+            var app_server_url = window.SensorsData_APP_New_H5_Bridge.sensorsdata_get_server_url();
+            if (app_server_url) {
+              if (checkProjectAndHost(app_server_url)) {
+                sd.bridge.is_verify_success = true;
+              }
+            }
+
+          }
+        }
+      },
+      initDefineBridgeInfo: function() {
+        var resultObj = {
+          touch_app_bridge: true,
+          verify_success: false
+        };
+
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage && _.isObject(window.SensorsData_iOS_JS_Bridge) && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) {
+          if (sd.bridge.is_verify_success) {
+            resultObj.verify_success = 'success';
+          } else {
+            resultObj.verify_success = 'fail';
+          }
+        } else if (_.isObject(window.SensorsData_APP_New_H5_Bridge) && window.SensorsData_APP_New_H5_Bridge.sensorsdata_get_server_url && window.SensorsData_APP_New_H5_Bridge.sensorsdata_track) {
+          if (sd.bridge.is_verify_success) {
+            resultObj.verify_success = 'success';
+          } else {
+            resultObj.verify_success = 'fail';
+          }
+        } else if ((typeof SensorsData_APP_JS_Bridge === 'object') && ((SensorsData_APP_JS_Bridge.sensorsdata_verify && SensorsData_APP_JS_Bridge.sensorsdata_visual_verify) || SensorsData_APP_JS_Bridge.sensorsdata_track)) {
+          if (SensorsData_APP_JS_Bridge.sensorsdata_verify && SensorsData_APP_JS_Bridge.sensorsdata_visual_verify) {
+            if (SensorsData_APP_JS_Bridge.sensorsdata_visual_verify(JSON.stringify({
+                server_url: sd.para.server_url
+              }))) {
+              resultObj.verify_success = 'success';
+            } else {
+              resultObj.verify_success = 'fail';
+            }
+          } else {
+            resultObj.verify_success = 'success';
+          }
+        } else if ((/sensors-verify/.test(navigator.userAgent) || /sa-sdk-ios/.test(navigator.userAgent)) && !window.MSStream) {
+          if (sd.bridge.iOS_UA_bridge()) {
+            resultObj.verify_success = 'success';
+          } else {
+            resultObj.verify_success = 'fail';
+          }
+        } else {
+          resultObj.touch_app_bridge = false;
+        }
+
+        return resultObj;
+      },
+      iOS_UA_bridge: function() {
+        if (/sensors-verify/.test(navigator.userAgent)) {
+          var match = navigator.userAgent.match(/sensors-verify\/([^\s]+)/);
+          if (match && match[0] && (typeof match[1] === 'string') && (match[1].split('?').length === 2)) {
+            match = match[1].split('?');
+            var hostname = null;
+            var project = null;
+            try {
+              hostname = _.URL(sd.para.server_url).hostname;
+              project = _.URL(sd.para.server_url).searchParams.get('project') || 'default';
+            } catch (e) {
+              sd.log(e);
+            }
+            if (hostname && hostname === match[0] && project && project === match[1]) {
+              return true;
+            } else {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        } else if (/sa-sdk-ios/.test(navigator.userAgent)) {
+          return true;
+        } else {
+          return false;
+        }
+      },
+      dataSend: function(originData, that, callback) {
+        if (_.isObject(sd.para.app_js_bridge) && !sd.para.app_js_bridge.is_mui) {
+          if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage && _.isObject(window.SensorsData_iOS_JS_Bridge) && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) {
+            if (sd.bridge.is_verify_success) {
+              window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage(JSON.stringify({
+                callType: 'app_h5_track',
+                data: _.extend({
+                  server_url: sd.para.server_url
+                }, originData)
+              }));
+              (typeof callback === 'function') && callback();
+            } else {
+              if (sd.para.app_js_bridge.is_send) {
+                sd.debug.apph5({
+                  data: originData,
+                  step: '4.1',
+                  output: 'all'
+                });
+                that.prepareServerUrl();
+              } else {
+                (typeof callback === 'function') && callback();
+              }
+            }
+          } else if (_.isObject(window.SensorsData_APP_New_H5_Bridge) && window.SensorsData_APP_New_H5_Bridge.sensorsdata_get_server_url && window.SensorsData_APP_New_H5_Bridge.sensorsdata_track) {
+            if (sd.bridge.is_verify_success) {
+              SensorsData_APP_New_H5_Bridge.sensorsdata_track(JSON.stringify(_.extend({
+                server_url: sd.para.server_url
+              }, originData)));
+              (typeof callback === 'function') && callback();
+            } else {
+              if (sd.para.app_js_bridge.is_send) {
+                sd.debug.apph5({
+                  data: originData,
+                  step: '4.2',
+                  output: 'all'
+                });
+                that.prepareServerUrl();
+              } else {
+                (typeof callback === 'function') && callback();
+              }
+
+            }
+          } else if ((typeof SensorsData_APP_JS_Bridge === 'object') && (SensorsData_APP_JS_Bridge.sensorsdata_verify || SensorsData_APP_JS_Bridge.sensorsdata_track)) {
+            if (SensorsData_APP_JS_Bridge.sensorsdata_verify) {
+              if (!SensorsData_APP_JS_Bridge.sensorsdata_verify(JSON.stringify(_.extend({
+                  server_url: sd.para.server_url
+                }, originData)))) {
+                if (sd.para.app_js_bridge.is_send) {
+                  sd.debug.apph5({
+                    data: originData,
+                    step: '3.1',
+                    output: 'all'
+                  });
+                  that.prepareServerUrl();
+                } else {
+                  (typeof callback === 'function') && callback();
+                }
+              } else {
+                (typeof callback === 'function') && callback();
+              }
+            } else {
+              SensorsData_APP_JS_Bridge.sensorsdata_track(JSON.stringify(_.extend({
+                server_url: sd.para.server_url
+              }, originData)));
+              (typeof callback === 'function') && callback();
+            }
+          } else if ((/sensors-verify/.test(navigator.userAgent) || /sa-sdk-ios/.test(navigator.userAgent)) && !window.MSStream) {
+            var iframe = null;
+            if (sd.bridge.iOS_UA_bridge()) {
+              iframe = document.createElement('iframe');
+              iframe.setAttribute('src', 'sensorsanalytics://trackEvent?event=' + encodeURIComponent(JSON.stringify(_.extend({
+                server_url: sd.para.server_url
+              }, originData))));
+              document.documentElement.appendChild(iframe);
+              iframe.parentNode.removeChild(iframe);
+              iframe = null;
+              (typeof callback === 'function') && callback();
+            } else {
+              if (sd.para.app_js_bridge.is_send) {
+                sd.debug.apph5({
+                  data: originData,
+                  step: '3.2',
+                  output: 'all'
+                });
+                that.prepareServerUrl();
+              } else {
+                (typeof callback === 'function') && callback();
+              }
+            }
+          } else {
+            if (_.isObject(sd.para.app_js_bridge) && sd.para.app_js_bridge.is_send === true) {
+              sd.debug.apph5({
+                data: originData,
+                step: '2',
+                output: 'all'
+              });
+              that.prepareServerUrl();
+            } else {
+              (typeof callback === 'function') && callback();
+            }
+          }
+        } else if (_.isObject(sd.para.app_js_bridge) && sd.para.app_js_bridge.is_mui) {
+          if (_.isObject(window.plus) && window.plus.SDAnalytics && window.plus.SDAnalytics.trackH5Event) {
+            window.plus.SDAnalytics.trackH5Event(data);
+            (typeof callback === 'function') && callback();
+          } else {
+            if (_.isObject(sd.para.app_js_bridge) && sd.para.app_js_bridge.is_send === true) {
+              that.prepareServerUrl();
+            } else {
+              (typeof callback === 'function') && callback();
+            }
+          }
+        } else {
+          sd.debug.apph5({
+            data: originData,
+            step: '1',
+            output: 'code'
+          });
+          that.prepareServerUrl();
+        }
+
+      },
+      app_js_bridge_v1: function() {
+        var app_info = null;
+        var todo = null;
+
+        function setAppInfo(data) {
+          app_info = data;
+          if (_.isJSONString(app_info)) {
+            app_info = JSON.parse(app_info);
+          }
+          if (todo) {
+            todo(app_info);
+            todo = null;
+            app_info = null;
+          }
+        }
+
+        function getAndroid() {
+          if (typeof window.SensorsData_APP_JS_Bridge === 'object' && window.SensorsData_APP_JS_Bridge.sensorsdata_call_app) {
+            app_info = SensorsData_APP_JS_Bridge.sensorsdata_call_app();
+            if (_.isJSONString(app_info)) {
+              app_info = JSON.parse(app_info);
+            }
+          }
+        }
+        window.sensorsdata_app_js_bridge_call_js = function(data) {
+          setAppInfo(data);
+        };
+
+        function calliOS() {
+          if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
+            var iframe = document.createElement("iframe");
+            iframe.setAttribute("src", "sensorsanalytics://getAppInfo");
+            document.documentElement.appendChild(iframe);
+            iframe.parentNode.removeChild(iframe);
+            iframe = null;
+          }
+        }
+        sd.getAppStatus = function(func) {
+          calliOS();
+          getAndroid();
+          if (!func) {
+            return app_info;
+            app_info = null;
+          } else {
+            if (app_info === null) {
+              todo = func;
+            } else {
+              func(app_info);
+              app_info = null;
+            }
+          }
+        };
+      }
+    };
+
 
     var heatmap = sd.heatmap = {
       setNotice: function(web_url) {
@@ -3895,7 +4422,6 @@
         if (!sd.para.heatmap_url) {
           sd.para.heatmap_url = location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/heatmap.min.js';
         }
-
       },
       getDomIndex: function(el) {
         if (!el.parentNode) return -1;
@@ -4174,130 +4700,6 @@
           });
         }
 
-      },
-      prepare: function(todo) {
-        var isVtrackMode = false;
-        var match = location.search.match(/sa-request-id=([^&#]+)/);
-        var type = location.search.match(/sa-request-type=([^&#]+)/);
-        var web_url = location.search.match(/sa-request-url=([^&#]+)/);
-
-        var me = this;
-
-        function isReady(data, type, url) {
-          if (sd.para.heatmap_url) {
-            _.loadScript({
-              success: function() {
-                setTimeout(function() {
-                  if (typeof sa_jssdk_heatmap_render !== 'undefined') {
-                    sa_jssdk_heatmap_render(sd, data, type, url);
-                    if (typeof console === 'object' && typeof console.log === 'function') {
-                      if (!(sd.heatmap_version && (sd.heatmap_version === sd.lib_version))) {
-                        console.log('heatmap.js与sensorsdata.js版本号不一致，可能存在风险!');
-                      }
-                    }
-                  }
-                }, 0);
-              },
-              error: function() {},
-              type: 'js',
-              url: sd.para.heatmap_url
-            });
-          } else {
-            sd.log('没有指定heatmap_url的路径');
-          }
-
-        }
-        if (match && match[0] && match[1]) {
-          heatmap.setNotice(web_url);
-          if (_.sessionStorage.isSupport()) {
-            if (web_url && web_url[0] && web_url[1]) {
-              sessionStorage.setItem('sensors_heatmap_url', decodeURIComponent(web_url[1]));
-            }
-            sessionStorage.setItem('sensors_heatmap_id', match[1]);
-
-            if (type && type[0] && type[1]) {
-              if (type[1] === '1' || type[1] === '2' || type[1] === '3') {
-                type = type[1];
-                sessionStorage.setItem('sensors_heatmap_type', type);
-              } else {
-                type = null;
-              }
-            } else {
-              if (sessionStorage.getItem('sensors_heatmap_type') !== null) {
-                type = sessionStorage.getItem('sensors_heatmap_type');
-              } else {
-                type = null;
-              }
-            }
-          }
-          isReady(match[1], type);
-        } else if (window.parent !== self) {
-          var messageListener = function(event) {
-            if (event.data.source !== 'sa-fe') {
-              return false;
-            }
-            if (event.data.type === 'v-track-mode') {
-              if (event.data.data && event.data.data.isVtrack) {
-                isVtrackMode = true;
-                loadVtrack();
-              } else {
-                trackMode();
-              }
-              window.removeEventListener("message", messageListener, false);
-            }
-          };
-          if (window.addEventListener) {
-            window.addEventListener("message", messageListener, false);
-          }
-          if (window.parent && window.parent.postMessage) {
-            window.parent.postMessage({
-              source: 'sa-web-sdk',
-              type: 'v-is-vtrack',
-              data: {}
-            }, '*');
-          }
-
-          setTimeout(function() {
-            if (isVtrackMode) {
-              return false;
-            }
-            if (_.sessionStorage.isSupport() && typeof sessionStorage.getItem('sensors_heatmap_id') === 'string') {
-              heatmap.setNotice();
-              isReady(sessionStorage.getItem('sensors_heatmap_id'), sessionStorage.getItem('sensors_heatmap_type'), location.href);
-            } else {
-              trackMode();
-            }
-            if (window.removeEventListener) {
-              window.removeEventListener("message", messageListener, false);
-            }
-          }, 1000);
-
-          function loadVtrack() {
-            _.loadScript({
-              success: function() {},
-              error: function() {},
-              type: 'js',
-              url: location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/vtrack.min.js'
-            });
-          }
-
-          function trackMode() {
-            todo();
-            if (_.isObject(sd.para.heatmap)) {
-              heatmap.initHeatmap();
-              heatmap.initScrollmap();
-            }
-          }
-        } else {
-          todo();
-          if (_.isObject(sd.para.heatmap)) {
-            this.initHeatmap();
-            this.initScrollmap();
-          }
-        }
-
-
-
       }
     };
 
@@ -4312,101 +4714,7 @@
       sd.readyState.setState(2);
       sd.initPara(para);
 
-      function app_js_bridge() {
-        var app_info = null;
-        var todo = null;
-
-        function setAppInfo(data) {
-          app_info = data;
-          if (_.isJSONString(app_info)) {
-            app_info = JSON.parse(app_info);
-          }
-          if (todo) {
-            todo(app_info);
-            todo = null;
-            app_info = null;
-          }
-        }
-
-        function getAndroid() {
-          if (typeof window.SensorsData_APP_JS_Bridge === 'object' && window.SensorsData_APP_JS_Bridge.sensorsdata_call_app) {
-            app_info = SensorsData_APP_JS_Bridge.sensorsdata_call_app();
-            if (_.isJSONString(app_info)) {
-              app_info = JSON.parse(app_info);
-            }
-          }
-        }
-        window.sensorsdata_app_js_bridge_call_js = function(data) {
-          setAppInfo(data);
-        };
-
-        function calliOS() {
-          if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
-            var iframe = document.createElement("iframe");
-            iframe.setAttribute("src", "sensorsanalytics://getAppInfo");
-            document.documentElement.appendChild(iframe);
-            iframe.parentNode.removeChild(iframe);
-            iframe = null;
-          }
-        }
-        sd.getAppStatus = function(func) {
-          calliOS();
-          getAndroid();
-          if (!func) {
-            return app_info;
-            app_info = null;
-          } else {
-            if (app_info === null) {
-              todo = func;
-            } else {
-              func(app_info);
-              app_info = null;
-            }
-          }
-        };
-      }
-
-      heatmap.prepare(function() {
-        app_js_bridge();
-        _.info.initPage();
-
-        if (sd.para.is_track_single_page) {
-          _.addSinglePageEvent(function(last_url) {
-            var sendData = function(extraData) {
-              extraData = extraData || {};
-              if (last_url !== location.href) {
-                _.info.pageProp.referrer = last_url;
-                sd.quick("autoTrack", _.extend({
-                  $url: location.href,
-                  $referrer: last_url
-                }, extraData));
-              }
-            };
-            if (typeof sd.para.is_track_single_page === "boolean") {
-              sendData();
-            } else if (typeof sd.para.is_track_single_page === "function") {
-              var returnValue = sd.para.is_track_single_page();
-              if (_.isObject(returnValue)) {
-                sendData(returnValue);
-              } else if (returnValue === true) {
-                sendData();
-              }
-            }
-          });
-        }
-        if (sd.para.batch_send) {
-          sd.batchSend.batchInterval();
-        }
-        sd.store.init();
-
-        sd.readyState.setState(3);
-        if (sd._q && _.isArray(sd._q) && sd._q.length > 0) {
-          _.each(sd._q, function(content) {
-            sd[content[0]].apply(sd, Array.prototype.slice.call(content[1]));
-          });
-        }
-
-      });
+      sd.detectMode();
 
     };
 
