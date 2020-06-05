@@ -8836,6 +8836,12 @@
         me.showErrorInfo(me.requestType);
         return false;
       }
+      if (!data.page_view || Number(data.page_view) === 0) {
+        me.showErrorInfo(2, {
+          error: '点击率计算失败，没有开启autoTrack!'
+        });
+        return false;
+      }
       var pv = parseInt(data.page_view, 10);
       var heat_map_id = data.heat_map_id;
       data = data.rows;
@@ -9329,7 +9335,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.15.5';
+    sd.heatmap_version = '1.15.6';
     _ = sd._;
 
     _.bindReady = function(fn, win) {

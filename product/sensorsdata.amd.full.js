@@ -964,6 +964,9 @@
 
         var register_event = function(element, type, handler) {
           var useCapture = _.isObject(sd.para.heatmap) && sd.para.heatmap.useCapture ? true : false;
+          if (_.isObject(sd.para.heatmap) && typeof sd.para.heatmap.useCapture === 'undefined' && type === 'click') {
+            useCapture = true;
+          }
           if (element && element.addEventListener) {
             element.addEventListener(type, function(e) {
               e._getPath = fixEvent._getPath;
@@ -2242,7 +2245,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.15.5';
+      sd.lib_version = '1.15.6';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -3061,6 +3064,9 @@
           if (_.isObject(sd.para.heatmap) && sd.para.heatmap.clickmap == 'default') {
             if (_.isObject(sd.para.app_js_bridge) && bridgeObj.verify_success === 'success') {
               if (!isLoaded) {
+                var protocol = location.protocol;
+                var protocolArr = ['http:', 'https:'];
+                protocol = _.indexOf(protocolArr, protocol) > -1 ? protocol : 'https:';
                 _.loadScript({
                   success: function() {
                     setTimeout(function() {
@@ -3071,7 +3077,7 @@
                   },
                   error: function() {},
                   type: 'js',
-                  url: location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/vapph5define.min.js'
+                  url: protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/vapph5define.min.js'
                 });
               } else {
                 sa_jssdk_app_define_mode(sd, isLoaded);
