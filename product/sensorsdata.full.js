@@ -2246,7 +2246,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.15.7';
+      sd.lib_version = '1.15.8';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4730,6 +4730,13 @@
     _.each(methods, function(method) {
       var oldFunc = sd[method];
       sd[method] = function() {
+        if (sd.readyState.state < 3) {
+          if (!_.isArray(sd._q)) {
+            sd._q = [];
+          }
+          sd._q.push([method, arguments]);
+          return false;
+        }
         if (!sd.readyState.getState()) {
           try {
             console.error('请先初始化神策JS SDK');
