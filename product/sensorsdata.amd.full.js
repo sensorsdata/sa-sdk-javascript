@@ -1881,6 +1881,7 @@
         },
         properties: function() {
           return {
+            $timezone_offset: (new Date()).getTimezoneOffset(),
             $screen_height: Number(screen.height) || 0,
             $screen_width: Number(screen.width) || 0,
             $lib: 'js',
@@ -2245,7 +2246,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.15.8';
+      sd.lib_version = '1.15.9';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
