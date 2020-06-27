@@ -2247,7 +2247,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.15.9';
+      sd.lib_version = '1.15.10';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -3100,6 +3100,7 @@
 
       function trackMode() {
 
+        sd.readyState.setState(3);
         window.sensorsdata_app_call_js = function(type) {
           if (type && type == 'visualized') {
             if (typeof sa_jssdk_app_define_mode !== 'undefined') {
@@ -3145,7 +3146,7 @@
         }
         sd.store.init();
 
-        sd.readyState.setState(3);
+        sd.readyState.setState(4);
         if (sd._q && _.isArray(sd._q) && sd._q.length > 0) {
           _.each(sd._q, function(content) {
             sd[content[0]].apply(sd, Array.prototype.slice.call(content[1]));
