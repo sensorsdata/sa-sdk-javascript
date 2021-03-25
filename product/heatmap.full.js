@@ -684,9 +684,7 @@
                       newContext.querySelectorAll(newSelector)
                     );
                     return results;
-                  } catch (qsaError) {
-                    salog(qsaError);
-                  } finally {
+                  } catch (qsaError) {} finally {
                     if (nid === expando) {
                       context.removeAttribute("id");
                     }
@@ -8329,122 +8327,132 @@
         });
         var urlParse2Value = urlParse2.getUrl();
 
-        _.ajax({
-          url: url ? urlParse2Value : urlParse.getUrl(),
-          type: 'POST',
-          cors: true,
-          header: {
-            cors: "true"
-          },
-          success: function(data) {
+        var jsonpUrlParse = new _.urlParse(sd.para.web_url);
+        jsonpUrlParse._values.Path = '/api/v2/sa/scroll_heat_maps/report/jsonp/' + id;
 
-            if (typeof data !== 'object' || !_.isArray(data.result) || data.result.length === 0) {
-              me.showErrorInfo(2, {
-                error: '未取到数据'
-              });
-              return false;
-            }
-
-            data.detail = data.result || [];
-            if (data.result.length === 0) {
-              return false;
-            }
-            if (!data.total || data.total === 0 || typeof data.total !== 'number' || data.total < 2) {
-              me.showErrorInfo(2, {
-                error: '有效的触发用户数少于2人'
-              });
-              return false;
-            }
-            data.origin_total = data.total;
-            data.total = data.result[0];
-
-            data.percent = {};
-
-            var middlePercent = {
-              setData: function(x, y, z) {
-                x = String(x);
-                var s = [];
-
-                this.data[x] = this.data[x] || {};
-
-
-                this.data[x][y] = z;
-
-
-              },
-              data: {},
-              getData: function() {
-                var x = {};
-                var arr = [];
-                var temp = null;
-                for (var i in this.data) {
-                  arr = [];
-                  for (var k in this.data[i]) {
-                    arr.push([k, this.data[i][k]]);
-                  }
-                  this.data[i] = arr;
-                  temp = this.data[i].sort(function(a, b) {
-                    return Math.abs(a[0] - Number(i)) - Math.abs(b[0] - Number(i));
-                  })[0];
-                  x[temp[0]] = temp[1];
-                }
-                return x;
-              }
-            };
-            _.each(data.result, function(v, k) {
-              if (v / data.total == 1) {
-                data.percent['100'] = (k + 1) * 10;
-              } else if (v / data.total > 0.7 && v / data.total < 0.8) {
-                middlePercent.setData(75, parseInt(v / data.total * 100), (k + 1) * 10);
-              } else if (v / data.total > 0.45 && v / data.total < 0.55) {
-                middlePercent.setData(50, parseInt(v / data.total * 100), (k + 1) * 10);
-              } else if (v / data.total > 0.2 && v / data.total < 0.3) {
-                middlePercent.setData(25, parseInt(v / data.total * 100), (k + 1) * 10);
-              }
-            });
-
-            _.extend(data.percent, middlePercent.getData());
-
-            var percent_tpl = '<div style="border-bottom: 1px dashed #4C4C4D;height:1px;width:100%;position: absolute;top:{{top}}px;"><span style="font-size:12px;position:absolute;padding:0 12px;top:-24px;height:26px;line-height: 26px;left:0;background:#000;color:#eee;border-radius: 2px;">{{percent}}</span></div>';
-            for (var i in data.percent) {
-              $(document.body).append($(percent_tpl.replace('{{top}}', data.percent[i] - 2).replace('{{percent}}', i + '%')));
-            }
-
-            var over_tpl = '<div style="z-index:99999;border-bottom: 1px solid #272727;height:1px;width:100%;position: absolute;top:{{top}}px;text-align:center;"><span style="font-size:12px;height:26px;line-height: 26px;background:#000;color:#eee;border-radius: 2px;left:50%;margin-left:-65px;position: absolute;top:-13px;padding: 0 5px;">{{percent}}的用户浏览到这里</span></div>';
-            var over_ele = null;
-
-            function showLineDetail(e) {
-              var y = parseInt((e.pageY + 15) / 10);
-              var i = 0;
-              if (y <= data.detail.length && data.detail[y]) {
-                i = Math.floor((data.detail[y] / data.total * 100) * 100) / 100;
-              } else {
-                i = 0;
-              }
-              if (over_ele) {
-                over_ele.remove();
-              }
-              over_ele = $(over_tpl.replace('{{top}}', e.pageY + 15).replace('{{percent}}', i + '%'));
-              $(document.body).append(over_ele);
-            }
-
-            $(document).on('mousemove', _.throttle(showLineDetail, 150));
-
-
-          },
-          error: function(res) {
-            if (_.isObject(res) && res.error) {
-              me.showErrorInfo(2, {
-                error: res.error
-              });
-            } else {
-              me.showErrorInfo(2, {
-                error: '服务异常'
-              });
-            }
-            sessionStorage.removeItem('sensors_heatmap_id');
-          }
+        var jsonpUrlParse2 = new _.urlParse(sd.para.web_url);
+        jsonpUrlParse2._values.Path = '/api/v2/sa/scroll_heat_maps/report/jsonp/' + id;
+        jsonpUrlParse2.addQueryString({
+          pathUrl: encodeURIComponent(url)
         });
+        var jsonpUrlParse2Value = jsonpUrlParse2.getUrl();
+
+        var suc = function(data) {
+
+          if (typeof data !== 'object' || !_.isArray(data.result) || data.result.length === 0) {
+            me.showErrorInfo(2, {
+              error: '未取到数据'
+            });
+            return false;
+          }
+
+          data.detail = data.result || [];
+
+          if (!data.total || data.total === 0 || typeof data.total !== 'number' || data.total < 2) {
+            me.showErrorInfo(2, {
+              error: '有效的触发用户数少于2人'
+            });
+            return false;
+          }
+          data.origin_total = data.total;
+          data.total = data.result[0];
+
+          data.percent = {};
+
+          var middlePercent = {
+            setData: function(x, y, z) {
+              x = String(x);
+              var s = [];
+
+              this.data[x] = this.data[x] || {};
+
+
+              this.data[x][y] = z;
+
+
+            },
+            data: {},
+            getData: function() {
+              var x = {};
+              var arr = [];
+              var temp = null;
+              for (var i in this.data) {
+                arr = [];
+                for (var k in this.data[i]) {
+                  arr.push([k, this.data[i][k]]);
+                }
+                this.data[i] = arr;
+                temp = this.data[i].sort(function(a, b) {
+                  return Math.abs(a[0] - Number(i)) - Math.abs(b[0] - Number(i));
+                })[0];
+                x[temp[0]] = temp[1];
+              }
+              return x;
+            }
+          };
+          _.each(data.result, function(v, k) {
+            if (v / data.total == 1) {
+              data.percent['100'] = (k + 1) * 10;
+            } else if (v / data.total > 0.7 && v / data.total < 0.8) {
+              middlePercent.setData(75, parseInt(v / data.total * 100), (k + 1) * 10);
+            } else if (v / data.total > 0.45 && v / data.total < 0.55) {
+              middlePercent.setData(50, parseInt(v / data.total * 100), (k + 1) * 10);
+            } else if (v / data.total > 0.2 && v / data.total < 0.3) {
+              middlePercent.setData(25, parseInt(v / data.total * 100), (k + 1) * 10);
+            }
+          });
+
+          _.extend(data.percent, middlePercent.getData());
+
+          var percent_tpl = '<div style="border-bottom: 1px dashed #4C4C4D;height:1px;width:100%;position: absolute;top:{{top}}px;"><span style="font-size:12px;position:absolute;padding:0 12px;top:-24px;height:26px;line-height: 26px;left:0;background:#000;color:#eee;border-radius: 2px;">{{percent}}</span></div>';
+          for (var i in data.percent) {
+            $(document.body).append($(percent_tpl.replace('{{top}}', data.percent[i] - 2).replace('{{percent}}', i + '%')));
+          }
+
+          var over_tpl = '<div style="z-index:99999;border-bottom: 1px solid #272727;height:1px;width:100%;position: absolute;top:{{top}}px;text-align:center;"><span style="font-size:12px;height:26px;line-height: 26px;background:#000;color:#eee;border-radius: 2px;left:50%;margin-left:-65px;position: absolute;top:-13px;padding: 0 5px;">{{percent}}的用户浏览到这里</span></div>';
+          var over_ele = null;
+
+          function showLineDetail(e) {
+            var y = parseInt((e.pageY + 15) / 10);
+            var i = 0;
+            if (y <= data.detail.length && data.detail[y]) {
+              i = Math.floor((data.detail[y] / data.total * 100) * 100) / 100;
+            } else {
+              i = 0;
+            }
+            if (over_ele) {
+              over_ele.remove();
+            }
+            over_ele = $(over_tpl.replace('{{top}}', e.pageY + 15).replace('{{percent}}', i + '%'));
+            $(document.body).append(over_ele);
+          }
+
+          $(document).on('mousemove', _.throttle(showLineDetail, 150));
+
+
+        };
+        var err = function(res) {
+          if (_.isObject(res) && res.error) {
+            me.showErrorInfo(2, {
+              error: res.error
+            });
+          } else {
+            me.showErrorInfo(2, {
+              error: '服务异常'
+            });
+          }
+          sessionStorage.removeItem('sensors_heatmap_id');
+        };
+
+        heatmap.getServerData.start({
+          url: {
+            ajax: url ? urlParse2Value : urlParse.getUrl(),
+            jsonp: url ? jsonpUrlParse2Value : jsonpUrlParse.getUrl()
+          },
+          success: suc,
+          error: err
+        });
+
 
 
 
@@ -8472,7 +8480,7 @@
 
       var me = this;
       var div = document.createElement('div');
-      div.setAttribute('style', 'height:50px !important;z-index:999999;background:#272727;width:100%;position:fixed;top:0;left:0; font-size:14px;color:#EFF2F7;margin:0;clear: both;');
+      div.setAttribute('style', 'height:50px !important;z-index:9999999;background:#272727;width:100%;position:fixed;top:0;left:0; font-size:14px;color:#EFF2F7;margin:0;clear: both;');
       div.innerHTML = '<div style="height:39px;line-height:39px;padding:3px 15px 9px"><div class="sa-sdk-heatmap-toolbar-selectmap"  id="chooseType" style="position:relative;width:70px;float:left" title="选择查看类型"><div style="cursor:pointer"><span>点击图</span> <svg style="position:absolute;top:9px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="icon" transform="translate(-199.000000, -18.000000)" fill="#99A9BF"><polygon id="Triangle-1-Copy-29" transform="translate(209.000000, 28.000000) scale(1, -1) translate(-209.000000, -28.000000) " points="209 26 213 30 205 30"></polygon></g></g></svg></div><ul style="display:none;list-style:none;margin:0;padding:0;width:100px"><li data-state="1">点击图</li><li data-state="2">触达率图</li></ul></div><div class="sa-sdk-heatmap-toolbar-selectmap" id="chooseVersion" style="display:none;position:relative;width:70px;float:left" title="切换点击图方案"><div style="cursor:pointer"><span>方案一</span> <svg style="position:absolute;top:9px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="icon" transform="translate(-199.000000, -18.000000)" fill="#99A9BF"><polygon id="Triangle-1-Copy-29" transform="translate(209.000000, 28.000000) scale(1, -1) translate(-209.000000, -28.000000) " points="209 26 213 30 205 30"></polygon></g></g></svg></div><ul style="display:none;list-style:none;margin:0;padding:0;width:100px"><li data-state="1">方案一</li><li data-state="2">方案二</li></ul></div><div id="sa_sdk_heatmap_toolbar_close" style="float:right;position:relative;width:30px;height:100%;cursor:pointer" title="收起打开"><svg style="position:absolute;top:9px;right:0" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-129.000000, -260.000000)" fill-rule="nonzero" fill="#99A9BF"><polygon points="132.110192 274.35347 130.5 272.842901 138.860144 265 147.23 272.842902 145.619784 274.35347 138.864999 268.016603"></polygon></g></g></svg></div><div style="float:right;padding:0 10px;width:1px;color:#99A9BF">|</div><div id="sa_sdk_heatmap_toolbar_refresh" style="float:right;position:relative;cursor:pointer;width:30px;height:100%" title="刷新数据"><svg style="position:absolute;top:9px;left:5px" width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g><g><path d="M18.1201298,5.45190941 L15.7071603,6.65839414 C14.3331082,3.91029003 11.3336531,2.11731966 7.94879319,2.56975143 C4.59744671,3.02218321 1.91636953,5.78704405 1.54772141,9.13839053 C1.04501944,13.6627083 4.58068998,17.5 9.00446733,17.5 C12.1882465,17.5 14.8693237,15.5227056 15.9585113,12.7243313 L14.098514,12.1043322 L14.0817572,12.1043322 C13.1098668,14.433518 10.5796002,15.9416239 7.7979826,15.3551383 C5.73690451,14.9194632 4.06123127,13.24379 3.62555623,11.1659552 C2.88826001,7.61352789 5.56933719,4.48001893 9.00446733,4.48001893 C11.1660858,4.48001893 13.0093264,5.72001713 13.9141899,7.52974422 L11.4006801,8.80325589 C11.3336531,8.83676935 11.3336531,8.95406648 11.4174368,8.97082321 L16.4612132,10.6297397 C16.5114834,10.6464964 16.5617536,10.612983 16.5785104,10.5627128 L18.2374269,5.51893634 C18.2876971,5.48542287 18.2039134,5.41839594 18.1201298,5.45190941 L18.1201298,5.45190941 Z" fill="#99A9BF"></path><rect x="0" y="0" width="20" height="20"></rect></g></g></g></svg></div><div style="float:right;padding:0 10px;width:1px;color:#99A9BF">|</div><div id="sa_sdk_heatmap_toolbar_share" style="float:right;position:relative;width:30px;height:100%;cursor:pointer" title="收起打开"><svg style="position:absolute;top:11px; left: 5px;" width="14px" height="15px" viewBox="0 0 14 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-42.000000, -62.000000)"><g transform="translate(39.000000, 60.000000)"><rect x="0" y="0" width="20" height="20"></rect><path d="M12.9177778,12.725 L7.76833333,9.72777778 C7.80444444,9.56166667 7.83333333,9.39555556 7.83333333,9.22222222 C7.83333333,9.04888889 7.80444444,8.88277778 7.76833333,8.71666667 L12.86,5.74833333 C13.25,6.10944444 13.7627778,6.33333333 14.3333333,6.33333333 C15.5322222,6.33333333 16.5,5.36555556 16.5,4.16666667 C16.5,2.96777778 15.5322222,2 14.3333333,2 C13.1344444,2 12.1666667,2.96777778 12.1666667,4.16666667 C12.1666667,4.34 12.1955556,4.50611111 12.2316667,4.67222222 L7.14,7.64055556 C6.75,7.27944444 6.23722222,7.05555556 5.66666667,7.05555556 C4.46777778,7.05555556 3.5,8.02333333 3.5,9.22222222 C3.5,10.4211111 4.46777778,11.3888889 5.66666667,11.3888889 C6.23722222,11.3888889 6.75,11.165 7.14,10.8038889 L12.2822222,13.8083333 C12.2461111,13.96 12.2244444,14.1188889 12.2244444,14.2777778 C12.2244444,15.4405556 13.1705556,16.3866667 14.3333333,16.3866667 C15.4961111,16.3866667 16.4422222,15.4405556 16.4422222,14.2777778 C16.4422222,13.115 15.4961111,12.1688889 14.3333333,12.1688889 C13.7844444,12.1688889 13.2933333,12.3855556 12.9177778,12.725 Z" id="Shape" fill="#99A9BF"></path></g></g></g></svg></div><div style="float:right;padding:0 10px;width:1px;color:#99A9BF">|</div><div id="sa_sdk_heatmap_toolbar_filter" style="float:right;position:relative;cursor:pointer;width:30px;height:100%;" title="筛选"><svg style="position: absolute; top: 11px; left: 5px;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="17px" height="15px" viewBox="0 0 17 15" version="1.1"><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="操作栏" transform="translate(-1068.000000, -341.000000)" fill="#99A9BF" fill-rule="nonzero"><g id="screen" transform="translate(1068.000000, 341.000000)"><polygon id="路径" points="9.13824444 13.2863778 9.13824444 6.65411111 12.5159778 2.08801111 4.52081111 2.08801111 7.8378 6.56684444 7.8378 12.6447111 6.23534444 11.8541778 6.23534444 7.20851111 0.8 0.4 16.2 0.4 10.7646556 7.2299 10.7646556 14.0888889 9.13824444 13.2863778"/></g></g></g></svg></div></div>';
       document.body.appendChild(div);
       this.setContainer(div);
@@ -8754,15 +8762,26 @@
           urlParse2Value = urlParse2Value + '&pathUrl=' + encodeURIComponent(url);
         }
 
+        var jsonpUrlParse = new _.urlParse(sd.para.web_url);
+        jsonpUrlParse._values.Path = '/api/v2/sa/heat_maps/report/jsonp/' + id;
+
+        var jsonpUrlParse2 = new _.urlParse(sd.para.web_url);
+        jsonpUrlParse2._values.Path = '/api/v2/sa/heat_maps/report/path/jsonp/' + id;
+        var jsonpUrlParse2Value = jsonpUrlParse2.getUrl();
+        if (jsonpUrlParse2Value.indexOf('?') === -1) {
+          jsonpUrlParse2Value = jsonpUrlParse2Value + '?pathUrl=' + encodeURIComponent(url);
+        } else {
+          jsonpUrlParse2Value = jsonpUrlParse2Value + '&pathUrl=' + encodeURIComponent(url);
+        }
+
+
         $('body').append('<div id="heatMapContainer"></div>');
         if (url) {
           this.requestType = 3;
-          _.ajax({
-            url: urlParse2Value,
-            type: 'POST',
-            cors: true,
-            header: {
-              cors: "true"
+          heatmap.getServerData.start({
+            url: {
+              ajax: urlParse2Value,
+              jsonp: jsonpUrlParse2Value
             },
             success: function(data) {
               me.originalHeatData = me.processOriginalHeatData(data);
@@ -8776,12 +8795,10 @@
           });
         } else {
           this.requestType = 1;
-          _.ajax({
-            url: urlParse.getUrl(),
-            type: 'POST',
-            cors: true,
-            header: {
-              cors: "true"
+          heatmap.getServerData.start({
+            url: {
+              ajax: urlParse.getUrl(),
+              jsonp: jsonpUrlParse.getUrl()
             },
             success: function(data) {
               me.originalHeatData = me.processOriginalHeatData(data);
@@ -8801,10 +8818,15 @@
     processOriginalHeatData: function(data) {
       var result = $.extend(true, {}, data);
       $.each(result.rows, function(index, value) {
-        var ele = $(value.by_values[0]);
-        if (ele.length) {
-          value.ele = ele[0];
+        try {
+          var ele = _.querySelectorAll(value.by_values[0]);
+          if (ele.length) {
+            value.ele = ele[0];
+          }
+        } catch (e) {
+          sd.log('元素类名错误！', e);
         }
+
       });
       return result;
     },
@@ -9115,7 +9137,7 @@
 
       var me = this;
       var str = '<div style="padding: 8px;"><div style="color: #CACACA">当前内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_current_content}}</div></div><div style="background: #444; height:1px;"></div><div style="padding: 8px;">' +
-        '<table style="width:100%;color:#fff;font-size:13px;"><tr><td>点击次数: </td><td style="text-align:right;">{{value_fix}}次</td></tr><tr><td style="cursor:pointer;" title="点击次数/当前页面的浏览次数"><span style="float:left;">点击率</span><span style="float:left;margin-left:3px;"><svg width="12px" height="12px" viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-1803.000000, -158.000000)" fill="#979797"><g transform="translate(1737.000000, 84.000000)"><path d="M71,74 C68.24,74 66,76.24 66,79 C66,81.76 68.24,84 71,84 C73.76,84 76,81.76 76,79 C76,76.24 73.76,74 71,74 L71,74 Z M71.5,82.5 L70.5,82.5 L70.5,81.5 L71.5,81.5 L71.5,82.5 L71.5,82.5 Z M72.535,78.625 L72.085,79.085 C71.725,79.45 71.5,79.75 71.5,80.5 L70.5,80.5 L70.5,80.25 C70.5,79.7 70.725,79.2 71.085,78.835 L71.705,78.205 C71.89,78.025 72,77.775 72,77.5 C72,76.95 71.55,76.5 71,76.5 C70.45,76.5 70,76.95 70,77.5 L69,77.5 C69,76.395 69.895,75.5 71,75.5 C72.105,75.5 73,76.395 73,77.5 C73,77.94 72.82,78.34 72.535,78.625 L72.535,78.625 Z" id="prompt"></path></g></g></g></svg></span></td><td style="text-align:right;">{{data_click_percent}}</td></tr><tr><td style="cursor:pointer;" title="点击次数/当前页面的点击总次数"><span style="float:left;">点击占比</span> <span style="float:left;margin-left:3px;"><svg width="12px" height="12px" viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-1803.000000, -158.000000)" fill="#979797"><g transform="translate(1737.000000, 84.000000)"><path d="M71,74 C68.24,74 66,76.24 66,79 C66,81.76 68.24,84 71,84 C73.76,84 76,81.76 76,79 C76,76.24 73.76,74 71,74 L71,74 Z M71.5,82.5 L70.5,82.5 L70.5,81.5 L71.5,81.5 L71.5,82.5 L71.5,82.5 Z M72.535,78.625 L72.085,79.085 C71.725,79.45 71.5,79.75 71.5,80.5 L70.5,80.5 L70.5,80.25 C70.5,79.7 70.725,79.2 71.085,78.835 L71.705,78.205 C71.89,78.025 72,77.775 72,77.5 C72,76.95 71.55,76.5 71,76.5 C70.45,76.5 70,76.95 70,77.5 L69,77.5 C69,76.395 69.895,75.5 71,75.5 C72.105,75.5 73,76.395 73,77.5 C73,77.94 72.82,78.34 72.535,78.625 L72.535,78.625 Z" id="prompt"></path></g></g></g></svg></span></td><td style="text-align:right;">{{data_page_percent}}</td></tr></table>' +
+        '<table style="width:100%;color:#fff;font-size:13px;background:#333;border:1px solid #333;"><tr><td>点击次数: </td><td style="text-align:right;">{{value_fix}}次</td></tr><tr><td style="cursor:pointer;" title="点击次数/当前页面的浏览次数"><span style="float:left;">点击率</span><span style="float:left;margin-left:3px;"><svg width="12px" height="12px" viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-1803.000000, -158.000000)" fill="#979797"><g transform="translate(1737.000000, 84.000000)"><path d="M71,74 C68.24,74 66,76.24 66,79 C66,81.76 68.24,84 71,84 C73.76,84 76,81.76 76,79 C76,76.24 73.76,74 71,74 L71,74 Z M71.5,82.5 L70.5,82.5 L70.5,81.5 L71.5,81.5 L71.5,82.5 L71.5,82.5 Z M72.535,78.625 L72.085,79.085 C71.725,79.45 71.5,79.75 71.5,80.5 L70.5,80.5 L70.5,80.25 C70.5,79.7 70.725,79.2 71.085,78.835 L71.705,78.205 C71.89,78.025 72,77.775 72,77.5 C72,76.95 71.55,76.5 71,76.5 C70.45,76.5 70,76.95 70,77.5 L69,77.5 C69,76.395 69.895,75.5 71,75.5 C72.105,75.5 73,76.395 73,77.5 C73,77.94 72.82,78.34 72.535,78.625 L72.535,78.625 Z" id="prompt"></path></g></g></g></svg></span></td><td style="text-align:right;">{{data_click_percent}}</td></tr><tr><td style="cursor:pointer;" title="点击次数/当前页面的点击总次数"><span style="float:left;">点击占比</span> <span style="float:left;margin-left:3px;"><svg width="12px" height="12px" viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-1803.000000, -158.000000)" fill="#979797"><g transform="translate(1737.000000, 84.000000)"><path d="M71,74 C68.24,74 66,76.24 66,79 C66,81.76 68.24,84 71,84 C73.76,84 76,81.76 76,79 C76,76.24 73.76,74 71,74 L71,74 Z M71.5,82.5 L70.5,82.5 L70.5,81.5 L71.5,81.5 L71.5,82.5 L71.5,82.5 Z M72.535,78.625 L72.085,79.085 C71.725,79.45 71.5,79.75 71.5,80.5 L70.5,80.5 L70.5,80.25 C70.5,79.7 70.725,79.2 71.085,78.835 L71.705,78.205 C71.89,78.025 72,77.775 72,77.5 C72,76.95 71.55,76.5 71,76.5 C70.45,76.5 70,76.95 70,77.5 L69,77.5 C69,76.395 69.895,75.5 71,75.5 C72.105,75.5 73,76.395 73,77.5 C73,77.94 72.82,78.34 72.535,78.625 L72.535,78.625 Z" id="prompt"></path></g></g></g></svg></span></td><td style="text-align:right;">{{data_page_percent}}</td></tr></table>' +
         '</div><div style="background: #444; height:1px;"></div><div style="padding: 8px;"><div style="color: #CACACA;">历史内容：</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{data_top_value}}</div></div><div style="background: #444; height:1px;"></div><div style="padding: 6px 8px;"><a style="color:#2a90e2;text-decoration: none;" href="{{data_user_link}}" target="_blank">查看用户列表</a ></div>';
 
       var newStr = '';
@@ -9255,6 +9277,89 @@
 
 
   var heatmap = {
+    getServerData: {
+      ajax: function(obj) {
+        var _this = this;
+        _.ajax({
+          url: obj.url.ajax,
+          type: 'POST',
+          cors: true,
+          header: {
+            cors: "true"
+          },
+          success: function(data) {
+            obj.success(data);
+          },
+          error: function(res) {
+            sd.log('AJAX 请求失败，转换为 JSONP 请求', res);
+            _this.jsonp(obj);
+          },
+          timeout: 5000
+        });
+      },
+      start: function(config) {
+        var method = window.localStorage.getItem('sensors_heatmap_method');
+        if (method && (method === 'jsonp')) {
+          this.jsonp(config);
+        } else {
+          this.ajax(config);
+        }
+      },
+      jsonp: function(obj) {
+        var success = function(data) {
+            obj.success(data);
+            window.localStorage.setItem('sensors_heatmap_method', 'jsonp');
+          },
+          error = _.isFunction(obj.error) ? obj.error : function() {},
+          timeout = obj.timeout || 8000;
+        _.jsonp({
+          url: obj.url.jsonp,
+          callbackName: 'saJSSDKHeatRender',
+          success: function(data) {
+            if (data && _.isObject(data) && data.is_success) {
+              if (_.isObject(data.data)) {
+                success(data.data);
+              } else {
+                error({
+                  error: 'JSONP 点击数据解析异常'
+                });
+                sd.log('解析数据异常', data);
+              }
+            } else {
+              if (data && _.isObject(data) && data.is_success === false) {
+                error({
+                  error: data.error_msg
+                });
+                sd.log('获取数据失败', data.error_msg);
+              } else {
+                error({
+                  error: 'JSONP 数据结构异常'
+                });
+                sd.log('获取数据异常', data);
+              }
+            }
+          },
+          error: function(err) {
+            if (err === 'timeout') {
+              error({
+                error: 'JSONP 请求超时，请尝试刷新页面'
+              });
+            } else {
+              if (_.URL(location.href).protocol === 'https:' && _.URL(obj.url.jsonp).protocol === 'http:') {
+                error({
+                  error: '该页面协议为 https ，请使用 https 的神策后台查看热力图'
+                });
+              } else {
+                error({
+                  error: '<div>后台 JSONP 地址不通，可能原因如下：</div><div style="font-size:15px;margin-top:10px;text-align:left;display:inline-block"><div>1. 检查神策分析版本是否低于 v2.2.0，如果低于此版本请联系值班同学升级版本</div><div style="margin-top:5px">2. 神策分析后台不允许访问，请贵司研发参考当前页面的控制台报错，去对应的后台配置解决</div></div>'
+                });
+              }
+            }
+          },
+          timeout: timeout
+        });
+      }
+    },
     getScrollHeight: function() {
       var a = parseInt(document.body.scrollHeight, 10);
       return isNaN(a) ? 0 : a;
@@ -9335,7 +9440,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.15.10';
+    sd.heatmap_version = '1.16.7';
     _ = sd._;
 
     _.bindReady = function(fn, win) {
