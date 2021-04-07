@@ -675,12 +675,14 @@ if (typeof JSON !== 'object') {
     }
   };
 
-  _.parseSuperProperties = function(obj) {
+  _.parseSuperProperties = function(data) {
+    var obj = data.properties;
+    var copyData = JSON.parse(JSON.stringify(data));
     if (_.isObject(obj)) {
       _.each(obj, function(value, key) {
         if (_.isFunction(value)) {
           try {
-            obj[key] = value();
+            obj[key] = value(copyData);
             if (_.isFunction(obj[key])) {
               sd.log("您的属性- " + key + ' 格式不满足要求，我们已经将其删除');
               delete obj[key];
@@ -2625,7 +2627,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.16.7';
+  sd.lib_version = '1.16.8';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -3485,7 +3487,7 @@ sd.detectMode = function() {
           source: 'sa-web-sdk',
           type: 'v-is-vtrack',
           data: {
-            sdkversion: '1.16.7'
+            sdkversion: '1.16.8'
           }
         }, '*');
       }
@@ -4286,7 +4288,7 @@ saEvent.send = function(p, callback) {
       data.time = (new Date()) * 1;
     }
   }
-  _.parseSuperProperties(data.properties);
+  _.parseSuperProperties(data);
 
   _.filterReservedProperties(data.properties);
   _.searchObjDate(data);
@@ -4300,6 +4302,7 @@ saEvent.send = function(p, callback) {
 
   sd.addReferrerHost(data);
   sd.addPropsHook(data);
+
 
   if (sd.para.debug_mode === true) {
     sd.log(data);
