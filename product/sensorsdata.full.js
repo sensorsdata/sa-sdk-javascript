@@ -2374,6 +2374,26 @@
         }
         return supported;
       };
+
+      _.secCheck = {
+        isHTTPURL: function(str) {
+          if (typeof str !== 'string') return false;
+          var _regex = /^https?:\/\/.+/;
+          if (_regex.test(str) === false) {
+            sd.log('Invalid URL');
+            return false;
+          };
+          return true;
+        },
+        removeScriptProtocol: function(str) {
+          if (typeof str !== 'string') return '';
+          var _regex = /^javascript:/i;
+          while (_regex.test(str)) {
+            str = str.replace(_regex, '');
+          }
+          return str;
+        }
+      };
     })();
 
 
@@ -2639,7 +2659,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.16.8';
+      sd.lib_version = '1.16.9';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -3474,7 +3494,7 @@
                 sessionStorage.setItem('sensors-visual-mode', 'true');
               }
               if (event.data.data.userURL && location.search.match(/sa-visual-mode=true/)) {
-                window.location.href = event.data.data.userURL;
+                window.location.href = _.secCheck.removeScriptProtocol(event.data.data.userURL);
               } else {
                 vtrackMode.loadVtrack();
               }
@@ -3499,7 +3519,7 @@
               source: 'sa-web-sdk',
               type: 'v-is-vtrack',
               data: {
-                sdkversion: '1.16.8'
+                sdkversion: '1.16.9'
               }
             }, '*');
           }
