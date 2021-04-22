@@ -2184,7 +2184,7 @@
             return false;
           }
         }
-        new_hostname = validHostname(hostname);
+        var new_hostname = validHostname(hostname);
         if (!new_hostname) {
           return '';
         }
@@ -3206,7 +3206,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.16.11';
+      sd.lib_version = '1.16.12';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4110,7 +4110,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.16.11'
+                  sdkversion: '1.16.12'
                 }
               },
               '*'
