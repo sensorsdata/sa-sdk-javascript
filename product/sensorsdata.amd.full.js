@@ -10,167 +10,705 @@
 
     var _ = (sd._ = {});
 
-    if (typeof JSON !== 'object') {
-      JSON = {}
-    }(function() {
-      'use strict';
-      var rx_one = /^[\],:{}\s]*$/,
-        rx_two = /\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g,
-        rx_three = /"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g,
-        rx_four = /(?:^|:|,)(?:\s*\[)+/g,
-        rx_escapable = /[\\\"\u0000-\u001f\u007f-\u009f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
-        rx_dangerous = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
+    ;
+    (function() {
+      var isLoader = typeof define === "function" && define.amd;
 
-      function f(n) {
-        return n < 10 ? '0' + n : n
+      var objectTypes = {
+        "function": true,
+        "object": true
+      };
+
+      var freeExports = objectTypes[typeof exports] && exports && !exports.nodeType && exports;
+
+      var root = objectTypes[typeof window] && window || this,
+        freeGlobal = freeExports && objectTypes[typeof module] && module && !module.nodeType && typeof global == "object" && global;
+
+      if (freeGlobal && (freeGlobal.global === freeGlobal || freeGlobal.window === freeGlobal || freeGlobal.self === freeGlobal)) {
+        root = freeGlobal;
       }
 
-      function this_value() {
-        return this.valueOf()
-      }
-      if (typeof Date.prototype.toJSON !== 'function') {
-        Date.prototype.toJSON = function() {
-          return isFinite(this.valueOf()) ? this.getUTCFullYear() + '-' + f(this.getUTCMonth() + 1) + '-' + f(this.getUTCDate()) + 'T' + f(this.getUTCHours()) + ':' + f(this.getUTCMinutes()) + ':' + f(this.getUTCSeconds()) + 'Z' : null
-        };
-        Boolean.prototype.toJSON = this_value;
-        Number.prototype.toJSON = this_value;
-        String.prototype.toJSON = this_value
-      }
-      var gap, indent, meta, rep;
+      function runInContext(context, exports) {
+        context || (context = root.Object());
+        exports || (exports = root.Object());
 
-      function quote(string) {
-        rx_escapable.lastIndex = 0;
-        return rx_escapable.test(string) ? '"' + string.replace(rx_escapable, function(a) {
-          var c = meta[a];
-          return typeof c === 'string' ? c : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4)
-        }) + '"' : '"' + string + '"'
-      }
+        var Number = context.Number || root.Number,
+          String = context.String || root.String,
+          Object = context.Object || root.Object,
+          Date = context.Date || root.Date,
+          SyntaxError = context.SyntaxError || root.SyntaxError,
+          TypeError = context.TypeError || root.TypeError,
+          Math = context.Math || root.Math,
+          nativeJSON = context.JSON || root.JSON;
 
-      function str(key, holder) {
-        var i, k, v, length, mind = gap,
-          partial, value = holder[key];
-        if (value && typeof value === 'object' && typeof value.toJSON === 'function') {
-          value = value.toJSON(key)
+        if (typeof nativeJSON == "object" && nativeJSON) {
+          exports.stringify = nativeJSON.stringify;
+          exports.parse = nativeJSON.parse;
         }
-        if (typeof rep === 'function') {
-          value = rep.call(holder, key, value)
-        }
-        switch (typeof value) {
-          case 'string':
-            return quote(value);
-          case 'number':
-            return isFinite(value) ? String(value) : 'null';
-          case 'boolean':
-          case 'null':
-            return String(value);
-          case 'object':
-            if (!value) {
-              return 'null'
+
+        var objectProto = Object.prototype,
+          getClass = objectProto.toString,
+          isProperty = objectProto.hasOwnProperty,
+          undefined;
+
+        function attempt(func, errorFunc) {
+          try {
+            func();
+          } catch (exception) {
+            if (errorFunc) {
+              errorFunc();
             }
-            gap += indent;
-            partial = [];
-            if (Object.prototype.toString.apply(value) === '[object Array]') {
-              length = value.length;
-              for (i = 0; i < length; i += 1) {
-                partial[i] = str(i, value) || 'null'
+          }
+        }
+
+        var isExtended = new Date(-3509827334573292);
+        attempt(function() {
+          isExtended = isExtended.getUTCFullYear() == -109252 && isExtended.getUTCMonth() === 0 && isExtended.getUTCDate() === 1 &&
+            isExtended.getUTCHours() == 10 && isExtended.getUTCMinutes() == 37 && isExtended.getUTCSeconds() == 6 && isExtended.getUTCMilliseconds() == 708;
+        });
+
+        function has(name) {
+          if (has[name] != null) {
+            return has[name];
+          }
+          var isSupported;
+          if (name == "bug-string-char-index") {
+            isSupported = "a" [0] != "a";
+          } else if (name == "json") {
+            isSupported = has("json-stringify") && has("date-serialization") && has("json-parse");
+          } else if (name == "date-serialization") {
+            isSupported = has("json-stringify") && isExtended;
+            if (isSupported) {
+              var stringify = exports.stringify;
+              attempt(function() {
+                isSupported =
+                  stringify(new Date(-8.64e15)) == '"-271821-04-20T00:00:00.000Z"' &&
+                  stringify(new Date(8.64e15)) == '"+275760-09-13T00:00:00.000Z"' &&
+                  stringify(new Date(-621987552e5)) == '"-000001-01-01T00:00:00.000Z"' &&
+                  stringify(new Date(-1)) == '"1969-12-31T23:59:59.999Z"';
+              });
+            }
+          } else {
+            var value, serialized = '{"a":[1,true,false,null,"\\u0000\\b\\n\\f\\r\\t"]}';
+            if (name == "json-stringify") {
+              var stringify = exports.stringify,
+                stringifySupported = typeof stringify == "function";
+              if (stringifySupported) {
+                (value = function() {
+                  return 1;
+                }).toJSON = value;
+                attempt(function() {
+                  stringifySupported =
+                    stringify(0) === "0" &&
+                    stringify(new Number()) === "0" &&
+                    stringify(new String()) == '""' &&
+                    stringify(getClass) === undefined &&
+                    stringify(undefined) === undefined &&
+                    stringify() === undefined &&
+                    stringify(value) === "1" &&
+                    stringify([value]) == "[1]" &&
+                    stringify([undefined]) == "[null]" &&
+                    stringify(null) == "null" &&
+                    stringify([undefined, getClass, null]) == "[null,null,null]" &&
+                    stringify({
+                      "a": [value, true, false, null, "\x00\b\n\f\r\t"]
+                    }) == serialized &&
+                    stringify(null, value) === "1" &&
+                    stringify([1, 2], null, 1) == "[\n 1,\n 2\n]";
+                }, function() {
+                  stringifySupported = false;
+                });
               }
-              v = partial.length === 0 ? '[]' : gap ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']' : '[' + partial.join(',') + ']';
-              gap = mind;
-              return v
+              isSupported = stringifySupported;
             }
-            if (rep && typeof rep === 'object') {
-              length = rep.length;
-              for (i = 0; i < length; i += 1) {
-                if (typeof rep[i] === 'string') {
-                  k = rep[i];
-                  v = str(k, value);
-                  if (v) {
-                    partial.push(quote(k) + (gap ? ': ' : ':') + v)
+            if (name == "json-parse") {
+              var parse = exports.parse,
+                parseSupported;
+              if (typeof parse == "function") {
+                attempt(function() {
+                  if (parse("0") === 0 && !parse(false)) {
+                    value = parse(serialized);
+                    parseSupported = value["a"].length == 5 && value["a"][0] === 1;
+                    if (parseSupported) {
+                      attempt(function() {
+                        parseSupported = !parse('"\t"');
+                      });
+                      if (parseSupported) {
+                        attempt(function() {
+                          parseSupported = parse("01") !== 1;
+                        });
+                      }
+                      if (parseSupported) {
+                        attempt(function() {
+                          parseSupported = parse("1.") !== 1;
+                        });
+                      }
+                    }
+                  }
+                }, function() {
+                  parseSupported = false;
+                });
+              }
+              isSupported = parseSupported;
+            }
+          }
+          return has[name] = !!isSupported;
+        }
+        has["bug-string-char-index"] = has["date-serialization"] = has["json"] = has["json-stringify"] = has["json-parse"] = null;
+
+        if (!has("json")) {
+          var functionClass = "[object Function]",
+            dateClass = "[object Date]",
+            numberClass = "[object Number]",
+            stringClass = "[object String]",
+            arrayClass = "[object Array]",
+            booleanClass = "[object Boolean]";
+
+          var charIndexBuggy = has("bug-string-char-index");
+
+          var forOwn = function(object, callback) {
+            var size = 0,
+              Properties, dontEnums, property;
+
+            (Properties = function() {
+              this.valueOf = 0;
+            }).prototype.valueOf = 0;
+
+            dontEnums = new Properties();
+            for (property in dontEnums) {
+              if (isProperty.call(dontEnums, property)) {
+                size++;
+              }
+            }
+            Properties = dontEnums = null;
+
+            if (!size) {
+              dontEnums = ["valueOf", "toString", "toLocaleString", "propertyIsEnumerable", "isPrototypeOf", "hasOwnProperty", "constructor"];
+              forOwn = function(object, callback) {
+                var isFunction = getClass.call(object) == functionClass,
+                  property, length;
+                var hasProperty = !isFunction && typeof object.constructor != "function" && objectTypes[typeof object.hasOwnProperty] && object.hasOwnProperty || isProperty;
+                for (property in object) {
+                  if (!(isFunction && property == "prototype") && hasProperty.call(object, property)) {
+                    callback(property);
                   }
                 }
+                for (length = dontEnums.length; property = dontEnums[--length];) {
+                  if (hasProperty.call(object, property)) {
+                    callback(property);
+                  }
+                }
+              };
+            } else {
+              forOwn = function(object, callback) {
+                var isFunction = getClass.call(object) == functionClass,
+                  property, isConstructor;
+                for (property in object) {
+                  if (!(isFunction && property == "prototype") && isProperty.call(object, property) && !(isConstructor = property === "constructor")) {
+                    callback(property);
+                  }
+                }
+                if (isConstructor || isProperty.call(object, (property = "constructor"))) {
+                  callback(property);
+                }
+              };
+            }
+            return forOwn(object, callback);
+          };
+
+          if (!has("json-stringify") && !has("date-serialization")) {
+            var Escapes = {
+              92: "\\\\",
+              34: '\\"',
+              8: "\\b",
+              12: "\\f",
+              10: "\\n",
+              13: "\\r",
+              9: "\\t"
+            };
+
+            var leadingZeroes = "000000";
+            var toPaddedString = function(width, value) {
+              return (leadingZeroes + (value || 0)).slice(-width);
+            };
+
+            var serializeDate = function(value) {
+              var getData, year, month, date, time, hours, minutes, seconds, milliseconds;
+              if (!isExtended) {
+                var floor = Math.floor;
+                var Months = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+                var getDay = function(year, month) {
+                  return Months[month] + 365 * (year - 1970) + floor((year - 1969 + (month = +(month > 1))) / 4) - floor((year - 1901 + month) / 100) + floor((year - 1601 + month) / 400);
+                };
+                getData = function(value) {
+                  date = floor(value / 864e5);
+                  for (year = floor(date / 365.2425) + 1970 - 1; getDay(year + 1, 0) <= date; year++);
+                  for (month = floor((date - getDay(year, 0)) / 30.42); getDay(year, month + 1) <= date; month++);
+                  date = 1 + date - getDay(year, month);
+                  time = (value % 864e5 + 864e5) % 864e5;
+                  hours = floor(time / 36e5) % 24;
+                  minutes = floor(time / 6e4) % 60;
+                  seconds = floor(time / 1e3) % 60;
+                  milliseconds = time % 1e3;
+                };
+              } else {
+                getData = function(value) {
+                  year = value.getUTCFullYear();
+                  month = value.getUTCMonth();
+                  date = value.getUTCDate();
+                  hours = value.getUTCHours();
+                  minutes = value.getUTCMinutes();
+                  seconds = value.getUTCSeconds();
+                  milliseconds = value.getUTCMilliseconds();
+                };
+              }
+              serializeDate = function(value) {
+                if (value > -1 / 0 && value < 1 / 0) {
+                  getData(value);
+                  value = (year <= 0 || year >= 1e4 ? (year < 0 ? "-" : "+") + toPaddedString(6, year < 0 ? -year : year) : toPaddedString(4, year)) +
+                    "-" + toPaddedString(2, month + 1) + "-" + toPaddedString(2, date) +
+                    "T" + toPaddedString(2, hours) + ":" + toPaddedString(2, minutes) + ":" + toPaddedString(2, seconds) +
+                    "." + toPaddedString(3, milliseconds) + "Z";
+                  year = month = date = hours = minutes = seconds = milliseconds = null;
+                } else {
+                  value = null;
+                }
+                return value;
+              };
+              return serializeDate(value);
+            };
+
+            if (has("json-stringify") && !has("date-serialization")) {
+              function dateToJSON(key) {
+                return serializeDate(this);
+              }
+
+              var nativeStringify = exports.stringify;
+              exports.stringify = function(source, filter, width) {
+                var nativeToJSON = Date.prototype.toJSON;
+                Date.prototype.toJSON = dateToJSON;
+                var result = nativeStringify(source, filter, width);
+                Date.prototype.toJSON = nativeToJSON;
+                return result;
               }
             } else {
-              for (k in value) {
-                if (Object.prototype.hasOwnProperty.call(value, k)) {
-                  v = str(k, value);
-                  if (v) {
-                    partial.push(quote(k) + (gap ? ': ' : ':') + v)
-                  }
+              var unicodePrefix = "\\u00";
+              var escapeChar = function(character) {
+                var charCode = character.charCodeAt(0),
+                  escaped = Escapes[charCode];
+                if (escaped) {
+                  return escaped;
                 }
-              }
-            }
-            v = partial.length === 0 ? '{}' : gap ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' : '{' + partial.join(',') + '}';
-            gap = mind;
-            return v
-        }
-      }
-      if (typeof JSON.stringify !== 'function') {
-        meta = {
-          '\b': '\\b',
-          '\t': '\\t',
-          '\n': '\\n',
-          '\f': '\\f',
-          '\r': '\\r',
-          '"': '\\"',
-          '\\': '\\\\'
-        };
-        JSON.stringify = function(value, replacer, space) {
-          var i;
-          gap = '';
-          indent = '';
-          if (typeof space === 'number') {
-            for (i = 0; i < space; i += 1) {
-              indent += ' '
-            }
-          } else if (typeof space === 'string') {
-            indent = space
-          }
-          rep = replacer;
-          if (replacer && typeof replacer !== 'function' && (typeof replacer !== 'object' || typeof replacer.length !== 'number')) {
-            throw new Error('JSON.stringify')
-          }
-          return str('', {
-            '': value
-          })
-        }
-      }
-      if (typeof JSON.parse !== 'function') {
-        JSON.parse = function(text, reviver) {
-          var j;
+                return unicodePrefix + toPaddedString(2, charCode.toString(16));
+              };
+              var reEscape = /[\x00-\x1f\x22\x5c]/g;
+              var quote = function(value) {
+                reEscape.lastIndex = 0;
+                return '"' +
+                  (
+                    reEscape.test(value) ?
+                    value.replace(reEscape, escapeChar) :
+                    value
+                  ) +
+                  '"';
+              };
 
-          function walk(holder, key) {
-            var k, v, value = holder[key];
-            if (value && typeof value === 'object') {
-              for (k in value) {
-                if (Object.prototype.hasOwnProperty.call(value, k)) {
-                  v = walk(value, k);
-                  if (v !== undefined) {
-                    value[k] = v
-                  } else {
-                    delete value[k]
+              var serialize = function(property, object, callback, properties, whitespace, indentation, stack) {
+                var value, type, className, results, element, index, length, prefix, result;
+                attempt(function() {
+                  value = object[property];
+                });
+                if (typeof value == "object" && value) {
+                  if (value.getUTCFullYear && getClass.call(value) == dateClass && value.toJSON === Date.prototype.toJSON) {
+                    value = serializeDate(value);
+                  } else if (typeof value.toJSON == "function") {
+                    value = value.toJSON(property);
                   }
                 }
-              }
+                if (callback) {
+                  value = callback.call(object, property, value);
+                }
+                if (value == undefined) {
+                  return value === undefined ? value : "null";
+                }
+                type = typeof value;
+                if (type == "object") {
+                  className = getClass.call(value);
+                }
+                switch (className || type) {
+                  case "boolean":
+                  case booleanClass:
+                    return "" + value;
+                  case "number":
+                  case numberClass:
+                    return value > -1 / 0 && value < 1 / 0 ? "" + value : "null";
+                  case "string":
+                  case stringClass:
+                    return quote("" + value);
+                }
+                if (typeof value == "object") {
+                  for (length = stack.length; length--;) {
+                    if (stack[length] === value) {
+                      throw TypeError();
+                    }
+                  }
+                  stack.push(value);
+                  results = [];
+                  prefix = indentation;
+                  indentation += whitespace;
+                  if (className == arrayClass) {
+                    for (index = 0, length = value.length; index < length; index++) {
+                      element = serialize(index, value, callback, properties, whitespace, indentation, stack);
+                      results.push(element === undefined ? "null" : element);
+                    }
+                    result = results.length ? (whitespace ? "[\n" + indentation + results.join(",\n" + indentation) + "\n" + prefix + "]" : ("[" + results.join(",") + "]")) : "[]";
+                  } else {
+                    forOwn(properties || value, function(property) {
+                      var element = serialize(property, value, callback, properties, whitespace, indentation, stack);
+                      if (element !== undefined) {
+                        results.push(quote(property) + ":" + (whitespace ? " " : "") + element);
+                      }
+                    });
+                    result = results.length ? (whitespace ? "{\n" + indentation + results.join(",\n" + indentation) + "\n" + prefix + "}" : ("{" + results.join(",") + "}")) : "{}";
+                  }
+                  stack.pop();
+                  return result;
+                }
+              };
+
+              exports.stringify = function(source, filter, width) {
+                var whitespace, callback, properties, className;
+                if (objectTypes[typeof filter] && filter) {
+                  className = getClass.call(filter);
+                  if (className == functionClass) {
+                    callback = filter;
+                  } else if (className == arrayClass) {
+                    properties = {};
+                    for (var index = 0, length = filter.length, value; index < length;) {
+                      value = filter[index++];
+                      className = getClass.call(value);
+                      if (className == "[object String]" || className == "[object Number]") {
+                        properties[value] = 1;
+                      }
+                    }
+                  }
+                }
+                if (width) {
+                  className = getClass.call(width);
+                  if (className == numberClass) {
+                    if ((width -= width % 1) > 0) {
+                      if (width > 10) {
+                        width = 10;
+                      }
+                      for (whitespace = ""; whitespace.length < width;) {
+                        whitespace += " ";
+                      }
+                    }
+                  } else if (className == stringClass) {
+                    whitespace = width.length <= 10 ? width : width.slice(0, 10);
+                  }
+                }
+                return serialize("", (value = {}, value[""] = source, value), callback, properties, whitespace, "", []);
+              };
             }
-            return reviver.call(holder, key, value)
           }
-          text = String(text);
-          rx_dangerous.lastIndex = 0;
-          if (rx_dangerous.test(text)) {
-            text = text.replace(rx_dangerous, function(a) {
-              return '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4)
-            })
+
+          if (!has("json-parse")) {
+            var fromCharCode = String.fromCharCode;
+
+            var Unescapes = {
+              92: "\\",
+              34: '"',
+              47: "/",
+              98: "\b",
+              116: "\t",
+              110: "\n",
+              102: "\f",
+              114: "\r"
+            };
+
+            var Index, Source;
+
+            var abort = function() {
+              Index = Source = null;
+              throw SyntaxError();
+            };
+
+            var lex = function() {
+              var source = Source,
+                length = source.length,
+                value, begin, position, isSigned, charCode;
+              while (Index < length) {
+                charCode = source.charCodeAt(Index);
+                switch (charCode) {
+                  case 9:
+                  case 10:
+                  case 13:
+                  case 32:
+                    Index++;
+                    break;
+                  case 123:
+                  case 125:
+                  case 91:
+                  case 93:
+                  case 58:
+                  case 44:
+                    value = charIndexBuggy ? source.charAt(Index) : source[Index];
+                    Index++;
+                    return value;
+                  case 34:
+                    for (value = "@", Index++; Index < length;) {
+                      charCode = source.charCodeAt(Index);
+                      if (charCode < 32) {
+                        abort();
+                      } else if (charCode == 92) {
+                        charCode = source.charCodeAt(++Index);
+                        switch (charCode) {
+                          case 92:
+                          case 34:
+                          case 47:
+                          case 98:
+                          case 116:
+                          case 110:
+                          case 102:
+                          case 114:
+                            value += Unescapes[charCode];
+                            Index++;
+                            break;
+                          case 117:
+                            begin = ++Index;
+                            for (position = Index + 4; Index < position; Index++) {
+                              charCode = source.charCodeAt(Index);
+                              if (!(charCode >= 48 && charCode <= 57 || charCode >= 97 && charCode <= 102 || charCode >= 65 && charCode <= 70)) {
+                                abort();
+                              }
+                            }
+                            value += fromCharCode("0x" + source.slice(begin, Index));
+                            break;
+                          default:
+                            abort();
+                        }
+                      } else {
+                        if (charCode == 34) {
+                          break;
+                        }
+                        charCode = source.charCodeAt(Index);
+                        begin = Index;
+                        while (charCode >= 32 && charCode != 92 && charCode != 34) {
+                          charCode = source.charCodeAt(++Index);
+                        }
+                        value += source.slice(begin, Index);
+                      }
+                    }
+                    if (source.charCodeAt(Index) == 34) {
+                      Index++;
+                      return value;
+                    }
+                    abort();
+                  default:
+                    begin = Index;
+                    if (charCode == 45) {
+                      isSigned = true;
+                      charCode = source.charCodeAt(++Index);
+                    }
+                    if (charCode >= 48 && charCode <= 57) {
+                      if (charCode == 48 && ((charCode = source.charCodeAt(Index + 1)), charCode >= 48 && charCode <= 57)) {
+                        abort();
+                      }
+                      isSigned = false;
+                      for (; Index < length && ((charCode = source.charCodeAt(Index)), charCode >= 48 && charCode <= 57); Index++);
+                      if (source.charCodeAt(Index) == 46) {
+                        position = ++Index;
+                        for (; position < length; position++) {
+                          charCode = source.charCodeAt(position);
+                          if (charCode < 48 || charCode > 57) {
+                            break;
+                          }
+                        }
+                        if (position == Index) {
+                          abort();
+                        }
+                        Index = position;
+                      }
+                      charCode = source.charCodeAt(Index);
+                      if (charCode == 101 || charCode == 69) {
+                        charCode = source.charCodeAt(++Index);
+                        if (charCode == 43 || charCode == 45) {
+                          Index++;
+                        }
+                        for (position = Index; position < length; position++) {
+                          charCode = source.charCodeAt(position);
+                          if (charCode < 48 || charCode > 57) {
+                            break;
+                          }
+                        }
+                        if (position == Index) {
+                          abort();
+                        }
+                        Index = position;
+                      }
+                      return +source.slice(begin, Index);
+                    }
+                    if (isSigned) {
+                      abort();
+                    }
+                    var temp = source.slice(Index, Index + 4);
+                    if (temp == "true") {
+                      Index += 4;
+                      return true;
+                    } else if (temp == "fals" && source.charCodeAt(Index + 4) == 101) {
+                      Index += 5;
+                      return false;
+                    } else if (temp == "null") {
+                      Index += 4;
+                      return null;
+                    }
+                    abort();
+                }
+              }
+              return "$";
+            };
+
+            var get = function(value) {
+              var results, hasMembers;
+              if (value == "$") {
+                abort();
+              }
+              if (typeof value == "string") {
+                if ((charIndexBuggy ? value.charAt(0) : value[0]) == "@") {
+                  return value.slice(1);
+                }
+                if (value == "[") {
+                  results = [];
+                  for (;;) {
+                    value = lex();
+                    if (value == "]") {
+                      break;
+                    }
+                    if (hasMembers) {
+                      if (value == ",") {
+                        value = lex();
+                        if (value == "]") {
+                          abort();
+                        }
+                      } else {
+                        abort();
+                      }
+                    } else {
+                      hasMembers = true;
+                    }
+                    if (value == ",") {
+                      abort();
+                    }
+                    results.push(get(value));
+                  }
+                  return results;
+                } else if (value == "{") {
+                  results = {};
+                  for (;;) {
+                    value = lex();
+                    if (value == "}") {
+                      break;
+                    }
+                    if (hasMembers) {
+                      if (value == ",") {
+                        value = lex();
+                        if (value == "}") {
+                          abort();
+                        }
+                      } else {
+                        abort();
+                      }
+                    } else {
+                      hasMembers = true;
+                    }
+                    if (value == "," || typeof value != "string" || (charIndexBuggy ? value.charAt(0) : value[0]) != "@" || lex() != ":") {
+                      abort();
+                    }
+                    results[value.slice(1)] = get(lex());
+                  }
+                  return results;
+                }
+                abort();
+              }
+              return value;
+            };
+
+            var update = function(source, property, callback) {
+              var element = walk(source, property, callback);
+              if (element === undefined) {
+                delete source[property];
+              } else {
+                source[property] = element;
+              }
+            };
+
+            var walk = function(source, property, callback) {
+              var value = source[property],
+                length;
+              if (typeof value == "object" && value) {
+                if (getClass.call(value) == arrayClass) {
+                  for (length = value.length; length--;) {
+                    update(getClass, forOwn, value, length, callback);
+                  }
+                } else {
+                  forOwn(value, function(property) {
+                    update(value, property, callback);
+                  });
+                }
+              }
+              return callback.call(source, property, value);
+            };
+
+            exports.parse = function(source, callback) {
+              var result, value;
+              Index = 0;
+              Source = "" + source;
+              result = get(lex());
+              if (lex() != "$") {
+                abort();
+              }
+              Index = Source = null;
+              return callback && getClass.call(callback) == functionClass ? walk((value = {}, value[""] = result, value), "", callback) : result;
+            };
           }
-          if (rx_one.test(text.replace(rx_two, '@').replace(rx_three, ']').replace(rx_four, ''))) {
-            j = eval('(' + text + ')');
-            return typeof reviver === 'function' ? walk({
-              '': j
-            }, '') : j
-          }
-          throw new SyntaxError('JSON.parse')
         }
+
+        exports.runInContext = runInContext;
+        return exports;
       }
-    }());;
+
+      if (freeExports && !isLoader) {
+        runInContext(root, freeExports);
+      } else {
+        var nativeJSON = root.JSON,
+          previousJSON = root.JSON3,
+          isRestored = false;
+
+        var JSON3 = runInContext(root, (root.JSON3 = {
+          "noConflict": function() {
+            if (!isRestored) {
+              isRestored = true;
+              root.JSON = nativeJSON;
+              root.JSON3 = previousJSON;
+              nativeJSON = previousJSON = null;
+            }
+            return JSON3;
+          }
+        }));
+
+        root.JSON = {
+          "parse": JSON3.parse,
+          "stringify": JSON3.stringify
+        };
+      }
+
+      if (isLoader) {
+        define(function() {
+          return JSON3;
+        });
+      }
+    }).call(this);;
 
 
     (function(root, factory) {
@@ -1114,7 +1652,26 @@
             secure = '; secure';
           }
 
-          document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/' + cdomain + secure;
+          function getValid(data) {
+            if (data) {
+              return data;
+            } else {
+              return false;
+            }
+          }
+          var valid_name = '';
+          var valid_value = '';
+          var valid_domain = '';
+          if (name && value) {
+            valid_name = getValid(name);
+            valid_value = getValid(value);
+          }
+          if (cdomain) {
+            valid_domain = getValid(cdomain);
+          }
+          if (valid_name && valid_value) {
+            document.cookie = valid_name + '=' + encodeURIComponent(valid_value) + expires + '; path=/' + valid_domain + secure;
+          }
         },
         encrypt: function(v) {
           return 'data:enc;' + _.rot13obfs(v);
@@ -1242,13 +1799,13 @@
         isSupport: function() {
           var supported = true;
           try {
-            var key = '__sensorsdatasupport__';
+            var supportName = '__sensorsdatasupport__';
             var val = 'testIsSupportStorage';
-            _.localStorage.set(key, val);
-            if (_.localStorage.get(key) !== val) {
+            _.localStorage.set(supportName, val);
+            if (_.localStorage.get(supportName) !== val) {
               supported = false;
             }
-            _.localStorage.remove(key);
+            _.localStorage.remove(supportName);
           } catch (err) {
             supported = false;
           }
@@ -1260,12 +1817,12 @@
         isSupport: function() {
           var supported = true;
 
-          var key = '__sensorsdatasupport__';
+          var supportName = '__sensorsdatasupport__';
           var val = 'testIsSupportStorage';
           try {
             if (sessionStorage && sessionStorage.setItem) {
-              sessionStorage.setItem(key, val);
-              sessionStorage.removeItem(key, val);
+              sessionStorage.setItem(supportName, val);
+              sessionStorage.removeItem(supportName, val);
               supported = true;
             } else {
               supported = false;
@@ -1561,17 +2118,20 @@
           if (_regex.test(url) === false) {
             sd.log('Invalid URL');
           }
-          var link = document.createElement('a');
-          link.href = url;
-          for (var i = basicProps.length - 1; i >= 0; i--) {
-            var prop = basicProps[i];
-            result[prop] = link[prop];
-          }
-          if (result.hostname && typeof result.pathname === 'string' && result.pathname.indexOf('/') !== 0) {
-            result.pathname = '/' + result.pathname;
-          }
+          var instance = _.urlParse(url);
+          result.hash = '';
+          result.host = instance._values.Host ? instance._values.Host + (instance._values.Port ? ':' + instance._values.Port : '') : '';
+          result.href = instance._values.URL;
+          result.password = instance._values.Password;
+          result.pathname = instance._values.Path;
+          result.port = instance._values.Port;
+          result.search = instance._values.QueryString ? '?' + instance._values.QueryString : '';
+          result.username = instance._values.Username;
+          result.hostname = instance._values.Hostname;
+          result.protocol = instance._values.Protocol ? instance._values.Protocol + ':' : '';
+          result.origin = instance._values.Origin ? instance._values.Origin + (instance._values.Port ? ':' + instance._values.Port : '') : '';
           result.searchParams = (function() {
-            var params = _.getURLSearchParams(result.search);
+            var params = _.getURLSearchParams('?' + instance._values.QueryString);
             return {
               get: function(searchParam) {
                 return params[searchParam];
@@ -1615,17 +2175,32 @@
       };
 
       _.getCookieTopLevelDomain = function(hostname) {
-        hostname = hostname || window.location.hostname;
-        var splitResult = hostname.split('.');
-        if (_.isArray(splitResult) && splitResult.length >= 2 && !/^(\d+\.)+\d+$/.test(hostname)) {
+        hostname = hostname || location.hostname;
+
+        function validHostname(value) {
+          if (value) {
+            return value;
+          } else {
+            return false;
+          }
+        }
+        new_hostname = validHostname(hostname);
+        if (!new_hostname) {
+          return '';
+        }
+        var splitResult = new_hostname.split('.');
+        if (_.isArray(splitResult) && splitResult.length >= 2 && !/^(\d+\.)+\d+$/.test(new_hostname)) {
           var domainStr = '.' + splitResult.splice(splitResult.length - 1, 1);
           while (splitResult.length > 0) {
             domainStr = '.' + splitResult.splice(splitResult.length - 1, 1) + domainStr;
             document.cookie = 'sensorsdata_domain_test=true; path=/; domain=' + domainStr;
+
             if (document.cookie.indexOf('sensorsdata_domain_test=true') !== -1) {
               var now = new Date();
               now.setTime(now.getTime() - 1000);
+
               document.cookie = 'sensorsdata_domain_test=true; expires=' + now.toGMTString() + '; path=/; domain=' + domainStr;
+
               return domainStr;
             }
           }
@@ -2631,7 +3206,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.16.10';
+      sd.lib_version = '1.16.11';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -3500,7 +4075,17 @@
                 sessionStorage.setItem('sensors-visual-mode', 'true');
               }
               if (event.data.data.userURL && location.search.match(/sa-visual-mode=true/)) {
-                window.location.href = _.secCheck.removeScriptProtocol(event.data.data.userURL);
+                function validUrl(value) {
+                  if (value) {
+                    return _.secCheck.removeScriptProtocol(value);
+                  } else {
+                    return false;
+                  }
+                }
+                var valid_url = validUrl(event.data.data.userURL);
+                if (valid_url) {
+                  window.location.href = valid_url;
+                }
               } else {
                 vtrackMode.loadVtrack();
               }
@@ -3525,7 +4110,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.16.10'
+                  sdkversion: '1.16.11'
                 }
               },
               '*'
@@ -3824,24 +4409,24 @@
         var len = localStorage.length;
         var pendingItems = this.getPendingItems();
         for (var i = 0; i < len; i++) {
-          var key = localStorage.key(i);
-          if (key.indexOf('sawebjssdk-') === 0 && /^sawebjssdk\-\d+$/.test(key)) {
-            if (pendingItems.length && _.indexOf(pendingItems, key) > -1) {
+          var itemName = localStorage.key(i);
+          if (itemName.indexOf('sawebjssdk-') === 0 && /^sawebjssdk\-\d+$/.test(itemName)) {
+            if (pendingItems.length && _.indexOf(pendingItems, itemName) > -1) {
               continue;
             }
-            val = localStorage.getItem(key);
+            val = localStorage.getItem(itemName);
             if (val) {
               val = _.safeJSONParse(val);
               if (val && _.isObject(val)) {
                 val._flush_time = now;
-                keys.push(key);
+                keys.push(itemName);
                 vals.push(val);
               } else {
-                localStorage.removeItem(key);
+                localStorage.removeItem(itemName);
                 sd.log('localStorage-数据parse异常' + val);
               }
             } else {
-              localStorage.removeItem(key);
+              localStorage.removeItem(itemName);
               sd.log('localStorage-数据取值异常' + val);
             }
           }
