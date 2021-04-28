@@ -774,6 +774,15 @@
     });;
 
 
+    if (!String.prototype.replaceAll) {
+      String.prototype.replaceAll = function(str, newStr) {
+        if (Object.prototype.toString.call(str).toLowerCase() === '[object regexp]') {
+          return this.replace(str, newStr);
+        }
+        return this.replace(new RegExp(str, 'g'), newStr);
+      };
+    }
+
     (function() {
       var ArrayProto = Array.prototype;
       var FuncProto = Function.prototype;
@@ -1158,6 +1167,36 @@
         return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '.' + pad(d.getMilliseconds());
       };
 
+      _.getRandomBasic = (function() {
+        var today = new Date();
+        var seed = today.getTime();
+
+        function rnd() {
+          seed = (seed * 9301 + 49297) % 233280;
+          return seed / (233280.0);
+        };
+        return function rand(number) {
+          return Math.ceil(rnd(seed) * number);
+        };
+      })();
+      _.getRandom = function() {
+        if (typeof Uint32Array === 'function') {
+          var cry = '';
+          if (typeof crypto !== 'undefined') {
+            cry = crypto;
+          } else if (typeof msCrypto !== 'undefined') {
+            cry = msCrypto;
+          }
+          if (_.isObject(cry) && cry.getRandomValues) {
+            var typedArray = new Uint32Array(1);
+            var randomNumber = cry.getRandomValues(typedArray)[0];
+            var integerLimit = Math.pow(2, 32);
+            return randomNumber / integerLimit;
+          }
+        }
+        return _.getRandomBasic(10000000000000000000) / 10000000000000000000;
+      };
+
       _.searchObjDate = function(o) {
         if (_.isObject(o)) {
           _.each(o, function(a, b) {
@@ -1342,7 +1381,7 @@
           return d.toString(16) + i.toString(16);
         };
         var R = function() {
-          return Math.random().toString(16).replace('.', '');
+          return _.getRandom().toString(16).replace('.', '');
         };
         var UA = function(n) {
           var ua = navigator.userAgent,
@@ -1381,7 +1420,7 @@
           if (se && /\d{5,}/.test(se)) {
             se = se.toString(16);
           } else {
-            se = String(Math.random() * 31242)
+            se = String(_.getRandom() * 31242)
               .replace('.', '')
               .slice(0, 8);
           }
@@ -1389,7 +1428,7 @@
           if (val) {
             return val;
           } else {
-            return (String(Math.random()) + String(Math.random()) + String(Math.random())).slice(2, 15);
+            return (String(_.getRandom()) + String(_.getRandom()) + String(_.getRandom())).slice(2, 15);
           }
         };
       })();
@@ -1622,7 +1661,7 @@
           }
           return null;
         },
-        set: function(name, value, days, cross_subdomain, is_secure) {
+        set: function(name, value, days, cross_subdomain) {
           cross_subdomain = typeof cross_subdomain === 'undefined' ? sd.para.cross_subdomain : cross_subdomain;
           var cdomain = '',
             expires = '',
@@ -1647,14 +1686,13 @@
 
             expires = '; expires=' + date.toGMTString();
           }
-
-          if (is_secure) {
+          if (sd.para.is_secure_cookie) {
             secure = '; secure';
           }
 
           function getValid(data) {
             if (data) {
-              return data;
+              return data.replaceAll(/\r\n/g, '');
             } else {
               return false;
             }
@@ -1662,8 +1700,10 @@
           var valid_name = '';
           var valid_value = '';
           var valid_domain = '';
-          if (name && value) {
+          if (name) {
             valid_name = getValid(name);
+          }
+          if (value) {
             valid_value = getValid(value);
           }
           if (cdomain) {
@@ -1672,6 +1712,7 @@
           if (valid_name && valid_value) {
             document.cookie = valid_name + '=' + encodeURIComponent(valid_value) + expires + '; path=/' + valid_domain + secure;
           }
+
         },
         encrypt: function(v) {
           return 'data:enc;' + _.rot13obfs(v);
@@ -3206,7 +3247,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.16.12';
+      sd.lib_version = '1.16.13';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4110,7 +4151,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.16.12'
+                  sdkversion: '1.16.13'
                 }
               },
               '*'
@@ -4437,7 +4478,7 @@
         };
       },
       writeStore: function(data) {
-        var uuid = String(Math.random()).slice(2, 5) + String(Math.random()).slice(2, 5) + String(new Date().getTime()).slice(3);
+        var uuid = String(_.getRandom()).slice(2, 5) + String(_.getRandom()).slice(2, 5) + String(new Date().getTime()).slice(3);
         localStorage.setItem('sawebjssdk-' + uuid, JSON.stringify(data));
       }
     };
@@ -4659,7 +4700,7 @@
         return false;
       }
 
-      data._track_id = Number(String(Math.random()).slice(2, 5) + String(Math.random()).slice(2, 4) + String(new Date().getTime()).slice(-4));
+      data._track_id = Number(String(_.getRandom()).slice(2, 5) + String(_.getRandom()).slice(2, 4) + String(new Date().getTime()).slice(-4));
       if (sd.para.use_client_time) {
         data._flush_time = new Date().getTime();
       }
@@ -5003,9 +5044,7 @@
       },
       set: function(name, value) {
         this._state = this._state || {};
-        if (name === 'distinct_id' && this._state.distinct_id) {
-          sd.events.tempAdd('changeDistinctId', value);
-        }
+        var pre_id = this._state.distinct_id;
         this._state[name] = value;
         if (name === 'first_id') {
           delete this._state._first_id;
@@ -5013,6 +5052,9 @@
           delete this._state._distinct_id;
         }
         this.save();
+        if (name === 'distinct_id' && pre_id) {
+          sd.events.tempAdd('changeDistinctId', value);
+        }
       },
       change: function(name, value) {
         this._state['_' + name] = value;
@@ -5498,19 +5540,17 @@
             var iframe = null;
             if (sd.bridge.iOS_UA_bridge()) {
               iframe = document.createElement('iframe');
-              iframe.setAttribute(
-                'src',
-                'sensorsanalytics://trackEvent?event=' +
-                encodeURIComponent(
-                  JSON.stringify(
-                    _.extend({
-                        server_url: sd.para.server_url
-                      },
-                      originData
-                    )
-                  )
-                )
-              );
+
+              function checkURL(originData) {
+                var data = JSON.stringify(_.extend({
+                  server_url: sd.para.server_url
+                }, originData));
+                data = data.replaceAll(/\r\n/, '');
+                data = encodeURIComponent(data);
+                return 'sensorsanalytics://trackEvent?event=' + data;
+              }
+              var newurl = checkURL(originData);
+              iframe.setAttribute('src', newurl);
               document.documentElement.appendChild(iframe);
               iframe.parentNode.removeChild(iframe);
               iframe = null;
@@ -5678,7 +5718,7 @@
 
       function getKey() {
         var d = new Date().getTime().toString(16);
-        var m = String(Math.random()).replace('.', '').slice(1, 8);
+        var m = String(_.getRandom()).replace('.', '').slice(1, 8);
         return d + '-' + m;
       }
       var key = getKey();
