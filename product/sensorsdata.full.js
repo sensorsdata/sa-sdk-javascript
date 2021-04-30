@@ -3249,7 +3249,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.16.13';
+      sd.lib_version = '1.16.14';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4153,7 +4153,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.16.13'
+                  sdkversion: '1.16.14'
                 }
               },
               '*'
@@ -5547,7 +5547,7 @@
                 var data = JSON.stringify(_.extend({
                   server_url: sd.para.server_url
                 }, originData));
-                data = data.replaceAll(/\r\n/, '');
+                data = data.replaceAll(/\r\n/g, '');
                 data = encodeURIComponent(data);
                 return 'sensorsanalytics://trackEvent?event=' + data;
               }
