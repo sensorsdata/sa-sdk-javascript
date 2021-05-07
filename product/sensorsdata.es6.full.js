@@ -2964,7 +2964,7 @@ if (!String.prototype.replaceAll) {
   };
 
   _.secCheck = {
-    isHTTPURL: function(str) {
+    isHttpUrl: function(str) {
       if (typeof str !== 'string') return false;
       var _regex = /^https?:\/\/.+/;
       if (_regex.test(str) === false) {
@@ -2975,7 +2975,7 @@ if (!String.prototype.replaceAll) {
     },
     removeScriptProtocol: function(str) {
       if (typeof str !== 'string') return '';
-      var _regex = /^\s*javascript:/i;
+      var _regex = /^\s*javascript/i;
       while (_regex.test(str)) {
         str = str.replace(_regex, '');
       }
@@ -3241,7 +3241,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.16.14';
+  sd.lib_version = '1.16.15';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4111,9 +4111,10 @@ sd.detectMode = function() {
           }
           if (event.data.data.userURL && location.search.match(/sa-visual-mode=true/)) {
             function validUrl(value) {
-              if (value) {
+              if (_.secCheck.isHttpUrl(value)) {
                 return _.secCheck.removeScriptProtocol(value);
               } else {
+                sd.log('可视化模式检测 URL 失败');
                 return false;
               }
             }
@@ -4145,7 +4146,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.16.14'
+              sdkversion: '1.16.15'
             }
           },
           '*'

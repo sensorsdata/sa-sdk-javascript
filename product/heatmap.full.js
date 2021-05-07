@@ -9248,8 +9248,12 @@
             obj.success(data);
           },
           error: function(res) {
-            sd.log('AJAX 请求失败，转换为 JSONP 请求', res);
-            _this.jsonp(obj);
+            if (_.isObject(res) && res.error) {
+              obj.error(res);
+            } else {
+              sd.log('AJAX 请求失败，转换为 JSONP 请求', res);
+              _this.jsonp(obj);
+            }
           },
           timeout: 5000
         });
@@ -9398,7 +9402,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.16.14';
+    sd.heatmap_version = '1.16.15';
     _ = sd._;
 
     _.bindReady = function(fn, win) {
