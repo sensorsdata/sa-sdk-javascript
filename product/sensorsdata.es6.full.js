@@ -6,21 +6,11 @@ var _ = (sd._ = {});
 
 ;
 (function() {
-  var isLoader = typeof define === "function" && define.amd;
-
   var objectTypes = {
     "function": true,
     "object": true
   };
-
-  var freeExports = objectTypes[typeof exports] && exports && !exports.nodeType && exports;
-
-  var root = objectTypes[typeof window] && window || this,
-    freeGlobal = freeExports && objectTypes[typeof module] && module && !module.nodeType && typeof global == "object" && global;
-
-  if (freeGlobal && (freeGlobal.global === freeGlobal || freeGlobal.window === freeGlobal || freeGlobal.self === freeGlobal)) {
-    root = freeGlobal;
-  }
+  var root = objectTypes[typeof window] && window || this;
 
   function runInContext(context, exports) {
     context || (context = root.Object());
@@ -672,36 +662,28 @@ var _ = (sd._ = {});
     return exports;
   }
 
-  if (freeExports && !isLoader) {
-    runInContext(root, freeExports);
-  } else {
-    var nativeJSON = root.JSON,
-      previousJSON = root.JSON3,
-      isRestored = false;
 
-    var JSON3 = runInContext(root, (root.JSON3 = {
-      "noConflict": function() {
-        if (!isRestored) {
-          isRestored = true;
-          root.JSON = nativeJSON;
-          root.JSON3 = previousJSON;
-          nativeJSON = previousJSON = null;
-        }
-        return JSON3;
+  var nativeJSON = root.JSON,
+    previousJSON = root.JSON3,
+    isRestored = false;
+
+  var JSON3 = runInContext(root, (root.JSON3 = {
+    "noConflict": function() {
+      if (!isRestored) {
+        isRestored = true;
+        root.JSON = nativeJSON;
+        root.JSON3 = previousJSON;
+        nativeJSON = previousJSON = null;
       }
-    }));
-
-    root.JSON = {
-      "parse": JSON3.parse,
-      "stringify": JSON3.stringify
-    };
-  }
-
-  if (isLoader) {
-    define(function() {
       return JSON3;
-    });
-  }
+    }
+  }));
+
+  root.JSON = {
+    "parse": JSON3.parse,
+    "stringify": JSON3.stringify
+  };
+
 }).call(this);;
 
 
@@ -1325,12 +1307,7 @@ if (!String.prototype.replaceAll) {
             sd.log('您的数据-', k, v, '的数组里的值必须是字符串,已经将其删除');
           }
         });
-        if (temp.length !== 0) {
-          p[k] = temp;
-        } else {
-          delete p[k];
-          sd.log('已经删除空的数组');
-        }
+        p[k] = temp;
       }
       if (!(_.isString(v) || _.isNumber(v) || _.isDate(v) || _.isBoolean(v) || _.isArray(v) || _.isFunction(v) || k === '$option')) {
         sd.log('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
@@ -3089,8 +3066,6 @@ sd.initPara = function(para) {
         sd.para.server_url = '';
       }
     }
-  } else {
-    sd.para.server_url = '';
   }
 
   if (typeof sd.para.web_url === 'string' && (sd.para.web_url.slice(0, 3) === '://' || sd.para.web_url.slice(0, 2) === '//')) {
@@ -3241,7 +3216,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.16.15';
+  sd.lib_version = '1.16.16';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4146,7 +4121,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.16.15'
+              sdkversion: '1.16.16'
             }
           },
           '*'

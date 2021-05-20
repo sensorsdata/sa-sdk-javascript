@@ -9402,7 +9402,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.16.15';
+    sd.heatmap_version = '1.16.16';
     _ = sd._;
 
     _.bindReady = function(fn, win) {
