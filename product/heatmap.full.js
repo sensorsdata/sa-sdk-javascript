@@ -8949,7 +8949,7 @@
 
       var tagName = dom.ele.tagName.toLowerCase();
       if (this.heatMode == 1) {
-        if (tagName === 'input' || tagName === 'textarea' || tagName === 'img') {
+        if (tagName === 'input' || tagName === 'textarea' || tagName === 'img' || tagName === 'svg') {
           dom.attr('data-heat-place', String(key));
           var width = $(selector[0]).width();
           wrap = dom.wrap('span');
@@ -8957,6 +8957,9 @@
             wrap.ele.style.width = width;
           }
           wrap.ele.style.display = 'inline-block';
+          if (tagName === 'svg') {
+            wrap.ele.style.minWidth = '300px';
+          }
         } else {
           wrap = dom;
         }
@@ -9032,7 +9035,7 @@
       if (this.heatMode == 1) {
         _.each(this.heatDataElement, function(ele) {
           var tagName = ele.ele.tagName.toLowerCase();
-          if (tagName === 'input' || tagName === 'textarea' || tagName === 'img') {
+          if (tagName === 'input' || tagName === 'textarea' || tagName === 'img' || tagName === 'svg') {
             var parent = ele.parent();
             if (parent && parent.ele.tagName.toLowerCase() === 'span' && parent.ele.className.indexOf('sa-click-area') !== -1) {
               $(ele.ele).unwrap();
@@ -9402,7 +9405,7 @@
 
   window.sa_jssdk_heatmap_render = function(se, data, type, url) {
     sd = se;
-    sd.heatmap_version = '1.16.16';
+    sd.heatmap_version = '1.17.1';
     _ = sd._;
 
     _.bindReady = function(fn, win) {

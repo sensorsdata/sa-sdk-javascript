@@ -3143,7 +3143,8 @@ sd.initPara = function(para) {
     if (_.isObject(sd.para.heatmap.collect_tags)) {
       if (sd.para.heatmap.collect_tags.div === true) {
         sd.para.heatmap.collect_tags.div = {
-          ignore_tags: ignore_tags_default
+          ignore_tags: ignore_tags_default,
+          max_level: 1
         };
       } else if (_.isObject(sd.para.heatmap.collect_tags.div)) {
         if (sd.para.heatmap.collect_tags.div.ignore_tags) {
@@ -3153,6 +3154,12 @@ sd.initPara = function(para) {
           }
         } else {
           sd.para.heatmap.collect_tags.div.ignore_tags = ignore_tags_default;
+        }
+        if (sd.para.heatmap.collect_tags.div.max_level) {
+          var supportedDivLevel = [1, 2, 3];
+          if (_.indexOf(supportedDivLevel, sd.para.heatmap.collect_tags.div.max_level) === -1) {
+            sd.para.heatmap.collect_tags.div.max_level = 1;
+          }
         }
       } else {
         sd.para.heatmap.collect_tags.div = false;
@@ -3216,7 +3223,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.16.16';
+  sd.lib_version = '1.17.1';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4121,7 +4128,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.16.16'
+              sdkversion: '1.17.1'
             }
           },
           '*'
@@ -4271,6 +4278,14 @@ sd.detectMode = function() {
       heatmap.initHeatmap();
       heatmap.initScrollmap();
     }
+  }
+
+  if (sd.para.heatmap && sd.para.heatmap.collect_tags && _.isObject(sd.para.heatmap.collect_tags)) {
+    _.each(sd.para.heatmap.collect_tags, function(val, key) {
+      if ((key !== 'div') && val) {
+        sd.heatmap.otherTags.push(key);
+      }
+    });
   }
 
   if (heatmapMode.isSeachHasKeyword()) {
@@ -5722,14 +5737,87 @@ sd.JSBridge.prototype.double = function(data) {
 
 
 var heatmap = (sd.heatmap = {
-  getElementPath: function(element, ignoreID) {
+  otherTags: [],
+  getTargetElement: function(element, e) {
+    var that = this;
+    var target = element;
+    if (typeof target !== 'object') {
+      return null;
+    }
+    if (typeof target.tagName !== 'string') {
+      return null;
+    }
+    var tagName = target.tagName.toLowerCase();
+    if (tagName.toLowerCase() === 'body' || tagName.toLowerCase() === 'html') {
+      return null;
+    }
+    if (!target || !target.parentNode || !target.parentNode.children) {
+      return null;
+    }
+
+    var parent_ele = target.parentNode;
+    var hasA = that.hasElement(e.originalEvent || e);
+    var trackAttrs = sd.para.heatmap.track_attr;
+    var otherTags = that.otherTags;
+
+    if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea' || _.hasAttributes(target, trackAttrs)) {
+      return target;
+    } else if (_.indexOf(otherTags, tagName) > -1) {
+      return target;
+    } else if (parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a' || _.hasAttributes(parent_ele, trackAttrs)) {
+      return parent_ele;
+    } else if (tagName === 'area' && parent_ele.tagName.toLowerCase() === 'map' && _.ry(parent_ele).prev().tagName && _.ry(parent_ele).prev().tagName.toLowerCase() === 'img') {
+      return _.ry(parent_ele).prev();
+    } else if (hasA) {
+      return hasA;
+    } else if (tagName === 'div' && sd.para.heatmap.collect_tags.div && that.isDivLevelValid(target)) {
+      var max_level = sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level || 1;
+      if (max_level > 1 || that.isCollectableDiv(target)) {
+        return target;
+      } else {
+        return null;
+      }
+    } else if (that.isStyleTag(tagName) && sd.para.heatmap.collect_tags.div) {
+      var parentTrackDiv = that.getCollectableParent(target);
+      if (parentTrackDiv && that.isDivLevelValid(parentTrackDiv)) {
+        return parentTrackDiv;
+      }
+    }
+    return null;
+  },
+  getDivLevels: function(element, rootElement) {
+    var path = heatmap.getElementPath(element, true, rootElement);
+    var pathArr = path.split(' > ');
+    var ans = 0;
+    _.each(pathArr, function(tag) {
+      if (tag === 'div') {
+        ans++;
+      }
+    });
+    return ans;
+  },
+  isDivLevelValid: function(element) {
+    var max_level = sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level || 1;
+
+    var allDiv = element.getElementsByTagName('div');
+    for (var i = allDiv.length - 1; i >= 0; i--) {
+      if (heatmap.getDivLevels(allDiv[i], element) > max_level) {
+        return false;
+      }
+    }
+    return true;
+  },
+  getElementPath: function(element, ignoreID, rootElement) {
     var names = [];
     while (element.parentNode) {
       if (element.id && !ignoreID && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(element.id)) {
         names.unshift(element.tagName.toLowerCase() + '#' + element.id);
         break;
       } else {
-        if (element === document.body) {
+        if (rootElement && element === rootElement) {
+          names.unshift(element.tagName.toLowerCase());
+          break;
+        } else if (element === document.body) {
           names.unshift('body');
           break;
         } else {
@@ -5909,7 +5997,7 @@ var heatmap = (sd.heatmap = {
     }
   },
   hasElement: function(e) {
-    var path = e._getPath();
+    var path = e._getPath ? e._getPath() : heatmap.getElementPath(e.target, true).split(' > ');
     if (_.isArray(path) && path.length > 0) {
       for (var i = 0; i < path.length; i++) {
         if (path[i] && path[i].tagName && path[i].tagName.toLowerCase() === 'a') {
@@ -5942,7 +6030,8 @@ var heatmap = (sd.heatmap = {
             continue;
           }
           var tag = target.children[i].tagName.toLowerCase();
-          if (this.isStyleTag(tag, isVisualMode)) {
+          var max_level = sd.para && sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level;
+          if ((tag === 'div' && max_level > 1) || this.isStyleTag(tag, isVisualMode)) {
             if (!this.isCollectableDiv(target.children[i], isVisualMode)) {
               return false;
             }
@@ -5964,7 +6053,8 @@ var heatmap = (sd.heatmap = {
       if (parentName === 'body') {
         return false;
       }
-      if (parentName && parentName === 'div' && this.isCollectableDiv(parent, isVisualMode)) {
+      var max_level = sd.para && sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level;
+      if (parentName && parentName === 'div' && (max_level > 1 || this.isCollectableDiv(parent, isVisualMode))) {
         return parent;
       } else if (parent && this.isStyleTag(parentName, isVisualMode)) {
         return this.getCollectableParent(parent, isVisualMode);
@@ -6099,40 +6189,9 @@ var heatmap = (sd.heatmap = {
           return false;
         }
         var target = ev.target || ev.srcElement;
-        if (typeof target !== 'object') {
-          return false;
-        }
-        if (typeof target.tagName !== 'string') {
-          return false;
-        }
-        var tagName = target.tagName.toLowerCase();
-        if (tagName.toLowerCase() === 'body' || tagName.toLowerCase() === 'html') {
-          return false;
-        }
-        if (!target || !target.parentNode || !target.parentNode.children) {
-          return false;
-        }
-
-        var parent_ele = target.parentNode;
-        var hasA = that.hasElement(e);
-        var trackAttrs = sd.para.heatmap.track_attr;
-        if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea' || _.hasAttributes(target, trackAttrs)) {
-          that.start(ev, target, tagName);
-        } else if (parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a' || _.hasAttributes(parent_ele, trackAttrs)) {
-          that.start(ev, parent_ele, target.parentNode.tagName.toLowerCase());
-        } else if (tagName === 'area' && parent_ele.tagName.toLowerCase() === 'map' && _.ry(parent_ele).prev().tagName && _.ry(parent_ele).prev().tagName.toLowerCase() === 'img') {
-          that.start(ev, _.ry(parent_ele).prev(), _.ry(parent_ele).prev().tagName.toLowerCase());
-        } else if (hasA) {
-          that.start(ev, hasA, hasA.tagName.toLowerCase());
-        } else if (tagName === 'div' && sd.para.heatmap.collect_tags.div && that.isCollectableDiv(target)) {
-          that.start(ev, target, tagName);
-        } else if (that.isStyleTag(tagName)) {
-          if (sd.para.heatmap.collect_tags.div) {
-            var divTarget = that.getCollectableParent(target);
-            if (divTarget) {
-              that.start(ev, divTarget, 'div');
-            }
-          }
+        var theTarget = sd.heatmap.getTargetElement(target, e);
+        if (theTarget) {
+          that.start(ev, theTarget, theTarget.tagName.toLowerCase());
         }
       });
     }
