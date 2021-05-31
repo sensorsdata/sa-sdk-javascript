@@ -3223,7 +3223,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.17.1';
+  sd.lib_version = '1.17.2';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4128,7 +4128,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.17.1'
+              sdkversion: '1.17.2'
             }
           },
           '*'
@@ -4673,8 +4673,6 @@ sd.sendState = sendState;
 sd.events = new _.eventEmitter();
 sendState.queue = _.autoExeQueue();
 
-sendState.requestData = null;
-
 sendState.getSendCall = function(data, config, callback) {
   if (sd.is_heatmap_render_mode) {
     return false;
@@ -4694,7 +4692,7 @@ sendState.getSendCall = function(data, config, callback) {
 
   data = JSON.stringify(data);
 
-  this.requestData = {
+  var requestData = {
     data: originData,
     config: config,
     callback: callback
@@ -4704,35 +4702,35 @@ sendState.getSendCall = function(data, config, callback) {
 
   if (!sd.para.app_js_bridge && sd.para.batch_send && localStorage.length < 200) {
     sd.log(originData);
-    sd.batchSend.add(this.requestData.data);
+    sd.batchSend.add(requestData.data);
     return false;
   }
 
-  sd.bridge.dataSend(originData, this, callback);
+  sd.bridge.dataSend(requestData, this, callback);
 
   sd.log(originData);
 };
 
-sendState.prepareServerUrl = function() {
-  if (typeof this.requestData.config === 'object' && this.requestData.config.server_url) {
-    this.sendCall(this.requestData.config.server_url, this.requestData.callback);
+sendState.prepareServerUrl = function(requestData) {
+  if (typeof requestData.config === 'object' && requestData.config.server_url) {
+    this.sendCall(requestData, requestData.config.server_url, requestData.callback);
   } else if (_.isArray(sd.para.server_url) && sd.para.server_url.length) {
     for (var i = 0; i < sd.para.server_url.length; i++) {
-      this.sendCall(sd.para.server_url[i]);
+      this.sendCall(requestData, sd.para.server_url[i]);
     }
   } else if (typeof sd.para.server_url === 'string' && sd.para.server_url !== '') {
-    this.sendCall(sd.para.server_url, this.requestData.callback);
+    this.sendCall(requestData, sd.para.server_url, requestData.callback);
   } else {
     sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
   }
 };
 
-sendState.sendCall = function(server_url, callback) {
+sendState.sendCall = function(requestData, server_url, callback) {
   var data = {
     server_url: server_url,
-    data: JSON.stringify(this.requestData.data),
+    data: JSON.stringify(requestData.data),
     callback: callback,
-    config: this.requestData.config
+    config: requestData.config
   };
   if (_.isObject(sd.para.jsapp) && !sd.para.jsapp.isOnline && typeof sd.para.jsapp.setData === 'function') {
     delete data.callback;
@@ -5456,7 +5454,8 @@ sd.bridge = {
       return false;
     }
   },
-  dataSend: function(originData, that, callback) {
+  dataSend: function(requestData, that, callback) {
+    var originData = requestData.data;
     if (_.isObject(sd.para.app_js_bridge) && !sd.para.app_js_bridge.is_mui) {
       if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage && _.isObject(window.SensorsData_iOS_JS_Bridge) && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) {
         if (sd.bridge.is_verify_success) {
@@ -5474,7 +5473,7 @@ sd.bridge = {
               step: '4.1',
               output: 'all'
             });
-            that.prepareServerUrl();
+            that.prepareServerUrl(requestData);
           } else {
             typeof callback === 'function' && callback();
           }
@@ -5492,7 +5491,7 @@ sd.bridge = {
               step: '4.2',
               output: 'all'
             });
-            that.prepareServerUrl();
+            that.prepareServerUrl(requestData);
           } else {
             typeof callback === 'function' && callback();
           }
@@ -5508,7 +5507,7 @@ sd.bridge = {
                 step: '3.1',
                 output: 'all'
               });
-              that.prepareServerUrl();
+              that.prepareServerUrl(requestData);
             } else {
               typeof callback === 'function' && callback();
             }
@@ -5547,7 +5546,7 @@ sd.bridge = {
               step: '3.2',
               output: 'all'
             });
-            that.prepareServerUrl();
+            that.prepareServerUrl(requestData);
           } else {
             typeof callback === 'function' && callback();
           }
@@ -5559,7 +5558,7 @@ sd.bridge = {
             step: '2',
             output: 'all'
           });
-          that.prepareServerUrl();
+          that.prepareServerUrl(requestData);
         } else {
           typeof callback === 'function' && callback();
         }
@@ -5570,7 +5569,7 @@ sd.bridge = {
         typeof callback === 'function' && callback();
       } else {
         if (_.isObject(sd.para.app_js_bridge) && sd.para.app_js_bridge.is_send === true) {
-          that.prepareServerUrl();
+          that.prepareServerUrl(requestData);
         } else {
           typeof callback === 'function' && callback();
         }
@@ -5581,7 +5580,7 @@ sd.bridge = {
         step: '1',
         output: 'code'
       });
-      that.prepareServerUrl();
+      that.prepareServerUrl(requestData);
     }
   },
   app_js_bridge_v1: function() {
