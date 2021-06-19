@@ -1157,8 +1157,8 @@
 
         function rnd() {
           seed = (seed * 9301 + 49297) % 233280;
-          return seed / (233280.0);
-        };
+          return seed / 233280.0;
+        }
         return function rand(number) {
           return Math.ceil(rnd(seed) * number);
         };
@@ -1224,13 +1224,14 @@
       };
 
       _.searchObjString = function(o) {
+        var white_list = ['$element_selector', '$element_path'];
         if (_.isObject(o)) {
           _.each(o, function(a, b) {
             if (_.isObject(a)) {
               _.searchObjString(o[b]);
             } else {
               if (_.isString(a)) {
-                o[b] = _.formatString(a, b === '$element_selector' ? 1024 : sd.para.max_string_length);
+                o[b] = _.formatString(a, _.indexOf(white_list, b) > -1 ? 1024 : sd.para.max_string_length);
               }
             }
           });
@@ -1691,7 +1692,6 @@
           if (valid_name && valid_value) {
             document.cookie = valid_name + '=' + encodeURIComponent(valid_value) + expires + '; path=/' + valid_domain + secure;
           }
-
         },
         encrypt: function(v) {
           return 'data:enc;' + _.rot13obfs(v);
@@ -2865,6 +2865,84 @@
         return Sys;
       };
 
+      _.getDomBySelector = function(selector) {
+        if (!_.isString(selector)) {
+          return null;
+        }
+        var arr = selector.split('>');
+        var el = null;
+
+        function getDom(selector, parent) {
+          selector = _.trim(selector);
+          var node;
+          if (selector === 'body') {
+            return document.getElementsByTagName('body')[0];
+          }
+          if (selector.indexOf('#') === 0) {
+            selector = selector.slice(1);
+            node = document.getElementById(selector);
+          } else if (selector.indexOf(':nth-of-type') > -1) {
+            var arr = selector.split(':nth-of-type');
+            if (!(arr[0] && arr[1])) {
+              return null;
+            }
+            var tagname = arr[0];
+            var indexArr = arr[1].match(/\(([0-9]+)\)/);
+            if (!(indexArr && indexArr[1])) {
+              return null;
+            }
+            var num = Number(indexArr[1]);
+            if (!(_.isElement(parent) && parent.children && parent.children.length > 0)) {
+              return null;
+            }
+            var child = parent.children;
+
+            for (var i = 0; i < child.length; i++) {
+              if (_.isElement(child[i])) {
+                var name = child[i].tagName.toLowerCase();
+                if (name === tagname) {
+                  num--;
+                  if (num === 0) {
+                    node = child[i];
+                    break;
+                  }
+                }
+              }
+            }
+            if (num > 0) {
+              return null;
+            }
+          }
+          if (!node) {
+            return null;
+          }
+          return node;
+        }
+
+        function get(parent) {
+          var tagSelector = arr.shift();
+          var element;
+          if (!tagSelector) {
+            return parent;
+          }
+          try {
+            element = getDom(tagSelector, parent);
+          } catch (error) {
+            sd.log(error);
+          }
+          if (!(element && _.isElement(element))) {
+            return null;
+          } else {
+            return get(element);
+          }
+        }
+        el = get();
+        if (!(el && _.isElement(el))) {
+          return null;
+        } else {
+          return el;
+        }
+      };
       _.jsonp = function(obj) {
         if (!(_.isObject(obj) && _.isString(obj.callbackName))) {
           sd.log('JSONP 请求缺少 callbackName');
@@ -2876,24 +2954,29 @@
         var script = document.createElement('script');
         var head = document.getElementsByTagName('head')[0];
         var timer = null;
+        var isError = false;
         head.appendChild(script);
         if (_.isNumber(obj.timeout)) {
           timer = setTimeout(function() {
+            if (isError) {
+              return false;
+            }
             obj.error('timeout');
             window[obj.callbackName] = function() {
               sd.log('call jsonp error');
             };
             timer = null;
             head.removeChild(script);
+            isError = true;
           }, obj.timeout);
         }
-        window[obj.callbackName] = function(data) {
-          obj.success(data);
+        window[obj.callbackName] = function() {
+          clearTimeout(timer);
+          timer = null;
+          obj.success.apply(null, arguments);
           window[obj.callbackName] = function() {
             sd.log('call jsonp error');
           };
-          clearTimeout(timer);
-          timer = null;
           head.removeChild(script);
         };
         if (obj.url.indexOf('?') > -1) {
@@ -2910,6 +2993,9 @@
           obj.url += '&' + obj.data;
         }
         script.onerror = function(err) {
+          if (isError) {
+            return false;
+          }
           window[obj.callbackName] = function() {
             sd.log('call jsonp error');
           };
@@ -2917,8 +3003,62 @@
           timer = null;
           head.removeChild(script);
           obj.error(err);
+          isError = true;
         };
         script.src = obj.url;
+      };
+
+      _.listenPageState = function(obj) {
+        var visibilystore = {
+          visibleHandle: _.isFunction(obj.visible) ? obj.visible : function() {},
+          hiddenHandler: _.isFunction(obj.hidden) ? obj.hidden : function() {},
+          visibilityChange: null,
+          hidden: null,
+          isSupport: function() {
+            return typeof document[this.hidden] !== 'undefined';
+          },
+          init: function() {
+            if (typeof document.hidden !== 'undefined') {
+              this.hidden = 'hidden';
+              this.visibilityChange = 'visibilitychange';
+            } else if (typeof document.mozHidden !== 'undefined') {
+              this.hidden = 'mozHidden';
+              this.visibilityChange = 'mozvisibilitychange';
+            } else if (typeof document.msHidden !== 'undefined') {
+              this.hidden = 'msHidden';
+              this.visibilityChange = 'msvisibilitychange';
+            } else if (typeof document.webkitHidden !== 'undefined') {
+              this.hidden = 'webkitHidden';
+              this.visibilityChange = 'webkitvisibilitychange';
+            }
+            this.listen();
+          },
+          listen: function() {
+            if (!this.isSupport()) {
+              if (document.addEventListener) {
+                window.addEventListener('focus', this.visibleHandle, 1);
+                window.addEventListener('blur', this.hiddenHandler, 1);
+              } else {
+                document.attachEvent('onfocusin', this.visibleHandle);
+                document.attachEvent('onfocusout', this.hiddenHandler);
+              }
+            } else {
+              var _this = this;
+              document.addEventListener(
+                _this.visibilityChange,
+                function() {
+                  if (!document[_this.hidden]) {
+                    _this.visibleHandle();
+                  } else {
+                    _this.hiddenHandler();
+                  }
+                },
+                1
+              );
+            }
+          }
+        };
+        visibilystore.init();
       };
 
       _.isSupportBeaconSend = function() {
@@ -3140,6 +3280,11 @@
         sd.para.heatmap.scroll_event_duration = sd.para.heatmap.scroll_event_duration || 18000;
         sd.para.heatmap.renderRefreshTime = sd.para.heatmap.renderRefreshTime || 1000;
         sd.para.heatmap.loadTimeout = sd.para.heatmap.loadTimeout || 1000;
+
+        if (sd.para.heatmap.get_vtrack_config !== false) {
+          sd.para.heatmap.get_vtrack_config = true;
+        }
+
         var trackAttrs = _.isArray(sd.para.heatmap.track_attr) ?
           _.filter(sd.para.heatmap.track_attr, function(v) {
             return v && typeof v === 'string';
@@ -3231,7 +3376,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.17.2';
+      sd.lib_version = '1.18.1';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4136,7 +4281,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.17.2'
+                  sdkversion: '1.18.1'
                 }
               },
               '*'
@@ -4275,6 +4420,8 @@
         }
         sd.store.init();
 
+        sd.vtrackcollect.init();
+
         sd.readyState.setState(4);
         if (sd._q && _.isArray(sd._q) && sd._q.length > 0) {
           _.each(sd._q, function(content) {
@@ -4290,7 +4437,7 @@
 
       if (sd.para.heatmap && sd.para.heatmap.collect_tags && _.isObject(sd.para.heatmap.collect_tags)) {
         _.each(sd.para.heatmap.collect_tags, function(val, key) {
-          if ((key !== 'div') && val) {
+          if (key !== 'div' && val) {
             sd.heatmap.otherTags.push(key);
           }
         });
@@ -4547,7 +4694,6 @@
     dataSend.getRealtimeInstance = function(data) {
       var sendType = this.getSendType(data);
       var obj = new this[sendType](data);
-      obj.defaultData = data;
       var start = obj.start;
       obj.start = function() {
         var me = this;
@@ -4665,10 +4811,7 @@
     dataSend.beacon.prototype.start = function() {
       var me = this;
       if (typeof navigator === 'object' && typeof navigator.sendBeacon === 'function') {
-        if (!navigator.sendBeacon(this.server_url, this.data)) {
-          this.defaultData.config.send_type = 'image';
-          sendState.realtimeSend(this.defaultData);
-        }
+        navigator.sendBeacon(this.server_url, this.data);
       }
       setTimeout(function() {
         me.isEnd();
@@ -4919,6 +5062,11 @@
           data.time = new Date() * 1;
         }
       }
+      var props = sd.vtrackcollect.customProp.getVtrackProps(JSON.parse(JSON.stringify(data)));
+      if (_.isObject(props) && !_.isEmptyObject(props)) {
+        data.properties = _.extend(data.properties, props);
+      }
+
       _.parseSuperProperties(data);
 
       _.filterReservedProperties(data.properties);
@@ -5778,7 +5926,7 @@
         } else if (hasA) {
           return hasA;
         } else if (tagName === 'div' && sd.para.heatmap.collect_tags.div && that.isDivLevelValid(target)) {
-          var max_level = sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level || 1;
+          var max_level = (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level) || 1;
           if (max_level > 1 || that.isCollectableDiv(target)) {
             return target;
           } else {
@@ -5804,7 +5952,7 @@
         return ans;
       },
       isDivLevelValid: function(element) {
-        var max_level = sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level || 1;
+        var max_level = (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level) || 1;
 
         var allDiv = element.getElementsByTagName('div');
         for (var i = allDiv.length - 1; i >= 0; i--) {
@@ -5914,15 +6062,15 @@
         }
         return -1;
       },
-      selector: function(el) {
+      selector: function(el, notuseid) {
         var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
-        if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && (!sd.para.heatmap || (sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id'))) {
+        if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && (!sd.para.heatmap || (sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id')) && !notuseid) {
           return '#' + el.getAttribute('id');
         } else {
           return el.tagName.toLowerCase() + (~i ? ':nth-of-type(' + (i + 1) + ')' : '');
         }
       },
-      getDomSelector: function(el, arr) {
+      getDomSelector: function(el, arr, notuseid) {
         if (!el || !el.parentNode || !el.parentNode.children) {
           return false;
         }
@@ -5932,9 +6080,9 @@
           arr.unshift('body');
           return arr.join(' > ');
         }
-        arr.unshift(this.selector(el));
-        if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id') return arr.join(' > ');
-        return this.getDomSelector(el.parentNode, arr);
+        arr.unshift(this.selector(el, notuseid));
+        if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id' && !notuseid) return arr.join(' > ');
+        return this.getDomSelector(el.parentNode, arr, notuseid);
       },
       na: function() {
         var a = document.documentElement.scrollLeft || window.pageXOffset;
@@ -5969,6 +6117,19 @@
           y: isNaN(a) ? 0 : a
         };
       },
+      getEleDetail: function(target) {
+        var selector = this.getDomSelector(target);
+        var prop = _.getEleInfo({
+          target: target
+        });
+        prop.$element_selector = selector ? selector : '';
+        prop.$element_path = sd.heatmap.getElementPath(target, sd.para.heatmap && sd.para.heatmap.element_selector === 'not_use_id');
+        var element_position = sd.heatmap.getElementPosition(target, prop.$element_path, sd.para.heatmap && sd.para.heatmap.element_selector === 'not_use_id');
+        if (_.isNumber(element_position)) {
+          prop.$element_position = element_position;
+        }
+        return prop;
+      },
       start: function(ev, target, tagName, customProps, callback) {
         var userCustomProps = _.isObject(customProps) ? customProps : {};
         var userCallback = _.isFunction(callback) ? callback : _.isFunction(customProps) ? customProps : undefined;
@@ -5976,17 +6137,8 @@
           return false;
         }
 
-        var selector = this.getDomSelector(target);
-        var prop = _.getEleInfo({
-          target: target
-        });
+        var prop = this.getEleDetail(target);
 
-        prop.$element_selector = selector ? selector : '';
-        prop.$element_path = sd.heatmap.getElementPath(target, sd.para.heatmap && sd.para.heatmap.element_selector === 'not_use_id');
-        var element_position = sd.heatmap.getElementPosition(target, prop.$element_path, sd.para.heatmap && sd.para.heatmap.element_selector === 'not_use_id');
-        if (_.isNumber(element_position)) {
-          prop.$element_position = element_position;
-        }
         if (sd.para.heatmap && sd.para.heatmap.custom_property) {
           var customP = sd.para.heatmap.custom_property(target);
           if (_.isObject(customP)) {
@@ -6161,7 +6313,6 @@
         } else {
           sd.para.heatmap.collect_elements = 'interact';
         }
-
         if (sd.para.heatmap.collect_elements === 'all') {
           _.addEvent(document, 'click', function(e) {
             var ev = e || window.event;
@@ -6204,6 +6355,477 @@
         }
       }
     });;
+
+    sd.customProp = {
+      events: [],
+      configSwitch: false,
+      collectAble: function() {
+        return this.configSwitch && _.isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config;
+      },
+      updateEvents: function() {
+        this.events = sd.vtrackcollect.getAssignConfigs(function(event) {
+          if (_.isObject(event) && _.isArray(event.properties) && event.properties.length > 0) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+        if (this.events.length) {
+          this.configSwitch = true;
+        } else {
+          this.configSwitch = false;
+        }
+      },
+      getVtrackProps: function(data) {
+        var props = {};
+        if (!this.collectAble()) {
+          return {};
+        }
+        if (data.event === '$WebClick') {
+          props = this.clickCustomPropMaker(data, this.events);
+        }
+        return props;
+      },
+      clickCustomPropMaker: function(data, events, configs) {
+        var _this = this;
+        var configs = configs || this.filterConfig(data, events, sd.vtrackcollect.url_info.page_url);
+        var props = {};
+        if (!configs.length) {
+          return {};
+        }
+        _.each(configs, function(config) {
+          if (_.isArray(config.properties) && config.properties.length > 0) {
+            _.each(config.properties, function(propConf) {
+              var prop = _this.getProp(propConf, data);
+              if (_.isObject(prop)) {
+                _.extend(props, prop);
+              }
+            });
+          }
+        });
+        return props;
+      },
+      getProp: function(propConf, data) {
+        if (!_.isObject(propConf)) {
+          return false;
+        }
+        if (!(_.isString(propConf.name) && propConf.name.length > 0)) {
+          sd.log('----vtrackcustom----属性名不合法,属性抛弃', propConf.name);
+          return false;
+        }
+
+        var result = {};
+        var value;
+        var regResult;
+
+        if (propConf.method === 'content') {
+          var el;
+          if (_.isString(propConf.element_selector) && propConf.element_selector.length > 0) {
+            el = _.getDomBySelector(propConf.element_selector);
+          } else if (_.isString(propConf.list_selector)) {
+            var clickTarget = _.getDomBySelector(data.properties.$element_selector);
+            if (clickTarget) {
+              var closeli = sd.heatmap.getClosestLi(clickTarget);
+              el = this.getPropElInLi(closeli, propConf.list_selector);
+            } else {
+              sd.log('----vtrackcustom----点击元素获取异常，属性抛弃', propConf.name);
+              return false;
+            }
+          } else {
+            sd.log('----vtrackcustom----属性配置异常，属性抛弃', propConf.name);
+            return false;
+          }
+
+          if (el && _.isElement(el)) {
+            if (el.tagName.toLowerCase() === 'input') {
+              value = el.value || '';
+            } else if (el.tagName.toLowerCase() === 'select') {
+              var sid = el.selectedIndex;
+              if (_.isNumber(sid) && _.isElement(el[sid])) {
+                value = sd._.getElementContent(el[sid], 'select');
+              }
+            } else {
+              value = _.getElementContent(el, el.tagName.toLowerCase());
+            }
+          } else {
+            sd.log('----vtrackcustom----属性元素获取失败，属性抛弃', propConf.name);
+            return false;
+          }
+
+          if (propConf.regular) {
+            try {
+              regResult = new RegExp(propConf.regular).exec(value);
+            } catch (error) {
+              sd.log('----vtrackcustom----正则处理失败，属性抛弃', propConf.name);
+              return false;
+            }
+
+            if (regResult === null) {
+              sd.log('----vtrackcustom----属性规则处理，未匹配到结果,属性抛弃', propConf.name);
+              return false;
+            } else {
+              if (!(_.isArray(regResult) && _.isString(regResult[0]))) {
+                sd.log('----vtrackcustom----正则处理异常，属性抛弃', propConf.name, regResult);
+                return false;
+              }
+              value = regResult[0];
+            }
+          }
+
+          if (propConf.type === 'STRING') {
+            result[propConf.name] = value;
+          } else if (propConf.type === 'NUMBER') {
+            if (value.length < 1) {
+              sd.log('----vtrackcustom----未获取到数字内容，属性抛弃', propConf.name, value);
+              return false;
+            }
+            if (!isNaN(Number(value))) {
+              result[propConf.name] = Number(value);
+            } else {
+              sd.log('----vtrackcustom----数字类型属性转换失败，属性抛弃', propConf.name, value);
+              return false;
+            }
+          }
+
+          return result;
+        } else {
+          sd.log('----vtrackcustom----属性不支持此获取方式', propConf.name, propConf.method);
+          return false;
+        }
+      },
+      getPropElInLi: function(li, list_selector) {
+        if (!(li && _.isElement(li) && _.isString(list_selector))) {
+          return null;
+        }
+        if (li.tagName.toLowerCase() !== 'li') {
+          return null;
+        }
+        var li_selector = sd.heatmap.getDomSelector(li);
+        var selector;
+        if (li_selector) {
+          selector = li_selector + list_selector;
+          var target = _.getDomBySelector(selector);
+          if (target) {
+            return target;
+          } else {
+            return null;
+          }
+        } else {
+          sd.log('----vtrackcustom---获取同级属性元素失败，selector信息异常', li_selector, list_selector);
+          return null;
+        }
+      },
+
+      filterConfig: function(data, events, page_url) {
+        var arr = [];
+        if (!page_url) {
+          var urlinfo = sd.vtrackcollect.initUrl();
+          if (!urlinfo) {
+            return [];
+          } else {
+            page_url = urlinfo.page_url;
+          }
+        }
+        if (data.event === '$WebClick') {
+          _.each(events, function(item, index) {
+            if (_.isObject(item) && item.event_type === 'webclick' && _.isObject(item.event)) {
+              if (item.event.url_host === page_url.host && item.event.url_path === page_url.pathname) {
+                if (sd.vtrackcollect.configIsMatch(data.properties, item.event)) {
+                  arr.push(item);
+                }
+              }
+            }
+          });
+        }
+        return arr;
+      }
+    };
+
+
+
+    sd.vtrackcollect = {
+      config: {},
+      storageEnable: true,
+      storage_name: 'webjssdkvtrackcollect',
+      para: {
+        session_time: 30 * 60 * 1000,
+        timeout: 5000,
+        update_interval: 30 * 60 * 1000
+      },
+      url_info: {},
+      timer: null,
+      update_time: null,
+      customProp: sd.customProp,
+      initUrl: function() {
+        var url_info = {
+          server_url: {
+            project: '',
+            host: ''
+          },
+          page_url: {
+            host: '',
+            pathname: ''
+          },
+          api_url: ''
+        };
+        var serverParse;
+        if (!_.isString(sd.para.server_url)) {
+          sd.log('----vtrackcollect---server_url必须为字符串');
+          return false;
+        }
+        try {
+          serverParse = _.URL(sd.para.server_url);
+          url_info.server_url.project = serverParse.searchParams.get('project') || 'default';
+          url_info.server_url.host = serverParse.host;
+        } catch (error) {
+          sd.log('----vtrackcollect---server_url解析异常', error);
+          return false;
+        }
+
+        var urlParse;
+        try {
+          urlParse = _.URL(location.href);
+          url_info.page_url.host = urlParse.hostname;
+          url_info.page_url.pathname = urlParse.pathname;
+        } catch (error) {
+          sd.log('----vtrackcollect---页面地址解析异常', error);
+          return false;
+        }
+
+        var apiParse;
+        try {
+          apiParse = new _.urlParse(sd.para.server_url);
+          apiParse._values.Path = '/config/visualized/Web.conf';
+          url_info.api_url = apiParse.getUrl();
+        } catch (error) {
+          sd.log('----vtrackcollect---API地址解析异常', error);
+          return false;
+        }
+        this.url_info = url_info;
+
+        return url_info;
+      },
+      init: function() {
+        if (!(_.isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config)) {
+          sd.log('----vtrackcustom----初始化失败，get_vtrack_config开关未开启');
+          return false;
+        }
+
+        if (!_.localStorage.isSupport()) {
+          this.storageEnable = false;
+        }
+        if (!this.initUrl()) {
+          sd.log('----vtrackcustom----初始化失败，url信息解析失败');
+          return false;
+        }
+
+        if (!this.storageEnable) {
+          this.getConfigFromServer();
+        } else {
+          var data = _.localStorage.parse(this.storage_name);
+          if (!(_.isObject(data) && _.isObject(data.data))) {
+            this.getConfigFromServer();
+          } else if (!this.serverUrlIsSame(data.serverUrl)) {
+            this.getConfigFromServer();
+          } else {
+            this.config = data.data;
+            this.update_time = data.updateTime;
+            this.updateConfig(data.data);
+            var now_time = new Date().getTime();
+            var duration = now_time - this.update_time;
+            if (!(_.isNumber(duration) && duration > 0 && duration < this.para.session_time)) {
+              this.getConfigFromServer();
+            } else {
+              var next_time = this.para.update_interval - duration;
+              this.setNextFetch(next_time);
+            }
+          }
+        }
+        this.pageStateListenner();
+      },
+      serverUrlIsSame: function(obj) {
+        if (!_.isObject(obj)) {
+          return false;
+        }
+        if (obj.host === this.url_info.server_url.host && obj.project === this.url_info.server_url.project) {
+          return true;
+        }
+        return false;
+      },
+      getConfigFromServer: function() {
+        var _this = this;
+        var success = function(code, data) {
+          _this.update_time = new Date().getTime();
+          var serverData = {};
+          if (code === 200) {
+            if (data && _.isObject(data) && data.os === 'Web') {
+              serverData = data;
+              _this.updateConfig(serverData);
+            }
+          } else if (code === 205) {
+            _this.updateConfig(serverData);
+          } else if (code === 304) {
+            serverData = _this.config;
+          } else {
+            sd.log('----vtrackcustom----数据异常', code);
+            _this.updateConfig(serverData);
+          }
+          _this.updateStorage(serverData);
+          _this.setNextFetch();
+        };
+        var error = function(err) {
+          _this.update_time = new Date().getTime();
+          sd.log('----vtrackcustom----配置拉取失败', err);
+          _this.setNextFetch();
+        };
+        this.sendRequest(success, error);
+      },
+      setNextFetch: function(time) {
+        var _this = this;
+        if (this.timer) {
+          clearTimeout(this.timer);
+          this.timer = null;
+        }
+        time = time || this.para.update_interval;
+        this.timer = setTimeout(function() {
+          _this.getConfigFromServer();
+        }, time);
+      },
+      pageStateListenner: function() {
+        var _this = this;
+        _.listenPageState({
+          visible: function() {
+            var time = new Date().getTime();
+            var duration = time - _this.update_time;
+            if (_.isNumber(duration) && duration > 0 && duration < _this.para.update_interval) {
+              var next_time = _this.para.update_interval - duration;
+              _this.setNextFetch(next_time);
+            } else {
+              _this.getConfigFromServer();
+            }
+          },
+          hidden: function() {
+            if (_this.timer) {
+              clearTimeout(_this.timer);
+              _this.timer = null;
+            }
+          }
+        });
+      },
+      updateConfig: function(data) {
+        if (!_.isObject(data)) {
+          return false;
+        }
+        this.config = data;
+        this.customProp.updateEvents();
+      },
+      updateStorage: function(data) {
+        if (!this.storageEnable) {
+          return false;
+        }
+        if (!_.isObject(data)) {
+          return false;
+        }
+        var server_url;
+        if (!this.url_info.server_url) {
+          var urlinfo = sd.vtrackcollect.initUrl();
+          if (!urlinfo) {
+            return false;
+          } else {
+            server_url = urlinfo.server_url;
+          }
+        } else {
+          server_url = this.url_info.server_url;
+        }
+        var obj = {
+          updateTime: new Date().getTime(),
+          data: data,
+          serverUrl: server_url
+        };
+        _.localStorage.set(this.storage_name, JSON.stringify(obj));
+      },
+      sendRequest: function(suc, err) {
+        var _this = this;
+        var data = {
+          app_id: this.url_info.page_url.host
+        };
+        if (this.config.version) {
+          data.v = this.config.version;
+        }
+        _.jsonp({
+          url: _this.url_info.api_url,
+          callbackName: 'saJSSDKVtrackCollectConfig',
+          data: data,
+          timeout: _this.para.timeout,
+          success: function(code, data) {
+            suc(code, data);
+          },
+          error: function(error) {
+            err(error);
+          }
+        });
+      },
+      getAssignConfigs: function(func) {
+        var _this = this;
+        var arr = [];
+        if (!(_.isObject(this.config) && _.isArray(this.config.events) && this.config.events.length > 0)) {
+          return [];
+        }
+        _.each(this.config.events, function(event) {
+          if (_.isObject(event) && _.isObject(event.event) && event.event.url_host === _this.url_info.page_url.host && event.event.url_path === _this.url_info.page_url.pathname) {
+            if (func(event)) {
+              arr.push(event);
+            }
+          }
+        });
+        return arr;
+      },
+      isDiv: function(obj) {
+        if (obj.element_path) {
+          var pathArr = obj.element_path.split('>');
+          var lastPath = _.trim(pathArr.pop());
+          if (lastPath.slice(0, 3) !== 'div') {
+            return false;
+          }
+        }
+        return true;
+      },
+      configIsMatch: function(properties, eventConf) {
+        if (!eventConf.element_path) {
+          return false;
+        }
+
+        if (eventConf.limit_element_content) {
+          if (eventConf.element_content !== properties.$element_content) {
+            return false;
+          }
+        }
+        if (eventConf.limit_element_position) {
+          if (eventConf.element_position !== String(properties.$element_position)) {
+            return false;
+          }
+        }
+
+        if (properties.$element_position !== undefined) {
+          if (eventConf.element_path !== properties.$element_path) {
+            return false;
+          }
+        } else {
+          if (sd.vtrackcollect.isDiv({
+              element_path: eventConf.element_path
+            })) {
+            if (properties.$element_path.indexOf(eventConf.element_path) < 0) {
+              return false;
+            }
+          } else {
+            if (eventConf.element_path !== properties.$element_path) {
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+    };;
 
     sd.init = function(para) {
       if (sd.readyState && sd.readyState.state && sd.readyState.state >= 2) {

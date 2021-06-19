@@ -15,7 +15,7 @@
 SensorsAnalytics SDK 是国内第一家开源商用版用户行为采集 SDK，目前支持代码埋点、全埋点、App 点击图、可视化全埋点等。目前已累计有 1500 多家付费客户，2500+ 的 App 集成使用，作为 App 数据采集利器，致力于帮助客户挖掘更多的商业价值，为其精准运营和业务支撑提供了可靠的数据来源。其采集全面而灵活、性能良好，并一直保持稳定的迭代，经受住了时间和客户的考验。
 
 ## 使用说明
-使用方法请参考文档 http://www.sensorsdata.cn/manual/js_sdk.html  
+使用方法请参考文档 https://manual.sensorsdata.cn/sa/latest/tech_sdk_client_web-7548149.html  
 如有疑问请联系邮箱 shengyonggen@sensorsdata.cn  
 注意 SDK 可能不完全向前兼容，请查看版本更新说明 [CHANGELOG.md](CHANGELOG.md) ，如果有说明不兼容的话，需要升级神策分析对应的版本    
 
