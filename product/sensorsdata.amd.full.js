@@ -3271,6 +3271,9 @@
         div: false
       };
       var ignore_tags_default = ['mark', '/mark', 'strong', 'b', 'em', 'i', 'u', 'abbr', 'ins', 'del', 's', 'sup'];
+      if (sd.para.heatmap && !_.isObject(sd.para.heatmap)) {
+        sd.para.heatmap = {};
+      }
       if (_.isObject(sd.para.heatmap)) {
         sd.para.heatmap.clickmap = sd.para.heatmap.clickmap || 'default';
         sd.para.heatmap.scroll_notice_map = sd.para.heatmap.scroll_notice_map || 'default';
@@ -3374,7 +3377,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.18.1';
+      sd.lib_version = '1.18.2';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4279,7 +4282,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.18.1'
+                  sdkversion: '1.18.2'
                 }
               },
               '*'
@@ -5012,11 +5015,17 @@
         },
         properties: {}
       };
-
-      if (_.isObject(p) && _.isObject(p.properties) && !_.isEmptyObject(p.properties) && p.properties.$lib_detail) {
-        data.lib.$lib_detail = p.properties.$lib_detail;
-        delete p.properties.$lib_detail;
+      if (_.isObject(p) && _.isObject(p.properties) && !_.isEmptyObject(p.properties)) {
+        if (p.properties.$lib_detail) {
+          data.lib.$lib_detail = p.properties.$lib_detail;
+          delete p.properties.$lib_detail;
+        }
+        if (p.properties.$lib_method) {
+          data.lib.$lib_method = p.properties.$lib_method;
+          delete p.properties.$lib_method;
+        }
       }
+
       _.extend(data, sd.store.getUnionId(), p);
 
       if (_.isObject(p.properties) && !_.isEmptyObject(p.properties)) {
@@ -6348,11 +6357,50 @@
             var theTarget = sd.heatmap.getTargetElement(target, e);
             if (theTarget) {
               that.start(ev, theTarget, theTarget.tagName.toLowerCase());
+            } else if (_.isElement(target) && target.tagName.toLowerCase() === 'div' && _.isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config && sd.unlimitedDiv.events.length > 0) {
+              if (sd.unlimitedDiv.isTargetEle(target)) {
+                that.start(ev, target, target.tagName.toLowerCase(), {
+                  $lib_method: 'vtrack'
+                });
+              }
             }
           });
         }
       }
     });;
+
+    sd.unlimitedDiv = {
+      events: [],
+      init: function() {
+        this.filterWebClickEvents();
+      },
+      filterWebClickEvents: function(data) {
+        this.events = sd.vtrackcollect.getAssignConfigs(function(event) {
+          if (_.isObject(event) && event.event.unlimited_div === true && event.event_type === 'webclick') {
+            return true;
+          } else {
+            return false;
+          }
+        }, data);
+      },
+      isTargetEle: function(ele) {
+        var prop = sd.heatmap.getEleDetail(ele);
+
+        if (!_.isObject(prop) || !_.isString(prop.$element_path)) {
+          return false;
+        }
+
+        for (var i = 0; i < this.events.length; i++) {
+          if (_.isObject(this.events[i]) && _.isObject(this.events[i].event) && sd.vtrackcollect.configIsMatch(prop, this.events[i].event)) {
+            return true;
+          }
+        }
+
+        return false;
+      }
+    };
+
+
 
     sd.customProp = {
       events: [],
@@ -6542,6 +6590,7 @@
 
 
     sd.vtrackcollect = {
+      unlimitedDiv: sd.unlimitedDiv,
       config: {},
       storageEnable: true,
       storage_name: 'webjssdkvtrackcollect',
@@ -6716,6 +6765,7 @@
         }
         this.config = data;
         this.customProp.updateEvents();
+        this.unlimitedDiv.init(data);
       },
       updateStorage: function(data) {
         if (!this.storageEnable) {
@@ -6763,19 +6813,27 @@
           }
         });
       },
-      getAssignConfigs: function(func) {
-        var _this = this;
-        var arr = [];
-        if (!(_.isObject(this.config) && _.isArray(this.config.events) && this.config.events.length > 0)) {
+      getAssignConfigs: function(func, config) {
+        if (!this.url_info.server_url && !this.initUrl()) {
           return [];
         }
-        _.each(this.config.events, function(event) {
+        var _this = this;
+        var arr = [];
+        config = config || this.config;
+        config.events = config.events || config.eventList;
+
+        if (!(_.isObject(config) && _.isArray(config.events) && config.events.length > 0)) {
+          return [];
+        }
+
+        _.each(config.events, function(event) {
           if (_.isObject(event) && _.isObject(event.event) && event.event.url_host === _this.url_info.page_url.host && event.event.url_path === _this.url_info.page_url.pathname) {
             if (func(event)) {
               arr.push(event);
             }
           }
         });
+
         return arr;
       },
       isDiv: function(obj) {
