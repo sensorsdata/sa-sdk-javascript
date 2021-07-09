@@ -861,11 +861,8 @@
         if (!f) {
           return false;
         }
-        try {
-          return /^\s*\bfunction\b/.test(f);
-        } catch (x) {
-          return false;
-        }
+        var type = Object.prototype.toString.call(f);
+        return type == '[object Function]' || type == '[object AsyncFunction]';
       };
 
       _.isArguments = function(obj) {
@@ -3377,7 +3374,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.18.2';
+      sd.lib_version = '1.18.3';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4282,7 +4279,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.18.2'
+                  sdkversion: '1.18.3'
                 }
               },
               '*'
