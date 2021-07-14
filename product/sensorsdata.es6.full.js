@@ -3273,8 +3273,8 @@ sd.initPara = function(para) {
     sd.para.heatmap.renderRefreshTime = sd.para.heatmap.renderRefreshTime || 1000;
     sd.para.heatmap.loadTimeout = sd.para.heatmap.loadTimeout || 1000;
 
-    if (sd.para.heatmap.get_vtrack_config !== false) {
-      sd.para.heatmap.get_vtrack_config = true;
+    if (sd.para.heatmap.get_vtrack_config !== true) {
+      sd.para.heatmap.get_vtrack_config = false;
     }
 
     var trackAttrs = _.isArray(sd.para.heatmap.track_attr) ?
@@ -3368,7 +3368,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.18.3';
+  sd.lib_version = '1.18.4';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4273,7 +4273,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.18.3'
+              sdkversion: '1.18.4'
             }
           },
           '*'
@@ -6645,7 +6645,6 @@ sd.vtrackcollect = {
   },
   init: function() {
     if (!(_.isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config)) {
-      sd.log('----vtrackcustom----初始化失败，get_vtrack_config开关未开启');
       return false;
     }
 
