@@ -3368,7 +3368,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.18.4';
+  sd.lib_version = '1.18.5';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4273,7 +4273,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.18.4'
+              sdkversion: '1.18.5'
             }
           },
           '*'
@@ -6108,8 +6108,8 @@ var heatmap = (sd.heatmap = {
     return isNaN(a) ? 0 : a;
   },
   W: function(a) {
-    var b = parseInt(+a.clientX + +this.na(), 10);
-    var a = parseInt(+a.clientY + +this.i(), 10);
+    var b = parseInt(+a.clientX + Number(this.na()), 10);
+    var a = parseInt(+a.clientY + Number(this.i()), 10);
     return {
       x: isNaN(b) ? 0 : b,
       y: isNaN(a) ? 0 : a
