@@ -2698,8 +2698,14 @@
             }
             val.callback.apply(val.context, args);
           });
+
+          this.pendingEvents.push({
+            type: type,
+            data: args
+          });
+          this.pendingEvents.length > 20 ? this.pendingEvents.shift() : null;
         },
-        on: function(event, callback, context) {
+        on: function(event, callback, context, replayAll) {
           if (typeof callback !== 'function') {
             return;
           }
@@ -2708,31 +2714,23 @@
             callback: callback,
             context: context || this
           });
+
+          var replayAll = replayAll === false ? false : true;
+          if (this.pendingEvents.length > 0 && replayAll) {
+            _.each(this.pendingEvents, function(val) {
+              if (val.type === event) {
+                callback.apply(context, val.data);
+              }
+            });
+          }
         },
         tempAdd: function(event, data) {
           if (!data || !event) {
             return;
           }
-
-          this.pendingEvents.push({
-            type: event,
-            data: data
-          });
-          this.pendingEvents.length > 20 ? this.pendingEvents.shift() : null;
+          return this.emit(event, data);
         },
-        isReady: function() {
-          var that = this;
-          this.tempAdd = this.emit;
-
-          if (this.pendingEvents.length === 0) {
-            return;
-          }
-          _.each(this.pendingEvents, function(val) {
-            that.emit(val.type, val.data);
-          });
-
-          this.pendingEvents = [];
-        }
+        isReady: function() {}
       };
 
       _.rot13obfs = function(str, key) {
@@ -3374,7 +3372,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.18.5';
+      sd.lib_version = '1.18.6';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4279,7 +4277,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.18.5'
+                  sdkversion: '1.18.6'
                 }
               },
               '*'
