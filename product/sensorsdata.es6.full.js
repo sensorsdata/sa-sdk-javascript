@@ -3441,7 +3441,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.18.7';
+  sd.lib_version = '1.18.8';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4363,7 +4363,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.18.7'
+              sdkversion: '1.18.8'
             }
           },
           '*'
