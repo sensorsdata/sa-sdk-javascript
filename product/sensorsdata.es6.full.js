@@ -2217,6 +2217,59 @@ if (!String.prototype.replaceAll) {
     return '';
   };
 
+  _.isBaiduTraffic = function() {
+    var referer = document.referrer;
+    var endsWith = 'baidu.com';
+    if (!referer) {
+      return false;
+    }
+
+    try {
+      var hostname = _.URL(referer).hostname;
+      return hostname && hostname.substring(hostname.length - endsWith.length) === endsWith;
+    } catch (e) {
+      return false;
+    }
+    return false;
+  };
+
+  _.getReferrerEqid = function() {
+    var query = _.getQueryParamsFromUrl(document.referrer);
+    if (_.isEmptyObject(query) || !query.eqid) {
+      return _.UUID().replace(/-/g, '');
+    }
+    return query.eqid;
+  };
+
+  _.getReferrerEqidType = function() {
+    var query = _.getQueryParamsFromUrl(document.referrer);
+    if (_.isEmptyObject(query) || !query.eqid) {
+      return 'baidu_sem_keyword_id';
+    }
+    return 'baidu_seo_keyword_id';
+  };
+
+  _.getBaiduKeyword = {
+    data: {},
+    id: function() {
+      if (this.data.id) {
+        return this.data.id;
+      } else {
+        this.data.id = _.getReferrerEqid();
+        return this.data.id;
+      }
+    },
+    type: function() {
+      if (this.data.type) {
+        return this.data.type;
+      } else {
+        this.data.type = _.getReferrerEqidType();
+        return this.data.type;
+      }
+    }
+  };
+
+
   _.isReferralTraffic = function(refererstring) {
     refererstring = refererstring || document.referrer;
     if (refererstring === '') {
@@ -2409,7 +2462,7 @@ if (!String.prototype.replaceAll) {
     return typeof referrer === 'string' ? referrer : '';
   };
 
-  _.getKeywordFromReferrer = function(referrerUrl) {
+  _.getKeywordFromReferrer = function(referrerUrl, activeValue) {
     referrerUrl = referrerUrl || document.referrer;
     var search_keyword = sd.para.source_type.keyword;
     if (document && typeof referrerUrl === 'string') {
@@ -2417,7 +2470,11 @@ if (!String.prototype.replaceAll) {
         var searchEngine = _.getReferSearchEngine(referrerUrl);
         var query = _.getQueryParamsFromUrl(referrerUrl);
         if (_.isEmptyObject(query)) {
-          return '未取到值';
+          if (sd.para.preset_properties.search_keyword_baidu && _.isBaiduTraffic()) {
+            return;
+          } else {
+            return '未取到值';
+          }
         }
         var temp = null;
         for (var i in search_keyword) {
@@ -2428,16 +2485,32 @@ if (!String.prototype.replaceAll) {
                 for (var i = 0; i < temp.length; i++) {
                   var _value = query[temp[i]];
                   if (_value) {
-                    return _value;
+                    if (activeValue) {
+                      return {
+                        active: _value
+                      };
+                    } else {
+                      return _value;
+                    }
                   }
                 }
               } else if (query[temp]) {
-                return query[temp];
+                if (activeValue) {
+                  return {
+                    active: query[temp]
+                  };
+                } else {
+                  return query[temp];
+                }
               }
             }
           }
         }
-        return '未取到值';
+        if (sd.para.preset_properties.search_keyword_baidu && _.isBaiduTraffic()) {
+          return;
+        } else {
+          return '未取到值'
+        }
       } else {
         if (referrerUrl === '') {
           return '未取到值_直接打开';
@@ -2449,6 +2522,7 @@ if (!String.prototype.replaceAll) {
       return '取值异常_referrer异常_' + String(referrerUrl);
     }
   };
+
 
   _.getWxAdIdFromUrl = function(url) {
     var click_id = _.getQueryParam(url, 'gdt_vid');
@@ -3099,6 +3173,7 @@ if (!String.prototype.replaceAll) {
 
 sd.para_default = {
   preset_properties: {
+    search_keyword_baidu: false,
     latest_utm: true,
     latest_traffic_source_type: true,
     latest_search_keyword: true,
@@ -3607,6 +3682,14 @@ var commonWays = {
     }
 
     if (sd.is_first_visitor && !para.not_set_profile) {
+      var eqidObj = {};
+
+      if (sd.para.preset_properties.search_keyword_baidu && _.isReferralTraffic(document.referrer) && _.isBaiduTraffic()) {
+        eqidObj['$search_keyword_id'] = _.getBaiduKeyword.id();
+        eqidObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
+        eqidObj['$search_keyword_id_hash'] = _.hashCode(eqidObj['$search_keyword_id']);
+      }
+
       sd.setOnceProfile(
         _.extend({
             $first_visit_time: new Date(),
@@ -3616,7 +3699,7 @@ var commonWays = {
             $first_traffic_source_type: _.getSourceFromReferrer(),
             $first_search_keyword: _.getKeywordFromReferrer()
           },
-          getUtm()
+          getUtm(), eqidObj
         )
       );
       sd.is_first_visitor = false;
@@ -3663,6 +3746,14 @@ var commonWays = {
       }
     });
     if (sd.is_first_visitor && !para.not_set_profile) {
+      var eqidObj = {};
+
+      if (sd.para.preset_properties.search_keyword_baidu && _.isReferralTraffic(document.referrer) && _.isBaiduTraffic()) {
+        eqidObj['$search_keyword_id'] = _.getBaiduKeyword.id();
+        eqidObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
+        eqidObj['$search_keyword_id_hash'] = _.hashCode(eqidObj['$search_keyword_id']);
+      }
+
       sd.setOnceProfile(
         _.extend({
             $first_visit_time: new Date(),
@@ -3672,11 +3763,12 @@ var commonWays = {
             $first_traffic_source_type: _.getSourceFromReferrer(),
             $first_search_keyword: _.getKeywordFromReferrer()
           },
-          $utms
+          $utms, eqidObj
         )
       );
       sd.is_first_visitor = false;
     }
+
     if (para.not_set_profile) {
       delete para.not_set_profile;
     }
@@ -5028,7 +5120,9 @@ saEvent.send = function(p, callback) {
       data.properties.$latest_referrer = '取值异常';
     }
     if (sd.para.preset_properties.latest_search_keyword && !_.isString(data.properties.$latest_search_keyword)) {
-      data.properties.$latest_search_keyword = '取值异常';
+      if (!sd.para.preset_properties.search_keyword_baidu || !_.isString(data.properties.$search_keyword_id) || !_.isNumber(data.properties.$search_keyword_id_hash) || !_.isString(data.properties.$search_keyword_id_type)) {
+        data.properties.$latest_search_keyword = '取值异常';
+      }
     }
     if (sd.para.preset_properties.latest_traffic_source_type && !_.isString(data.properties.$latest_traffic_source_type)) {
       data.properties.$latest_traffic_source_type = '取值异常';
@@ -5376,21 +5470,34 @@ var saNewUser = {
   checkIsFirstLatest: function() {
     var url_domain = _.info.pageProp.url_domain;
 
-    var latest_utms = ['$utm_source', '$utm_medium', '$utm_campaign', '$utm_content', '$utm_term'];
-    var props = store.getProps();
-    for (var i = 0; i < latest_utms.length; i++) {
-      if (latest_utms[i] in props) {
-        delete props[latest_utms[i]];
-      }
-    }
-    store.setProps(props, true);
-
 
     var latestObj = {};
 
     if (url_domain === '') {
       url_domain = 'url解析失败';
     }
+
+    var baiduKey = _.getKeywordFromReferrer(document.referrer, true);
+    if (sd.para.preset_properties.search_keyword_baidu) {
+      if (_.isReferralTraffic(document.referrer)) {
+        if (_.isBaiduTraffic() && !(_.isObject(baiduKey) && baiduKey.active)) {
+          latestObj['$search_keyword_id'] = _.getBaiduKeyword.id();
+          latestObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
+          latestObj['$search_keyword_id_hash'] = _.hashCode(latestObj['$search_keyword_id']);
+        } else {
+          sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
+          sd.store._state.props.$search_keyword_id_type && delete sd.store._state.props.$search_keyword_id_type;
+          sd.store._state.props.$search_keyword_id_hash && delete sd.store._state.props.$search_keyword_id_hash;
+        }
+      }
+    } else {
+      sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
+      sd.store._state.props.$search_keyword_id_type && delete sd.store._state.props.$search_keyword_id_type;
+      sd.store._state.props.$search_keyword_id_hash && delete sd.store._state.props.$search_keyword_id_hash;
+    }
+
+    sd.store.save();
+
 
     _.each(sd.para.preset_properties, function(value, key) {
       if (key.indexOf('latest_') === -1) {
@@ -5418,7 +5525,11 @@ var saNewUser = {
               latestObj['$latest_referrer'] = _.isDecodeURI(sd.para.url_is_decode, _.info.pageProp.referrer);
               break;
             case 'search_keyword':
-              latestObj['$latest_search_keyword'] = _.getKeywordFromReferrer();
+              if (_.getKeywordFromReferrer()) {
+                latestObj['$latest_search_keyword'] = _.getKeywordFromReferrer();
+              } else if (_.isObject(sd.store._state.props) && sd.store._state.props.$latest_search_keyword) {
+                delete sd.store._state.props.$latest_search_keyword;
+              }
               break;
             case 'landing_page':
               latestObj['$latest_landing_page'] = _.isDecodeURI(sd.para.url_is_decode, location.href);
