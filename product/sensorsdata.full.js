@@ -3449,7 +3449,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.18.8';
+      sd.lib_version = '1.18.9';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -3674,8 +3674,6 @@
         }
         para = _.isObject(para) ? para : {};
 
-        para = _.isObject(para) ? para : {};
-
         function getUtm() {
           var utms = _.info.campaignParams();
           var $utms = {};
@@ -3689,29 +3687,7 @@
           return $utms;
         }
 
-        if (sd.is_first_visitor && !para.not_set_profile) {
-          var eqidObj = {};
-
-          if (sd.para.preset_properties.search_keyword_baidu && _.isReferralTraffic(document.referrer) && _.isBaiduTraffic()) {
-            eqidObj['$search_keyword_id'] = _.getBaiduKeyword.id();
-            eqidObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
-            eqidObj['$search_keyword_id_hash'] = _.hashCode(eqidObj['$search_keyword_id']);
-          }
-
-          sd.setOnceProfile(
-            _.extend({
-                $first_visit_time: new Date(),
-                $first_referrer: _.isDecodeURI(sd.para.url_is_decode, _.getReferrer()),
-                $first_browser_language: navigator.language || '取值异常',
-                $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
-                $first_traffic_source_type: _.getSourceFromReferrer(),
-                $first_search_keyword: _.getKeywordFromReferrer()
-              },
-              getUtm(), eqidObj
-            )
-          );
-          sd.is_first_visitor = false;
-        }
+        var is_set_profile = !para.not_set_profile;
         if (para.not_set_profile) {
           delete para.not_set_profile;
         }
@@ -3734,6 +3710,32 @@
         }
         closure(para, callback);
         this.autoTrackSinglePage = closure;
+
+        if (sd.is_first_visitor && is_set_profile) {
+          var eqidObj = {};
+
+          if (sd.para.preset_properties.search_keyword_baidu && _.isReferralTraffic(document.referrer) && _.isBaiduTraffic()) {
+            eqidObj['$search_keyword_id'] = _.getBaiduKeyword.id();
+            eqidObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
+            eqidObj['$search_keyword_id_hash'] = _.hashCode(eqidObj['$search_keyword_id']);
+          }
+
+          sd.setOnceProfile(
+            _.extend({
+                $first_visit_time: new Date(),
+                $first_referrer: _.isDecodeURI(sd.para.url_is_decode, _.getReferrer()),
+                $first_browser_language: navigator.language || '取值异常',
+                $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
+                $first_traffic_source_type: _.getSourceFromReferrer(),
+                $first_search_keyword: _.getKeywordFromReferrer()
+              },
+              getUtm(), eqidObj
+            )
+          );
+
+          sd.is_first_visitor = false;
+        }
+
       },
       autoTrackWithoutProfile: function(para, callback) {
         para = _.isObject(para) ? para : {};
@@ -3753,30 +3755,8 @@
             $utms[i] = utms[i];
           }
         });
-        if (sd.is_first_visitor && !para.not_set_profile) {
-          var eqidObj = {};
 
-          if (sd.para.preset_properties.search_keyword_baidu && _.isReferralTraffic(document.referrer) && _.isBaiduTraffic()) {
-            eqidObj['$search_keyword_id'] = _.getBaiduKeyword.id();
-            eqidObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
-            eqidObj['$search_keyword_id_hash'] = _.hashCode(eqidObj['$search_keyword_id']);
-          }
-
-          sd.setOnceProfile(
-            _.extend({
-                $first_visit_time: new Date(),
-                $first_referrer: _.isDecodeURI(sd.para.url_is_decode, _.getReferrer()),
-                $first_browser_language: navigator.language || '取值异常',
-                $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
-                $first_traffic_source_type: _.getSourceFromReferrer(),
-                $first_search_keyword: _.getKeywordFromReferrer()
-              },
-              $utms, eqidObj
-            )
-          );
-          sd.is_first_visitor = false;
-        }
-
+        var is_set_profile = !para.not_set_profile;
         if (para.not_set_profile) {
           delete para.not_set_profile;
         }
@@ -3815,6 +3795,32 @@
           ),
           callback
         );
+
+        if (sd.is_first_visitor && is_set_profile) {
+          var eqidObj = {};
+
+          if (sd.para.preset_properties.search_keyword_baidu && _.isReferralTraffic(document.referrer) && _.isBaiduTraffic()) {
+            eqidObj['$search_keyword_id'] = _.getBaiduKeyword.id();
+            eqidObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
+            eqidObj['$search_keyword_id_hash'] = _.hashCode(eqidObj['$search_keyword_id']);
+          }
+
+          sd.setOnceProfile(
+            _.extend({
+                $first_visit_time: new Date(),
+                $first_referrer: _.isDecodeURI(sd.para.url_is_decode, _.getReferrer()),
+                $first_browser_language: navigator.language || '取值异常',
+                $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
+                $first_traffic_source_type: _.getSourceFromReferrer(),
+                $first_search_keyword: _.getKeywordFromReferrer()
+              },
+              $utms, eqidObj
+            )
+          );
+
+          sd.is_first_visitor = false;
+        }
+
         this.autoTrackIsUsed = true;
       },
       getAnonymousID: function() {
@@ -4371,7 +4377,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.18.8'
+                  sdkversion: '1.18.9'
                 }
               },
               '*'
