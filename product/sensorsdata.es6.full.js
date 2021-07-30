@@ -1634,7 +1634,8 @@ if (!String.prototype.replaceAll) {
       cross_subdomain = typeof cross_subdomain === 'undefined' ? sd.para.cross_subdomain : cross_subdomain;
       var cdomain = '',
         expires = '',
-        secure = '';
+        secure = '',
+        samesite = '';
       days = days == null ? 73000 : days;
 
       if (cross_subdomain) {
@@ -1654,6 +1655,9 @@ if (!String.prototype.replaceAll) {
         }
 
         expires = '; expires=' + date.toGMTString();
+      }
+      if (_.isString(sd.para.set_cookie_samesite) && sd.para.set_cookie_samesite !== '') {
+        samesite = '; SameSite=' + sd.para.set_cookie_samesite;
       }
       if (sd.para.is_secure_cookie) {
         secure = '; secure';
@@ -1679,7 +1683,7 @@ if (!String.prototype.replaceAll) {
         valid_domain = getValid(cdomain);
       }
       if (valid_name && valid_value) {
-        document.cookie = valid_name + '=' + encodeURIComponent(valid_value) + expires + '; path=/' + valid_domain + secure;
+        document.cookie = valid_name + '=' + encodeURIComponent(valid_value) + expires + '; path=/' + valid_domain + samesite + secure;
       }
     },
     encrypt: function(v) {
@@ -3441,7 +3445,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.18.9';
+  sd.lib_version = '1.18.10';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4369,7 +4373,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.18.9'
+              sdkversion: '1.18.10'
             }
           },
           '*'
