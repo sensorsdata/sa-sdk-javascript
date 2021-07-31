@@ -1603,22 +1603,36 @@
         var historyPushState = window.history.pushState;
         var historyReplaceState = window.history.replaceState;
 
-        window.history.pushState = function() {
-          historyPushState.apply(window.history, arguments);
-          callback(current_url);
-          current_url = location.href;
-        };
-        window.history.replaceState = function() {
-          historyReplaceState.apply(window.history, arguments);
-          callback(current_url);
-          current_url = location.href;
-        };
+        if (_.isFunction(window.history.pushState)) {
+          window.history.pushState = function() {
+            historyPushState.apply(window.history, arguments);
+            callback(current_url);
+            current_url = location.href;
+          };
+        }
 
-        var singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
+        if (_.isFunction(window.history.replaceState)) {
+          window.history.replaceState = function() {
+            historyReplaceState.apply(window.history, arguments);
+            callback(current_url);
+            current_url = location.href;
+          };
+        }
+
+        var singlePageEvent;
+        if (window.document.documentMode) {
+          singlePageEvent = 'hashchange';
+        } else {
+          singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
+        }
+
         _.addEvent(window, singlePageEvent, function() {
           callback(current_url);
           current_url = location.href;
         });
+
+
+
       };
 
       _.cookie = {
@@ -3451,7 +3465,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.18.10';
+      sd.lib_version = '1.18.11';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -4379,7 +4393,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.18.10'
+                  sdkversion: '1.18.11'
                 }
               },
               '*'
