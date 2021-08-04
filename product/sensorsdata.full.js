@@ -3467,7 +3467,7 @@
 
     sd.setInitVar = function() {
       sd._t = sd._t || 1 * new Date();
-      sd.lib_version = '1.18.11';
+      sd.lib_version = '1.18.12';
       sd.is_first_visitor = false;
       sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
     };
@@ -3949,6 +3949,34 @@
       });
     };
 
+    sd.setItem = function(type, id, p) {
+      if (saEvent.check({
+          'item_type': type,
+          'item_id': id,
+          properties: p
+        })) {
+        saEvent.sendItem({
+          type: 'item_set',
+          item_type: type,
+          item_id: id,
+          properties: p || {}
+        });
+      }
+    };
+
+    sd.deleteItem = function(type, id) {
+      if (saEvent.check({
+          'item_type': type,
+          'item_id': id
+        })) {
+        saEvent.sendItem({
+          type: 'item_delete',
+          item_type: type,
+          item_id: id
+        });
+      }
+    };
+
     sd.setProfile = function(p, c) {
       if (saEvent.check({
           propertiesMust: p
@@ -4395,7 +4423,7 @@
                 source: 'sa-web-sdk',
                 type: 'v-is-vtrack',
                 data: {
-                  sdkversion: '1.18.11'
+                  sdkversion: '1.18.12'
                 }
               },
               '*'
@@ -4970,8 +4998,11 @@
         sd.batchSend.add(requestData.data);
         return false;
       }
-
-      sd.bridge.dataSend(requestData, this, callback);
+      if (originData.type === 'item_set' || originData.type === 'item_delete') {
+        this.prepareServerUrl(requestData);
+      } else {
+        sd.bridge.dataSend(requestData, this, callback);
+      }
 
       sd.log(originData);
     };
@@ -5049,11 +5080,11 @@
         }
       },
       str: function(s) {
-        if (!_.isString(s)) {
-          sd.log('请检查参数格式,必须是字符串');
+        if (_.isString(s) && s !== '') {
           return true;
         } else {
-          return true;
+          sd.log('请检查参数格式,必须是字符串且有值');
+          return false;
         }
       },
       properties: function(p) {
@@ -5096,8 +5127,8 @@
           return true;
         }
       },
-      test_id: 'str',
-      group_id: 'str',
+      'item_type': 'str',
+      'item_id': 'str',
       distinct_id: function(id) {
         if (_.isString(id) && /^.{1,255}$/.test(id)) {
           return true;
@@ -5116,6 +5147,29 @@
         }
       }
       return flag;
+    };
+
+    saEvent.sendItem = function(p) {
+      var data = {
+        lib: {
+          $lib: 'js',
+          $lib_method: 'code',
+          $lib_version: String(sd.lib_version)
+        },
+        time: new Date() * 1
+      };
+
+      _.extend(data, p);
+      _.filterReservedProperties(data.properties);
+      _.searchObjDate(data);
+      _.searchObjString(data);
+      if (data.properties && '$project' in data.properties) {
+        data.project = String(data.properties.$project);
+        delete data.properties.$project;
+      }
+
+      sd.sendState.getSendCall(data);
+
     };
 
     saEvent.send = function(p, callback) {
@@ -7034,7 +7088,7 @@
       }
     };
 
-    var methods = ['getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister'];
+    var methods = ['setItem', 'deleteItem', 'getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister'];
 
     _.each(methods, function(method) {
       var oldFunc = sd[method];
