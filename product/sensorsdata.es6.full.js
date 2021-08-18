@@ -1525,7 +1525,7 @@ if (!String.prototype.replaceAll) {
           }
           while (element.parentElement !== null) {
             element = element.parentElement;
-            pathArr.unshift(element);
+            pathArr.push(element);
           }
           return pathArr;
         } catch (err) {
@@ -3459,7 +3459,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.18.12';
+  sd.lib_version = '1.18.13';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -4415,7 +4415,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.18.12'
+              sdkversion: '1.18.13'
             }
           },
           '*'
@@ -6096,20 +6096,22 @@ var heatmap = (sd.heatmap = {
     }
 
     var parent_ele = target.parentNode;
-    var hasA = that.hasElement(e.originalEvent || e);
-    var trackAttrs = sd.para.heatmap.track_attr;
+    var hasAOrAttr = that.hasElement(e.originalEvent || e, function(target) {
+      return target.tagName.toLowerCase() === 'a' || _.hasAttributes(target, sd.para.heatmap.track_attr);
+    });
+
     var otherTags = that.otherTags;
 
-    if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea' || _.hasAttributes(target, trackAttrs)) {
+    if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea') {
       return target;
     } else if (_.indexOf(otherTags, tagName) > -1) {
       return target;
-    } else if (parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a' || _.hasAttributes(parent_ele, trackAttrs)) {
+    } else if (parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a') {
       return parent_ele;
     } else if (tagName === 'area' && parent_ele.tagName.toLowerCase() === 'map' && _.ry(parent_ele).prev().tagName && _.ry(parent_ele).prev().tagName.toLowerCase() === 'img') {
       return _.ry(parent_ele).prev();
-    } else if (hasA) {
-      return hasA;
+    } else if (hasAOrAttr) {
+      return hasAOrAttr;
     } else if (tagName === 'div' && sd.para.heatmap.collect_tags.div && that.isDivLevelValid(target)) {
       var max_level = (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level) || 1;
       if (max_level > 1 || that.isCollectableDiv(target)) {
@@ -6340,16 +6342,17 @@ var heatmap = (sd.heatmap = {
       sd.track('$WebClick', prop, userCallback);
     }
   },
-  hasElement: function(e) {
-    var path = e._getPath ? e._getPath() : heatmap.getElementPath(e.target, true).split(' > ');
-    if (_.isArray(path) && path.length > 0) {
-      for (var i = 0; i < path.length; i++) {
-        if (path[i] && path[i].tagName && path[i].tagName.toLowerCase() === 'a') {
-          return path[i];
+  hasElement: function(e, func) {
+    var path = e.path || (e._getPath && e._getPath());
+    if (path) {
+      if (_.isArray(path) && path.length > 0) {
+        for (var i = 0; i < path.length; i++) {
+          if (path[i] && path[i].tagName && func(path[i])) {
+            return path[i];
+          }
         }
       }
     }
-    return false;
   },
   isStyleTag: function(tagname, isVisualMode) {
     var defaultTag = ['a', 'div', 'input', 'button', 'textarea'];
