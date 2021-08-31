@@ -1,10 +1,5 @@
 var sd = {};
 
-sd.modules = {};
-
-var _ = (sd._ = {});
-
-;
 (function() {
   var objectTypes = {
     "function": true,
@@ -274,7 +269,7 @@ var _ = (sd._ = {});
             var result = nativeStringify(source, filter, width);
             Date.prototype.toJSON = nativeToJSON;
             return result;
-          }
+          };
         } else {
           var unicodePrefix = "\\u00";
           var escapeChar = function(character) {
@@ -684,7 +679,7 @@ var _ = (sd._ = {});
     "stringify": JSON3.stringify
   };
 
-}).call(this);;
+}).call(window);
 
 
 (function(root, factory) {
@@ -692,11 +687,11 @@ var _ = (sd._ = {});
 })(window, function(root) {
   if (root.atob) {
     try {
-      root.atob(" ");
+      root.atob(' ');
     } catch (e) {
       root.atob = (function(atob) {
         var func = function(string) {
-          return atob(String(string).replace(/[\t\n\f\r ]+/g, ""));
+          return atob(String(string).replace(/[\t\n\f\r ]+/g, ''));
         };
         func.original = atob;
         return func;
@@ -705,37 +700,38 @@ var _ = (sd._ = {});
     return;
   }
 
-  var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
+  var b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=',
     b64re = /^(?:[A-Za-z\d+\/]{4})*?(?:[A-Za-z\d+\/]{2}(?:==)?|[A-Za-z\d+\/]{3}=?)?$/;
 
   root.btoa = function(string) {
     string = String(string);
     var bitmap, a, b, c,
-      result = "",
+      result = '',
       i = 0,
       rest = string.length % 3;
 
     for (; i < string.length;) {
       if ((a = string.charCodeAt(i++)) > 255 ||
         (b = string.charCodeAt(i++)) > 255 ||
-        (c = string.charCodeAt(i++)) > 255)
-        sd.log("Failed to execute 'btoa' on 'Window': The string to be encoded contains characters outside of the Latin1 range.");
+        (c = string.charCodeAt(i++)) > 255) {
+        return '';
+      }
 
       bitmap = (a << 16) | (b << 8) | c;
       result += b64.charAt(bitmap >> 18 & 63) + b64.charAt(bitmap >> 12 & 63) +
         b64.charAt(bitmap >> 6 & 63) + b64.charAt(bitmap & 63);
     }
 
-    return rest ? result.slice(0, rest - 3) + "===".substring(rest) : result;
+    return rest ? result.slice(0, rest - 3) + '==='.substring(rest) : result;
   };
 
   root.atob = function(string) {
-    string = String(string).replace(/[\t\n\f\r ]+/g, "");
-    if (!b64re.test(string))
-      sd.log("Failed to execute 'atob' on 'Window': The string to be decoded is not correctly encoded.");
-
-    string += "==".slice(2 - (string.length & 3));
-    var bitmap, result = "",
+    string = String(string).replace(/[\t\n\f\r ]+/g, '');
+    if (!b64re.test(string)) {
+      return '';
+    }
+    string += '=='.slice(2 - (string.length & 3));
+    var bitmap, result = '',
       r1, r2, i = 0;
     for (; i < string.length;) {
       bitmap = b64.indexOf(string.charAt(i++)) << 18 | b64.indexOf(string.charAt(i++)) << 12 |
@@ -747,7 +743,7 @@ var _ = (sd._ = {});
     }
     return result;
   };
-});;
+});
 
 
 if (!String.prototype.replaceAll) {
@@ -759,16 +755,14 @@ if (!String.prototype.replaceAll) {
   };
 }
 
-(function() {
+var _ = (function() {
+  var _ = {};
   var ArrayProto = Array.prototype;
-  var FuncProto = Function.prototype;
   var ObjProto = Object.prototype;
   var slice = ArrayProto.slice;
   var toString = ObjProto.toString;
   var hasOwnProperty = ObjProto.hasOwnProperty;
-  var nativeBind = FuncProto.bind;
   var nativeForEach = ArrayProto.forEach;
-  var nativeIndexOf = ArrayProto.indexOf;
   var nativeIsArray = Array.isArray;
   var breaker = {};
 
@@ -1149,7 +1143,7 @@ if (!String.prototype.replaceAll) {
       return seed / 233280.0;
     }
     return function rand(number) {
-      return Math.ceil(rnd(seed) * number);
+      return Math.ceil(rnd() * number);
     };
   })();
   _.getRandom = function() {
@@ -1352,7 +1346,7 @@ if (!String.prototype.replaceAll) {
     var R = function() {
       return _.getRandom().toString(16).replace('.', '');
     };
-    var UA = function(n) {
+    var UA = function() {
       var ua = navigator.userAgent,
         i,
         ch,
@@ -2120,7 +2114,6 @@ if (!String.prototype.replaceAll) {
 
   _.URL = function(url) {
     var result = {};
-    var basicProps = ['hash', 'host', 'hostname', 'href', 'origin', 'password', 'pathname', 'port', 'protocol', 'search', 'username'];
     var isURLAPIWorking = function() {
       var url;
       try {
@@ -2250,7 +2243,6 @@ if (!String.prototype.replaceAll) {
     } catch (e) {
       return false;
     }
-    return false;
   };
 
   _.getReferrerEqid = function() {
@@ -2395,7 +2387,7 @@ if (!String.prototype.replaceAll) {
       }
       var rules = null;
       if (typeof window.getMatchedCSSRules === 'function') {
-        rules = getMatchedCSSRules(this.ele);
+        rules = window.getMatchedCSSRules(this.ele);
       }
       if (!rules || !_.isArray(rules)) {
         return null;
@@ -2415,13 +2407,13 @@ if (!String.prototype.replaceAll) {
     next: function() {
       return this.sibling(this.ele, 'nextSibling');
     },
-    prev: function(elem) {
+    prev: function() {
       return this.sibling(this.ele, 'previousSibling');
     },
-    siblings: function(elem) {
+    siblings: function() {
       return this.siblings((this.ele.parentNode || {}).firstChild, this.ele);
     },
-    children: function(elem) {
+    children: function() {
       return this.siblings(this.ele.firstChild);
     },
     parent: function() {
@@ -2471,7 +2463,7 @@ if (!String.prototype.replaceAll) {
 
 
   _.getReferrer = function(referrer) {
-    var referrer = referrer || document.referrer;
+    referrer = referrer || document.referrer;
     if (typeof referrer !== 'string') {
       return '取值异常_referrer异常_' + String(referrer);
     }
@@ -2502,7 +2494,7 @@ if (!String.prototype.replaceAll) {
             if (typeof query === 'object') {
               temp = search_keyword[i];
               if (_.isArray(temp)) {
-                for (var i = 0; i < temp.length; i++) {
+                for (i = 0; i < temp.length; i++) {
                   var _value = query[temp[i]];
                   if (_value) {
                     if (activeValue) {
@@ -2529,7 +2521,7 @@ if (!String.prototype.replaceAll) {
         if (sd.para.preset_properties.search_keyword_baidu && _.isBaiduTraffic()) {
           return;
         } else {
-          return '未取到值'
+          return '未取到值';
         }
       } else {
         if (referrerUrl === '') {
@@ -2572,7 +2564,6 @@ if (!String.prototype.replaceAll) {
     if (!hostname || hostname === 'hostname解析异常') {
       return '';
     }
-    var search_keyword = sd.para.source_type.keyword;
     var searchEngineUrls = {
       baidu: [/^.*\.baidu\.com$/],
       bing: [/^.*\.bing\.com$/],
@@ -2803,7 +2794,7 @@ if (!String.prototype.replaceAll) {
         context: context || this
       });
 
-      var replayAll = replayAll === false ? false : true;
+      replayAll = replayAll === false ? false : true;
       if (this.pendingEvents.length > 0 && replayAll) {
         _.each(this.pendingEvents, function(val) {
           if (val.type === event) {
@@ -2841,8 +2832,8 @@ if (!String.prototype.replaceAll) {
 
   _.rot13defs = function(str) {
     var key = 13,
-      n = 126,
-      str = String(str);
+      n = 126;
+    str = String(str);
 
     return _.rot13obfs(str, n - key);
   };
@@ -3118,8 +3109,8 @@ if (!String.prototype.replaceAll) {
       },
       listen: function() {
         if (!this.isSupport()) {
-          _.addEvent(window, 'focus', this.visibleHandler)
-          _.addEvent(window, 'blur', this.hiddenHandler)
+          _.addEvent(window, 'focus', this.visibleHandler);
+          _.addEvent(window, 'blur', this.hiddenHandler);
         } else {
           var _this = this;
           _.addEvent(document, this.visibilityChange,
@@ -3131,7 +3122,7 @@ if (!String.prototype.replaceAll) {
               }
             },
             1
-          )
+          );
         }
       }
     };
@@ -3184,7 +3175,1001 @@ if (!String.prototype.replaceAll) {
       return str;
     }
   };
-})();;
+
+  return _;
+})();
+
+
+var store = {
+  requests: [],
+  _sessionState: {},
+  _state: {
+    distinct_id: '',
+    first_id: '',
+    props: {}
+  },
+  getProps: function() {
+    return this._state.props || {};
+  },
+  getSessionProps: function() {
+    return this._sessionState;
+  },
+  getDistinctId: function() {
+    return this._state._distinct_id || this._state.distinct_id;
+  },
+  getUnionId: function() {
+    var obj = {};
+    var firstId = this._state._first_id || this._state.first_id,
+      distinct_id = this._state._distinct_id || this._state.distinct_id;
+    if (firstId && distinct_id) {
+      obj.login_id = distinct_id;
+      obj.anonymous_id = firstId;
+    } else {
+      obj.anonymous_id = distinct_id;
+    }
+    return obj;
+  },
+  getFirstId: function() {
+    return this._state._first_id || this._state.first_id;
+  },
+  toState: function(ds) {
+    var state = null;
+    if (ds != null && _.isJSONString(ds)) {
+      state = JSON.parse(ds);
+      this._state = _.extend(state);
+      if (state.distinct_id) {
+        if (typeof state.props === 'object') {
+          for (var key in state.props) {
+            if (typeof state.props[key] === 'string') {
+              state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
+            }
+          }
+          this.save();
+        }
+      } else {
+        this.set('distinct_id', _.UUID());
+        sd.debug.distinct_id('1', ds);
+      }
+    } else {
+      this.set('distinct_id', _.UUID());
+      sd.debug.distinct_id('2', ds);
+    }
+  },
+  initSessionState: function() {
+    var ds = _.cookie.get('sensorsdata2015session');
+    var state = null;
+    if (ds !== null && typeof(state = JSON.parse(ds)) === 'object') {
+      this._sessionState = state || {};
+    }
+  },
+
+  setOnce: function(a, b) {
+    if (!(a in this._state)) {
+      this.set(a, b);
+    }
+  },
+  set: function(name, value) {
+    this._state = this._state || {};
+    var pre_id = this._state.distinct_id;
+    this._state[name] = value;
+    if (name === 'first_id') {
+      delete this._state._first_id;
+    } else if (name === 'distinct_id') {
+      delete this._state._distinct_id;
+    }
+    this.save();
+    if (name === 'distinct_id' && pre_id) {
+      sd.events.tempAdd('changeDistinctId', value);
+    }
+  },
+  change: function(name, value) {
+    this._state['_' + name] = value;
+  },
+  setSessionProps: function(newp) {
+    var props = this._sessionState;
+    _.extend(props, newp);
+    this.sessionSave(props);
+  },
+  setSessionPropsOnce: function(newp) {
+    var props = this._sessionState;
+    _.coverExtend(props, newp);
+    this.sessionSave(props);
+  },
+  setProps: function(newp, isCover) {
+    var props = {};
+    if (!isCover) {
+      props = _.extend(this._state.props || {}, newp);
+    } else {
+      props = newp;
+    }
+    for (var key in props) {
+      if (typeof props[key] === 'string') {
+        props[key] = props[key].slice(0, sd.para.max_referrer_string_length);
+      }
+    }
+    this.set('props', props);
+  },
+  setPropsOnce: function(newp) {
+    var props = this._state.props || {};
+    _.coverExtend(props, newp);
+    this.set('props', props);
+  },
+  clearAllProps: function(arr) {
+    this._sessionState = {};
+    var i;
+    if (_.isArray(arr) && arr.length > 0) {
+      for (i = 0; i < arr.length; i++) {
+        if (_.isString(arr[i]) && arr[i].indexOf('latest_') === -1 && _.isObject(this._state.props) && arr[i] in this._state.props) {
+          delete this._state.props[arr[i]];
+        }
+      }
+    } else {
+      if (_.isObject(this._state.props)) {
+        for (i in this._state.props) {
+          if (i.indexOf('latest_') !== 1) {
+            delete this._state.props[i];
+          }
+        }
+      }
+    }
+    this.sessionSave({});
+    this.save();
+  },
+  sessionSave: function(props) {
+    this._sessionState = props;
+    _.cookie.set('sensorsdata2015session', JSON.stringify(this._sessionState), 0);
+  },
+  save: function() {
+    var copyState = JSON.parse(JSON.stringify(this._state));
+    delete copyState._first_id;
+    delete copyState._distinct_id;
+
+    var stateStr = JSON.stringify(copyState);
+    if (sd.para.encrypt_cookie) {
+      stateStr = _.cookie.encrypt(stateStr);
+    }
+    _.cookie.set(this.getCookieName(), stateStr, 73000, sd.para.cross_subdomain);
+  },
+  getCookieName: function() {
+    var sub = '';
+    if (sd.para.cross_subdomain === false) {
+      try {
+        sub = _.URL(location.href).hostname;
+      } catch (e) {
+        sd.log(e);
+      }
+      if (typeof sub === 'string' && sub !== '') {
+        sub = 'sa_jssdk_2015_' + sub.replace(/\./g, '_');
+      } else {
+        sub = 'sa_jssdk_2015_root';
+      }
+    } else {
+      sub = 'sensorsdata2015jssdkcross';
+    }
+    return sub;
+  },
+  init: function() {
+    this.initSessionState();
+    var uuid = _.UUID();
+    var cross = _.cookie.get(this.getCookieName());
+    cross = _.cookie.resolveValue(cross);
+    if (cross === null) {
+      sd.is_first_visitor = true;
+
+      this.set('distinct_id', uuid);
+    } else {
+      if (!_.isJSONString(cross) || !JSON.parse(cross).distinct_id) {
+        sd.is_first_visitor = true;
+      }
+
+      this.toState(cross);
+    }
+
+    saNewUser.setDeviceId(uuid);
+
+    saNewUser.storeInitCheck();
+    saNewUser.checkIsFirstLatest();
+  }
+};
+
+var saNewUser = {
+  checkIsAddSign: function(data) {
+    if (data.type === 'track') {
+      if (_.cookie.getNewUser()) {
+        data.properties.$is_first_day = true;
+      } else {
+        data.properties.$is_first_day = false;
+      }
+    }
+  },
+  is_first_visit_time: false,
+  checkIsFirstTime: function(data) {
+    if (data.type === 'track' && data.event === '$pageview') {
+      if (this.is_first_visit_time) {
+        data.properties.$is_first_time = true;
+        this.is_first_visit_time = false;
+      } else {
+        data.properties.$is_first_time = false;
+      }
+    }
+  },
+  setDeviceId: function(uuid) {
+    var device_id = null;
+    var ds = _.cookie.get('sensorsdata2015jssdkcross');
+    ds = _.cookie.resolveValue(ds);
+    var state = {};
+    if (ds != null && _.isJSONString(ds)) {
+      state = JSON.parse(ds);
+      if (state.$device_id) {
+        device_id = state.$device_id;
+      }
+    }
+
+    device_id = device_id || uuid;
+
+    if (sd.para.cross_subdomain === true) {
+      store.set('$device_id', device_id);
+    } else {
+      state.$device_id = device_id;
+      state = JSON.stringify(state);
+      if (sd.para.encrypt_cookie) {
+        state = _.cookie.encrypt(state);
+      }
+      _.cookie.set('sensorsdata2015jssdkcross', state, null, true);
+    }
+
+    if (sd.para.is_track_device_id) {
+      _.info.currentProps.$device_id = device_id;
+    }
+  },
+  storeInitCheck: function() {
+    if (sd.is_first_visitor) {
+      var date = new Date();
+      var obj = {
+        h: 23 - date.getHours(),
+        m: 59 - date.getMinutes(),
+        s: 59 - date.getSeconds()
+      };
+      _.cookie.set(_.cookie.getCookieName('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
+      this.is_first_visit_time = true;
+    } else {
+      if (!_.cookie.getNewUser()) {
+        this.checkIsAddSign = function(data) {
+          if (data.type === 'track') {
+            data.properties.$is_first_day = false;
+          }
+        };
+      }
+      this.checkIsFirstTime = function(data) {
+        if (data.type === 'track' && data.event === '$pageview') {
+          data.properties.$is_first_time = false;
+        }
+      };
+    }
+  },
+  checkIsFirstLatest: function() {
+    var url_domain = _.info.pageProp.url_domain;
+
+
+    var latestObj = {};
+
+    if (url_domain === '') {
+      url_domain = 'url解析失败';
+    }
+
+    var baiduKey = _.getKeywordFromReferrer(document.referrer, true);
+    if (sd.para.preset_properties.search_keyword_baidu) {
+      if (_.isReferralTraffic(document.referrer)) {
+        if (_.isBaiduTraffic() && !(_.isObject(baiduKey) && baiduKey.active)) {
+          latestObj['$search_keyword_id'] = _.getBaiduKeyword.id();
+          latestObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
+          latestObj['$search_keyword_id_hash'] = _.hashCode(latestObj['$search_keyword_id']);
+        } else {
+          if (sd.store._state && sd.store._state.props) {
+            sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
+            sd.store._state.props.$search_keyword_id_type && delete sd.store._state.props.$search_keyword_id_type;
+            sd.store._state.props.$search_keyword_id_hash && delete sd.store._state.props.$search_keyword_id_hash;
+          }
+        }
+      }
+    } else {
+      if (sd.store._state && sd.store._state.props) {
+        sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
+        sd.store._state.props.$search_keyword_id_type && delete sd.store._state.props.$search_keyword_id_type;
+        sd.store._state.props.$search_keyword_id_hash && delete sd.store._state.props.$search_keyword_id_hash;
+      }
+    }
+
+    sd.store.save();
+
+
+    _.each(sd.para.preset_properties, function(value, key) {
+      if (key.indexOf('latest_') === -1) {
+        return false;
+      }
+      key = key.slice(7);
+      if (value) {
+        if (key === 'wx_ad_click_id' && value === 'not_collect') {
+          return false;
+        }
+        if (key !== 'utm' && url_domain === 'url解析失败') {
+          if (key === 'wx_ad_click_id') {
+            latestObj['_latest_wx_ad_click_id'] = 'url的domain解析失败';
+            latestObj['_latest_wx_ad_hash_key'] = 'url的domain解析失败';
+            latestObj['_latest_wx_ad_callbacks'] = 'url的domain解析失败';
+          } else {
+            latestObj['$latest_' + key] = 'url的domain解析失败';
+          }
+        } else if (_.isReferralTraffic(document.referrer)) {
+          switch (key) {
+            case 'traffic_source_type':
+              latestObj['$latest_traffic_source_type'] = _.getSourceFromReferrer();
+              break;
+            case 'referrer':
+              latestObj['$latest_referrer'] = _.isDecodeURI(sd.para.url_is_decode, _.info.pageProp.referrer);
+              break;
+            case 'search_keyword':
+              if (_.getKeywordFromReferrer()) {
+                latestObj['$latest_search_keyword'] = _.getKeywordFromReferrer();
+              } else if (_.isObject(sd.store._state) && _.isObject(sd.store._state.props) && sd.store._state.props.$latest_search_keyword) {
+                delete sd.store._state.props.$latest_search_keyword;
+              }
+              break;
+            case 'landing_page':
+              latestObj['$latest_landing_page'] = _.isDecodeURI(sd.para.url_is_decode, location.href);
+              break;
+            case 'wx_ad_click_id':
+              var adObj = _.getWxAdIdFromUrl(location.href);
+              latestObj['_latest_wx_ad_click_id'] = adObj.click_id;
+              latestObj['_latest_wx_ad_hash_key'] = adObj.hash_key;
+              latestObj['_latest_wx_ad_callbacks'] = adObj.callbacks;
+              break;
+          }
+        }
+      } else {
+        if (key === 'utm' && sd.store._state && sd.store._state.props) {
+          for (var key1 in sd.store._state.props) {
+            if (key1.indexOf('$latest_utm') === 0 || (key1.indexOf('_latest_') === 0 && key1.indexOf('_latest_wx_ad_') < 0)) {
+              delete sd.store._state.props[key1];
+            }
+          }
+        } else if (sd.store._state && sd.store._state.props && '$latest_' + key in sd.store._state.props) {
+          delete sd.store._state.props['$latest_' + key];
+        } else if (key == 'wx_ad_click_id' && sd.store._state && sd.store._state.props && value === false) {
+          var wxPro = ['_latest_wx_ad_click_id', '_latest_wx_ad_hash_key', '_latest_wx_ad_callbacks'];
+          _.each(wxPro, function(value) {
+            if (value in sd.store._state.props) {
+              delete sd.store._state.props[value];
+            }
+          });
+        }
+      }
+    });
+
+    sd.register(latestObj);
+
+    if (sd.para.preset_properties.latest_utm) {
+      var allUtms = _.info.campaignParamsStandard('$latest_', '_latest_');
+      var $utms = allUtms.$utms;
+      var otherUtms = allUtms.otherUtms;
+      if (!_.isEmptyObject($utms)) {
+        sd.register($utms);
+      }
+      if (!_.isEmptyObject(otherUtms)) {
+        sd.register(otherUtms);
+      }
+    }
+  }
+};
+
+
+var heatmap = {
+  otherTags: [],
+  getTargetElement: function(element, e) {
+    var that = this;
+    var target = element;
+    if (typeof target !== 'object') {
+      return null;
+    }
+    if (typeof target.tagName !== 'string') {
+      return null;
+    }
+    var tagName = target.tagName.toLowerCase();
+    if (tagName.toLowerCase() === 'body' || tagName.toLowerCase() === 'html') {
+      return null;
+    }
+    if (!target || !target.parentNode || !target.parentNode.children) {
+      return null;
+    }
+
+    var parent_ele = target.parentNode;
+    var hasAOrAttr = that.hasElement(e.originalEvent || e, function(target) {
+      return target.tagName.toLowerCase() === 'a' || _.hasAttributes(target, sd.para.heatmap.track_attr);
+    });
+
+    var otherTags = that.otherTags;
+
+    if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea') {
+      return target;
+    } else if (_.indexOf(otherTags, tagName) > -1) {
+      return target;
+    } else if (parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a') {
+      return parent_ele;
+    } else if (tagName === 'area' && parent_ele.tagName.toLowerCase() === 'map' && _.ry(parent_ele).prev().tagName && _.ry(parent_ele).prev().tagName.toLowerCase() === 'img') {
+      return _.ry(parent_ele).prev();
+    } else if (hasAOrAttr) {
+      return hasAOrAttr;
+    } else if (tagName === 'div' && sd.para.heatmap.collect_tags.div && that.isDivLevelValid(target)) {
+      var max_level = (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level) || 1;
+      if (max_level > 1 || that.isCollectableDiv(target)) {
+        return target;
+      } else {
+        return null;
+      }
+    } else if (that.isStyleTag(tagName) && sd.para.heatmap.collect_tags.div) {
+      var parentTrackDiv = that.getCollectableParent(target);
+      if (parentTrackDiv && that.isDivLevelValid(parentTrackDiv)) {
+        return parentTrackDiv;
+      }
+    }
+    return null;
+  },
+  getDivLevels: function(element, rootElement) {
+    var path = heatmap.getElementPath(element, true, rootElement);
+    var pathArr = path.split(' > ');
+    var ans = 0;
+    _.each(pathArr, function(tag) {
+      if (tag === 'div') {
+        ans++;
+      }
+    });
+    return ans;
+  },
+  isDivLevelValid: function(element) {
+    var max_level = (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level) || 1;
+
+    var allDiv = element.getElementsByTagName('div');
+    for (var i = allDiv.length - 1; i >= 0; i--) {
+      if (heatmap.getDivLevels(allDiv[i], element) > max_level) {
+        return false;
+      }
+    }
+    return true;
+  },
+  getElementPath: function(element, ignoreID, rootElement) {
+    var names = [];
+    while (element.parentNode) {
+      if (element.id && !ignoreID && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(element.id)) {
+        names.unshift(element.tagName.toLowerCase() + '#' + element.id);
+        break;
+      } else {
+        if (rootElement && element === rootElement) {
+          names.unshift(element.tagName.toLowerCase());
+          break;
+        } else if (element === document.body) {
+          names.unshift('body');
+          break;
+        } else {
+          names.unshift(element.tagName.toLowerCase());
+        }
+        element = element.parentNode;
+      }
+    }
+    return names.join(' > ');
+  },
+  getClosestLi: function(element) {
+    var getClosest = function(elem, selector) {
+      for (; elem && elem !== document && elem.nodeType === 1; elem = elem.parentNode) {
+        if (elem.tagName.toLowerCase() === selector) {
+          return elem;
+        }
+      }
+      return null;
+    };
+    return getClosest(element, 'li');
+  },
+  getElementPosition: function(element, elementPath, ignoreID) {
+    var closestLi = sd.heatmap.getClosestLi(element);
+    if (!closestLi) {
+      return null;
+    }
+    var tag = element.tagName.toLowerCase();
+    var sameTypeTags = closestLi.getElementsByTagName(tag);
+    var sameTypeTagsLen = sameTypeTags.length;
+    var arr = [];
+    if (sameTypeTagsLen > 1) {
+      for (var i = 0; i < sameTypeTagsLen; i++) {
+        var elepath = sd.heatmap.getElementPath(sameTypeTags[i], ignoreID);
+        if (elepath === elementPath) {
+          arr.push(sameTypeTags[i]);
+        }
+      }
+      if (arr.length > 1) {
+        return _.indexOf(arr, element);
+      }
+    }
+
+    function _getPosition(element) {
+      var parentNode = element.parentNode;
+      if (!parentNode) {
+        return '';
+      }
+      var sameTypeSiblings = _.ry(element).getSameTypeSiblings();
+      var typeLen = sameTypeSiblings.length;
+      if (typeLen === 1) {
+        return 0;
+      }
+      for (var i = 0, e = element; _.ry(e).previousElementSibling().ele; e = _.ry(e).previousElementSibling().ele, i++);
+      return i;
+    }
+    return _getPosition(closestLi);
+  },
+  setNotice: function(web_url) {
+    sd.is_heatmap_render_mode = true;
+
+    if (!sd.para.heatmap) {
+      sd.errorMsg = '您SDK没有配置开启点击图，可能没有数据！';
+    }
+    if (web_url && web_url[0] && web_url[1]) {
+      if (web_url[1].slice(0, 5) === 'http:' && location.protocol === 'https:') {
+        sd.errorMsg = '您的当前页面是https的地址，神策分析环境也必须是https！';
+      }
+    }
+    if (!sd.para.heatmap_url) {
+      sd.para.heatmap_url = location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/heatmap.min.js';
+    }
+  },
+  getDomIndex: function(el) {
+    if (!el.parentNode) return -1;
+    var i = 0;
+    var nodeName = el.tagName;
+    var list = el.parentNode.children;
+    for (var n = 0; n < list.length; n++) {
+      if (list[n].tagName === nodeName) {
+        if (el === list[n]) {
+          return i;
+        } else {
+          i++;
+        }
+      }
+    }
+    return -1;
+  },
+  selector: function(el, notuseid) {
+    var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
+    if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && (!sd.para.heatmap || (sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id')) && !notuseid) {
+      return '#' + el.getAttribute('id');
+    } else {
+      return el.tagName.toLowerCase() + (~i ? ':nth-of-type(' + (i + 1) + ')' : '');
+    }
+  },
+  getDomSelector: function(el, arr, notuseid) {
+    if (!el || !el.parentNode || !el.parentNode.children) {
+      return false;
+    }
+    arr = arr && arr.join ? arr : [];
+    var name = el.nodeName.toLowerCase();
+    if (!el || name === 'body' || 1 != el.nodeType) {
+      arr.unshift('body');
+      return arr.join(' > ');
+    }
+    arr.unshift(this.selector(el, notuseid));
+    if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id' && !notuseid) return arr.join(' > ');
+    return this.getDomSelector(el.parentNode, arr, notuseid);
+  },
+  na: function() {
+    var a = document.documentElement.scrollLeft || window.pageXOffset;
+    return parseInt(isNaN(a) ? 0 : a, 10);
+  },
+  i: function() {
+    var a = 0;
+    try {
+      (a = (o.documentElement && o.documentElement.scrollTop) || m.pageYOffset), (a = isNaN(a) ? 0 : a);
+    } catch (b) {
+      a = 0;
+    }
+    return parseInt(a, 10);
+  },
+  getBrowserWidth: function() {
+    var a = window.innerWidth || document.body.clientWidth;
+    return isNaN(a) ? 0 : parseInt(a, 10);
+  },
+  getBrowserHeight: function() {
+    var a = window.innerHeight || document.body.clientHeight;
+    return isNaN(a) ? 0 : parseInt(a, 10);
+  },
+  getScrollWidth: function() {
+    var a = parseInt(document.body.scrollWidth, 10);
+    return isNaN(a) ? 0 : a;
+  },
+  getEleDetail: function(target) {
+    var selector = this.getDomSelector(target);
+    var prop = _.getEleInfo({
+      target: target
+    });
+    prop.$element_selector = selector ? selector : '';
+    prop.$element_path = sd.heatmap.getElementPath(target, sd.para.heatmap && sd.para.heatmap.element_selector === 'not_use_id');
+    var element_position = sd.heatmap.getElementPosition(target, prop.$element_path, sd.para.heatmap && sd.para.heatmap.element_selector === 'not_use_id');
+    if (_.isNumber(element_position)) {
+      prop.$element_position = element_position;
+    }
+    return prop;
+  },
+  start: function(ev, target, tagName, customProps, callback) {
+    var userCustomProps = _.isObject(customProps) ? customProps : {};
+    var userCallback = _.isFunction(callback) ? callback : _.isFunction(customProps) ? customProps : undefined;
+    if (sd.para.heatmap && sd.para.heatmap.collect_element && !sd.para.heatmap.collect_element(target)) {
+      return false;
+    }
+
+    var prop = this.getEleDetail(target);
+
+    if (sd.para.heatmap && sd.para.heatmap.custom_property) {
+      var customP = sd.para.heatmap.custom_property(target);
+      if (_.isObject(customP)) {
+        prop = _.extend(prop, customP);
+      }
+    }
+    prop = _.extend(prop, userCustomProps);
+    if (tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true) {
+      _.trackLink({
+        event: ev,
+        target: target
+      }, '$WebClick', prop);
+    } else {
+      sd.track('$WebClick', prop, userCallback);
+    }
+  },
+  hasElement: function(e, func) {
+    var path = e.path || (e._getPath && e._getPath());
+    if (path) {
+      if (_.isArray(path) && path.length > 0) {
+        for (var i = 0; i < path.length; i++) {
+          if (path[i] && path[i].tagName && func(path[i])) {
+            return path[i];
+          }
+        }
+      }
+    }
+  },
+  isStyleTag: function(tagname, isVisualMode) {
+    var defaultTag = ['a', 'div', 'input', 'button', 'textarea'];
+    var ignore_tags_default = ['mark', '/mark', 'strong', 'b', 'em', 'i', 'u', 'abbr', 'ins', 'del', 's', 'sup'];
+    if (_.indexOf(defaultTag, tagname) > -1) {
+      return false;
+    }
+    if (isVisualMode && (!sd.para.heatmap || !sd.para.heatmap.collect_tags || !sd.para.heatmap.collect_tags.div)) {
+      return _.indexOf(ignore_tags_default, tagname) > -1;
+    } else if (_.isObject(sd.para.heatmap) && _.isObject(sd.para.heatmap.collect_tags) && _.isObject(sd.para.heatmap.collect_tags.div) && _.indexOf(sd.para.heatmap.collect_tags.div.ignore_tags, tagname) > -1) {
+      return true;
+    }
+    return false;
+  },
+  isCollectableDiv: function(target, isVisualMode) {
+    try {
+      if (target.children.length === 0) {
+        return true;
+      } else {
+        for (var i = 0; i < target.children.length; i++) {
+          if (target.children[i].nodeType !== 1) {
+            continue;
+          }
+          var tag = target.children[i].tagName.toLowerCase();
+          var max_level = sd.para && sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level;
+          if ((tag === 'div' && max_level > 1) || this.isStyleTag(tag, isVisualMode)) {
+            if (!this.isCollectableDiv(target.children[i], isVisualMode)) {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        }
+        return true;
+      }
+    } catch (error) {
+      sd.log(error);
+    }
+    return false;
+  },
+  getCollectableParent: function(target, isVisualMode) {
+    try {
+      var parent = target.parentNode;
+      var parentName = parent ? parent.tagName.toLowerCase() : '';
+      if (parentName === 'body') {
+        return false;
+      }
+      var max_level = sd.para && sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level;
+      if (parentName && parentName === 'div' && (max_level > 1 || this.isCollectableDiv(parent, isVisualMode))) {
+        return parent;
+      } else if (parent && this.isStyleTag(parentName, isVisualMode)) {
+        return this.getCollectableParent(parent, isVisualMode);
+      }
+    } catch (error) {
+      sd.log(error);
+    }
+    return false;
+  },
+  initScrollmap: function() {
+    if (!_.isObject(sd.para.heatmap) || sd.para.heatmap.scroll_notice_map !== 'default') {
+      return false;
+    }
+
+    var checkPage = function() {
+      if (sd.para.scrollmap && _.isFunction(sd.para.scrollmap.collect_url) && !sd.para.scrollmap.collect_url()) {
+        return false;
+      }
+      return true;
+    };
+
+    var interDelay = function(param) {
+      var interDelay = {};
+      interDelay.timeout = param.timeout || 1000;
+      interDelay.func = param.func;
+      interDelay.hasInit = false;
+      interDelay.inter = null;
+      interDelay.main = function(para, isClose) {
+        this.func(para, isClose);
+        this.inter = null;
+      };
+      interDelay.go = function(isNoDelay) {
+        var para = {};
+        if (!this.inter) {
+          para.$viewport_position = (document.documentElement && document.documentElement.scrollTop) || window.pageYOffset || document.body.scrollTop || 0;
+          para.$viewport_position = Math.round(para.$viewport_position) || 0;
+          para.$viewport_height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0;
+          para.$viewport_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
+          if (isNoDelay) {
+            interDelay.main(para, true);
+          } else {
+            this.inter = setTimeout(function() {
+              interDelay.main(para);
+            }, this.timeout);
+          }
+        }
+      };
+      return interDelay;
+    };
+
+    var delayTime = interDelay({
+      timeout: 1000,
+      func: function(para, isClose) {
+        var offsetTop = (document.documentElement && document.documentElement.scrollTop) || window.pageYOffset || document.body.scrollTop || 0;
+        var current_time = new Date();
+        var delay_time = current_time - this.current_time;
+        if ((delay_time > sd.para.heatmap.scroll_delay_time && offsetTop - para.$viewport_position !== 0) || isClose) {
+          para.$url = _.isDecodeURI(sd.para.url_is_decode, location.href);
+          para.$title = document.title;
+          para.$url_path = location.pathname;
+          para.event_duration = Math.min(sd.para.heatmap.scroll_event_duration, parseInt(delay_time) / 1000);
+          para.event_duration = para.event_duration < 0 ? 0 : para.event_duration;
+          sd.track('$WebStay', para);
+        }
+        this.current_time = current_time;
+      }
+    });
+
+    delayTime.current_time = new Date();
+
+    _.addEvent(window, 'scroll', function() {
+      if (!checkPage()) {
+        return false;
+      }
+      delayTime.go();
+    });
+
+    _.addEvent(window, 'unload', function() {
+      if (!checkPage()) {
+        return false;
+      }
+      delayTime.go('notime');
+    });
+  },
+  initHeatmap: function() {
+    var that = this;
+    if (!_.isObject(sd.para.heatmap) || sd.para.heatmap.clickmap !== 'default') {
+      return false;
+    }
+
+    if (_.isFunction(sd.para.heatmap.collect_url) && !sd.para.heatmap.collect_url()) {
+      return false;
+    }
+
+    if (sd.para.heatmap.collect_elements === 'all') {
+      sd.para.heatmap.collect_elements = 'all';
+    } else {
+      sd.para.heatmap.collect_elements = 'interact';
+    }
+    if (sd.para.heatmap.collect_elements === 'all') {
+      _.addEvent(document, 'click', function(e) {
+        var ev = e || window.event;
+        if (!ev) {
+          return false;
+        }
+        var target = ev.target || ev.srcElement;
+        if (typeof target !== 'object') {
+          return false;
+        }
+        if (typeof target.tagName !== 'string') {
+          return false;
+        }
+        var tagName = target.tagName.toLowerCase();
+        if (tagName === 'body' || tagName === 'html') {
+          return false;
+        }
+        if (!target || !target.parentNode || !target.parentNode.children) {
+          return false;
+        }
+        var parent_ele = target.parentNode.tagName.toLowerCase();
+        if (parent_ele === 'a' || parent_ele === 'button') {
+          that.start(ev, target.parentNode, parent_ele);
+        } else {
+          that.start(ev, target, tagName);
+        }
+      });
+    } else {
+      _.addEvent(document, 'click', function(e) {
+        var ev = e || window.event;
+        if (!ev) {
+          return false;
+        }
+        var target = ev.target || ev.srcElement;
+        var theTarget = sd.heatmap.getTargetElement(target, e);
+        if (theTarget) {
+          that.start(ev, theTarget, theTarget.tagName.toLowerCase());
+        } else if (_.isElement(target) && target.tagName.toLowerCase() === 'div' && _.isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config && sd.unlimitedDiv.events.length > 0) {
+          if (sd.unlimitedDiv.isTargetEle(target)) {
+            that.start(ev, target, target.tagName.toLowerCase(), {
+              $lib_method: 'vtrack'
+            });
+          }
+        }
+      });
+    }
+  }
+};
+
+var saEvent = {};
+
+saEvent.checkOption = {
+  regChecks: {
+    regName: /^((?!^distinct_id$|^original_id$|^time$|^properties$|^id$|^first_id$|^second_id$|^users$|^events$|^event$|^user_id$|^date$|^datetime$)[a-zA-Z_$][a-zA-Z\d_$]{0,99})$/i
+  },
+  checkPropertiesKey: function(obj) {
+    var me = this,
+      flag = true;
+    _.each(obj, function(content, key) {
+      if (!me.regChecks.regName.test(key)) {
+        flag = false;
+      }
+    });
+    return flag;
+  },
+  check: function(a, b) {
+    if (typeof this[a] === 'string') {
+      return this[this[a]](b);
+    } else if (_.isFunction(this[a])) {
+      return this[a](b);
+    }
+  },
+  str: function(s) {
+    if (_.isString(s) && s !== '') {
+      return true;
+    } else {
+      sd.log('请检查参数格式,必须是字符串且有值');
+      return false;
+    }
+  },
+  properties: function(p) {
+    _.strip_sa_properties(p);
+    if (p) {
+      if (_.isObject(p)) {
+        if (this.checkPropertiesKey(p)) {
+          return true;
+        } else {
+          sd.log('properties 里的自定义属性名需要是合法的变量名，不能以数字开头，且只包含：大小写字母、数字、下划线，自定义属性不能以 $ 开头');
+          return true;
+        }
+      } else {
+        sd.log('properties可以没有，但有的话必须是对象');
+        return true;
+      }
+    } else {
+      return true;
+    }
+  },
+  propertiesMust: function(p) {
+    _.strip_sa_properties(p);
+    if (p === undefined || !_.isObject(p) || _.isEmptyObject(p)) {
+      sd.log('properties必须是对象且有值');
+      return true;
+    } else {
+      if (this.checkPropertiesKey(p)) {
+        return true;
+      } else {
+        sd.log('properties 里的自定义属性名需要是合法的变量名，不能以数字开头，且只包含：大小写字母、数字、下划线，自定义属性不能以 $ 开头');
+        return true;
+      }
+    }
+  },
+  event: function(s) {
+    if (!_.isString(s) || !this['regChecks']['regName'].test(s)) {
+      sd.log('请检查参数格式，eventName 必须是字符串，且需是合法的变量名，即不能以数字开头，且只包含：大小写字母、数字、下划线和 $,其中以 $ 开头的表明是系统的保留字段，自定义事件名请不要以 $ 开头');
+      return true;
+    } else {
+      return true;
+    }
+  },
+  'item_type': 'str',
+  'item_id': 'str',
+  distinct_id: function(id) {
+    if (_.isString(id) && /^.{1,255}$/.test(id)) {
+      return true;
+    } else {
+      sd.log('distinct_id必须是不能为空，且小于255位的字符串');
+      return false;
+    }
+  }
+};
+
+saEvent.check = function(p) {
+  var flag = true;
+  for (var i in p) {
+    if (Object.prototype.hasOwnProperty.call(p, i) && !this.checkOption.check(i, p[i])) {
+      return false;
+    }
+  }
+  return flag;
+};
+
+saEvent.sendItem = function(p) {
+  var data = {
+    lib: {
+      $lib: 'js',
+      $lib_method: 'code',
+      $lib_version: String(sd.lib_version)
+    },
+    time: new Date() * 1
+  };
+
+  _.extend(data, p);
+  _.filterReservedProperties(data.properties);
+  _.searchObjDate(data);
+  _.searchObjString(data);
+  if (data.properties && '$project' in data.properties) {
+    data.project = String(data.properties.$project);
+    delete data.properties.$project;
+  }
+
+  sd.sendState.getSendCall(data);
+
+};
+
+saEvent.send = function(p, callback) {
+  var data = sd.kit.buildData(p);
+  sd.kit.sendData(data, callback);
+};
+
+saEvent.debugPath = function(data) {
+  var _data = data;
+  var url = '';
+  if (sd.para.debug_mode_url.indexOf('?') !== -1) {
+    url = sd.para.debug_mode_url + '&data=' + encodeURIComponent(_.base64Encode(data));
+  } else {
+    url = sd.para.debug_mode_url + '?data=' + encodeURIComponent(_.base64Encode(data));
+  }
+
+  _.ajax({
+    url: url,
+    type: 'GET',
+    cors: true,
+    header: {
+      'Dry-Run': String(sd.para.debug_mode_upload)
+    },
+    success: function(data) {
+      _.isEmptyObject(data) === true ? alert('debug数据发送成功' + _data) : alert('debug失败 错误原因' + JSON.stringify(data));
+    }
+  });
+};
 
 
 sd.para_default = {
@@ -3457,7 +4442,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.18.14';
+  sd.lib_version = '1.18.15';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -3675,10 +4660,11 @@ var commonWays = {
     }
   },
   autoTrackSinglePage: function(para, callback) {
+    var url;
     if (this.autoTrackIsUsed) {
-      var url = _.info.pageProp.url;
+      url = _.info.pageProp.url;
     } else {
-      var url = _.info.pageProp.referrer;
+      url = _.info.pageProp.referrer;
     }
     para = _.isObject(para) ? para : {};
 
@@ -3916,7 +4902,6 @@ sd.trackLink = function(link, event_name, event_prop) {
   }
 };
 sd.trackLinks = function(link, event_name, event_prop) {
-  var ele = link;
   event_prop = event_prop || {};
   if (!link || typeof link !== 'object') {
     return false;
@@ -4151,14 +5136,15 @@ sd.clearAllRegister = function(arr) {
 };
 
 sd.clearPageRegister = function(arr) {
+  var i;
   if (_.isArray(arr) && arr.length > 0) {
-    for (var i = 0; i < arr.length; i++) {
+    for (i = 0; i < arr.length; i++) {
       if (_.isString(arr[i]) && arr[i] in _.info.currentProps) {
         delete _.info.currentProps[arr[i]];
       }
     }
   } else if (arr === true) {
-    for (var i in _.info.currentProps) {
+    for (i in _.info.currentProps) {
       delete _.info.currentProps[i];
     }
   }
@@ -4368,6 +5354,15 @@ sd.detectMode = function() {
       });
     },
     messageListener: function(event) {
+      function validUrl(value) {
+        if (_.secCheck.isHttpUrl(value)) {
+          return _.secCheck.removeScriptProtocol(value);
+        } else {
+          sd.log('可视化模式检测 URL 失败');
+          return false;
+        }
+      }
+
       if (event.data.source !== 'sa-fe') {
         return false;
       }
@@ -4377,14 +5372,6 @@ sd.detectMode = function() {
             sessionStorage.setItem('sensors-visual-mode', 'true');
           }
           if (event.data.data.userURL && location.search.match(/sa-visual-mode=true/)) {
-            function validUrl(value) {
-              if (_.secCheck.isHttpUrl(value)) {
-                return _.secCheck.removeScriptProtocol(value);
-              } else {
-                sd.log('可视化模式检测 URL 失败');
-                return false;
-              }
-            }
             var valid_url = validUrl(event.data.data.userURL);
             if (valid_url) {
               window.location.href = valid_url;
@@ -4413,7 +5400,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.18.14'
+              sdkversion: '1.18.15'
             }
           },
           '*'
@@ -4503,7 +5490,7 @@ sd.detectMode = function() {
   function trackMode() {
     sd.readyState.setState(3);
 
-    var visualizedBridge = new sd.JSBridge({
+    new sd.JSBridge({
       type: 'visualized',
       app_call_js: function() {
         if (typeof sa_jssdk_app_define_mode !== 'undefined') {
@@ -4545,7 +5532,7 @@ sd.detectMode = function() {
       });
     }
     if (sd.para.batch_send) {
-      _.addEvent(window, 'onpagehide' in window ? 'pagehide' : 'unload', function(e) {
+      _.addEvent(window, 'onpagehide' in window ? 'pagehide' : 'unload', function() {
         sd.batchSend.clearPendingStatus();
       });
       sd.batchSend.batchInterval();
@@ -4587,8 +5574,107 @@ sd.detectMode = function() {
     trackMode();
     vtrackMode.notifyUser();
   }
-};;
+};
 
+var kit = {};
+
+kit.buildData = function(p) {
+  var data = {
+    distinct_id: sd.store.getDistinctId(),
+    lib: {
+      $lib: 'js',
+      $lib_method: 'code',
+      $lib_version: String(sd.lib_version)
+    },
+    properties: {}
+  };
+
+  if (_.isObject(p) && _.isObject(p.properties) && !_.isEmptyObject(p.properties)) {
+    if (p.properties.$lib_detail) {
+      data.lib.$lib_detail = p.properties.$lib_detail;
+      delete p.properties.$lib_detail;
+    }
+    if (p.properties.$lib_method) {
+      data.lib.$lib_method = p.properties.$lib_method;
+      delete p.properties.$lib_method;
+    }
+  }
+
+  _.extend(data, sd.store.getUnionId(), p);
+
+  if (_.isObject(p.properties) && !_.isEmptyObject(p.properties)) {
+    _.extend(data.properties, p.properties);
+  }
+
+
+  if (!p.type || p.type.slice(0, 7) !== 'profile') {
+
+    data.properties = _.extend({}, _.info.properties(), store.getProps(), store.getSessionProps(), _.info.currentProps, data.properties);
+    if (sd.para.preset_properties.latest_referrer && !_.isString(data.properties.$latest_referrer)) {
+      data.properties.$latest_referrer = '取值异常';
+    }
+    if (sd.para.preset_properties.latest_search_keyword && !_.isString(data.properties.$latest_search_keyword)) {
+      if (!sd.para.preset_properties.search_keyword_baidu || !_.isString(data.properties.$search_keyword_id) || !_.isNumber(data.properties.$search_keyword_id_hash) || !_.isString(data.properties.$search_keyword_id_type)) {
+        data.properties.$latest_search_keyword = '取值异常';
+      }
+    }
+    if (sd.para.preset_properties.latest_traffic_source_type && !_.isString(data.properties.$latest_traffic_source_type)) {
+      data.properties.$latest_traffic_source_type = '取值异常';
+    }
+    if (sd.para.preset_properties.latest_landing_page && !_.isString(data.properties.$latest_landing_page)) {
+      data.properties.$latest_landing_page = '取值异常';
+    }
+    if (sd.para.preset_properties.latest_wx_ad_click_id === 'not_collect') {
+      delete data.properties._latest_wx_ad_click_id;
+      delete data.properties._latest_wx_ad_hash_key;
+      delete data.properties._latest_wx_ad_callbacks;
+    } else if (sd.para.preset_properties.latest_wx_ad_click_id && !_.isString(data.properties._latest_wx_ad_click_id)) {
+      data.properties._latest_wx_ad_click_id = '取值异常';
+      data.properties._latest_wx_ad_hash_key = '取值异常';
+      data.properties._latest_wx_ad_callbacks = '取值异常';
+    }
+    if (_.isString(data.properties._latest_wx_ad_click_id)) {
+      data.properties.$url = _.isDecodeURI(sd.para.url_is_decode, window.location.href);
+    }
+  }
+
+  if (data.properties.$time && _.isDate(data.properties.$time)) {
+    data.time = data.properties.$time * 1;
+    delete data.properties.$time;
+  } else {
+    if (sd.para.use_client_time) {
+      data.time = new Date() * 1;
+    }
+  }
+  var props = sd.vtrackcollect.customProp.getVtrackProps(JSON.parse(JSON.stringify(data)));
+  if (_.isObject(props) && !_.isEmptyObject(props)) {
+    data.properties = _.extend(data.properties, props);
+  }
+
+  _.parseSuperProperties(data);
+
+  _.filterReservedProperties(data.properties);
+  _.searchObjDate(data);
+  _.searchObjString(data);
+  _.searchZZAppStyle(data);
+
+  saNewUser.checkIsAddSign(data);
+  saNewUser.checkIsFirstTime(data);
+
+  sd.addReferrerHost(data);
+  sd.addPropsHook(data);
+  return data;
+};
+
+kit.sendData = function(data, callback) {
+  var data_config = _.searchConfigData(data.properties);
+  if (sd.para.debug_mode === true) {
+    sd.log(data);
+    this.debugPath(JSON.stringify(data), callback);
+  } else {
+    sd.sendState.getSendCall(data, data_config, callback);
+  }
+};
 
 function BatchSend() {
   this.sendingData = 0;
@@ -4610,7 +5696,6 @@ BatchSend.prototype = {
     }
   },
   remove: function(keys) {
-    var me = this;
     if (this.sendingData > 0) {
       --this.sendingData;
     }
@@ -4716,7 +5801,6 @@ BatchSend.prototype = {
   readStore: function() {
     var keys = [];
     var vals = [];
-    var obj = {};
     var val = null;
     var now = new Date().getTime();
     var len = localStorage.length;
@@ -4755,7 +5839,7 @@ BatchSend.prototype = {
   }
 };
 
-sd.batchSend = new BatchSend();
+var batchSend = new BatchSend();
 
 var dataSend = {};
 
@@ -4841,7 +5925,7 @@ dataSend.getRealtimeInstance = function(data) {
       self.lastClear && self.lastClear();
     }, sd.para.datasend_timeout - sd.para.callback_timeout);
   };
-  obj.isEnd = function(isDelay) {
+  obj.isEnd = function() {
     if (!this.received) {
       this.received = true;
       this.end();
@@ -4952,8 +6036,7 @@ dataSend.beacon.prototype.start = function() {
 
 
 var sendState = {};
-sd.sendState = sendState;
-sd.events = new _.eventEmitter();
+var events = new _.eventEmitter();
 sendState.queue = _.autoExeQueue();
 
 sendState.getSendCall = function(data, config, callback) {
@@ -5045,627 +6128,7 @@ sendState.realtimeSend = function(data) {
   instance.start();
 };
 
-var saEvent = {};
-sd.saEvent = saEvent;
-
-saEvent.checkOption = {
-  regChecks: {
-    regName: /^((?!^distinct_id$|^original_id$|^time$|^properties$|^id$|^first_id$|^second_id$|^users$|^events$|^event$|^user_id$|^date$|^datetime$)[a-zA-Z_$][a-zA-Z\d_$]{0,99})$/i
-  },
-  checkPropertiesKey: function(obj) {
-    var me = this,
-      flag = true;
-    _.each(obj, function(content, key) {
-      if (!me.regChecks.regName.test(key)) {
-        flag = false;
-      }
-    });
-    return flag;
-  },
-  check: function(a, b) {
-    if (typeof this[a] === 'string') {
-      return this[this[a]](b);
-    } else if (_.isFunction(this[a])) {
-      return this[a](b);
-    }
-  },
-  str: function(s) {
-    if (_.isString(s) && s !== '') {
-      return true;
-    } else {
-      sd.log('请检查参数格式,必须是字符串且有值');
-      return false;
-    }
-  },
-  properties: function(p) {
-    _.strip_sa_properties(p);
-    if (p) {
-      if (_.isObject(p)) {
-        if (this.checkPropertiesKey(p)) {
-          return true;
-        } else {
-          sd.log('properties 里的自定义属性名需要是合法的变量名，不能以数字开头，且只包含：大小写字母、数字、下划线，自定义属性不能以 $ 开头');
-          return true;
-        }
-      } else {
-        sd.log('properties可以没有，但有的话必须是对象');
-        return true;
-      }
-    } else {
-      return true;
-    }
-  },
-  propertiesMust: function(p) {
-    _.strip_sa_properties(p);
-    if (p === undefined || !_.isObject(p) || _.isEmptyObject(p)) {
-      sd.log('properties必须是对象且有值');
-      return true;
-    } else {
-      if (this.checkPropertiesKey(p)) {
-        return true;
-      } else {
-        sd.log('properties 里的自定义属性名需要是合法的变量名，不能以数字开头，且只包含：大小写字母、数字、下划线，自定义属性不能以 $ 开头');
-        return true;
-      }
-    }
-  },
-  event: function(s) {
-    if (!_.isString(s) || !this['regChecks']['regName'].test(s)) {
-      sd.log('请检查参数格式，eventName 必须是字符串，且需是合法的变量名，即不能以数字开头，且只包含：大小写字母、数字、下划线和 $,其中以 $ 开头的表明是系统的保留字段，自定义事件名请不要以 $ 开头');
-      return true;
-    } else {
-      return true;
-    }
-  },
-  'item_type': 'str',
-  'item_id': 'str',
-  distinct_id: function(id) {
-    if (_.isString(id) && /^.{1,255}$/.test(id)) {
-      return true;
-    } else {
-      sd.log('distinct_id必须是不能为空，且小于255位的字符串');
-      return false;
-    }
-  }
-};
-
-saEvent.check = function(p) {
-  var flag = true;
-  for (var i in p) {
-    if (Object.prototype.hasOwnProperty.call(p, i) && !this.checkOption.check(i, p[i])) {
-      return false;
-    }
-  }
-  return flag;
-};
-
-saEvent.sendItem = function(p) {
-  var data = {
-    lib: {
-      $lib: 'js',
-      $lib_method: 'code',
-      $lib_version: String(sd.lib_version)
-    },
-    time: new Date() * 1
-  };
-
-  _.extend(data, p);
-  _.filterReservedProperties(data.properties);
-  _.searchObjDate(data);
-  _.searchObjString(data);
-  if (data.properties && '$project' in data.properties) {
-    data.project = String(data.properties.$project);
-    delete data.properties.$project;
-  }
-
-  sd.sendState.getSendCall(data);
-
-};
-
-saEvent.send = function(p, callback) {
-  var data = sd.kit.buildData(p);
-  sd.kit.sendData(data, callback);
-};
-
-saEvent.debugPath = function(data, callback) {
-  var _data = data;
-  var url = '';
-  if (sd.para.debug_mode_url.indexOf('?') !== -1) {
-    url = sd.para.debug_mode_url + '&data=' + encodeURIComponent(_.base64Encode(data));
-  } else {
-    url = sd.para.debug_mode_url + '?data=' + encodeURIComponent(_.base64Encode(data));
-  }
-
-  _.ajax({
-    url: url,
-    type: 'GET',
-    cors: true,
-    header: {
-      'Dry-Run': String(sd.para.debug_mode_upload)
-    },
-    success: function(data) {
-      _.isEmptyObject(data) === true ? alert('debug数据发送成功' + _data) : alert('debug失败 错误原因' + JSON.stringify(data));
-    }
-  });
-};;
-
-var kit = sd.kit = {};
-
-kit.buildData = function(p) {
-  var data = {
-    distinct_id: sd.store.getDistinctId(),
-    lib: {
-      $lib: 'js',
-      $lib_method: 'code',
-      $lib_version: String(sd.lib_version)
-    },
-    properties: {}
-  };
-
-  if (_.isObject(p) && _.isObject(p.properties) && !_.isEmptyObject(p.properties)) {
-    if (p.properties.$lib_detail) {
-      data.lib.$lib_detail = p.properties.$lib_detail;
-      delete p.properties.$lib_detail;
-    }
-    if (p.properties.$lib_method) {
-      data.lib.$lib_method = p.properties.$lib_method;
-      delete p.properties.$lib_method;
-    }
-  }
-
-  _.extend(data, sd.store.getUnionId(), p);
-
-  if (_.isObject(p.properties) && !_.isEmptyObject(p.properties)) {
-    _.extend(data.properties, p.properties);
-  }
-
-
-  if (!p.type || p.type.slice(0, 7) !== 'profile') {
-
-    data.properties = _.extend({}, _.info.properties(), store.getProps(), store.getSessionProps(), _.info.currentProps, data.properties);
-    if (sd.para.preset_properties.latest_referrer && !_.isString(data.properties.$latest_referrer)) {
-      data.properties.$latest_referrer = '取值异常';
-    }
-    if (sd.para.preset_properties.latest_search_keyword && !_.isString(data.properties.$latest_search_keyword)) {
-      if (!sd.para.preset_properties.search_keyword_baidu || !_.isString(data.properties.$search_keyword_id) || !_.isNumber(data.properties.$search_keyword_id_hash) || !_.isString(data.properties.$search_keyword_id_type)) {
-        data.properties.$latest_search_keyword = '取值异常';
-      }
-    }
-    if (sd.para.preset_properties.latest_traffic_source_type && !_.isString(data.properties.$latest_traffic_source_type)) {
-      data.properties.$latest_traffic_source_type = '取值异常';
-    }
-    if (sd.para.preset_properties.latest_landing_page && !_.isString(data.properties.$latest_landing_page)) {
-      data.properties.$latest_landing_page = '取值异常';
-    }
-    if (sd.para.preset_properties.latest_wx_ad_click_id === 'not_collect') {
-      delete data.properties._latest_wx_ad_click_id;
-      delete data.properties._latest_wx_ad_hash_key;
-      delete data.properties._latest_wx_ad_callbacks;
-    } else if (sd.para.preset_properties.latest_wx_ad_click_id && !_.isString(data.properties._latest_wx_ad_click_id)) {
-      data.properties._latest_wx_ad_click_id = '取值异常';
-      data.properties._latest_wx_ad_hash_key = '取值异常';
-      data.properties._latest_wx_ad_callbacks = '取值异常';
-    }
-    if (_.isString(data.properties._latest_wx_ad_click_id)) {
-      data.properties.$url = _.isDecodeURI(sd.para.url_is_decode, window.location.href);
-    }
-  }
-
-  if (data.properties.$time && _.isDate(data.properties.$time)) {
-    data.time = data.properties.$time * 1;
-    delete data.properties.$time;
-  } else {
-    if (sd.para.use_client_time) {
-      data.time = new Date() * 1;
-    }
-  }
-  var props = sd.vtrackcollect.customProp.getVtrackProps(JSON.parse(JSON.stringify(data)));
-  if (_.isObject(props) && !_.isEmptyObject(props)) {
-    data.properties = _.extend(data.properties, props);
-  }
-
-  _.parseSuperProperties(data);
-
-  _.filterReservedProperties(data.properties);
-  _.searchObjDate(data);
-  _.searchObjString(data);
-  _.searchZZAppStyle(data);
-
-  saNewUser.checkIsAddSign(data);
-  saNewUser.checkIsFirstTime(data);
-
-  sd.addReferrerHost(data);
-  sd.addPropsHook(data);
-  return data;
-}
-
-kit.sendData = function(data, callback) {
-  var data_config = _.searchConfigData(data.properties);
-  if (sd.para.debug_mode === true) {
-    sd.log(data);
-    this.debugPath(JSON.stringify(data), callback);
-  } else {
-    sd.sendState.getSendCall(data, data_config, callback);
-  }
-};
-
-
-var store = (sd.store = {
-  requests: [],
-  _sessionState: {},
-  _state: {
-    distinct_id: '',
-    first_id: '',
-    props: {}
-  },
-  getProps: function() {
-    return this._state.props || {};
-  },
-  getSessionProps: function() {
-    return this._sessionState;
-  },
-  getDistinctId: function() {
-    return this._state._distinct_id || this._state.distinct_id;
-  },
-  getUnionId: function() {
-    var obj = {};
-    var firstId = this._state._first_id || this._state.first_id,
-      distinct_id = this._state._distinct_id || this._state.distinct_id;
-    if (firstId && distinct_id) {
-      obj.login_id = distinct_id;
-      obj.anonymous_id = firstId;
-    } else {
-      obj.anonymous_id = distinct_id;
-    }
-    return obj;
-  },
-  getFirstId: function() {
-    return this._state._first_id || this._state.first_id;
-  },
-  toState: function(ds) {
-    var state = null;
-    if (ds != null && _.isJSONString(ds)) {
-      state = JSON.parse(ds);
-      this._state = _.extend(state);
-      if (state.distinct_id) {
-        if (typeof state.props === 'object') {
-          for (var key in state.props) {
-            if (typeof state.props[key] === 'string') {
-              state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
-            }
-          }
-          this.save();
-        }
-      } else {
-        this.set('distinct_id', _.UUID());
-        sd.debug.distinct_id('1', ds);
-      }
-    } else {
-      this.set('distinct_id', _.UUID());
-      sd.debug.distinct_id('2', ds);
-    }
-  },
-  initSessionState: function() {
-    var ds = _.cookie.get('sensorsdata2015session');
-    var state = null;
-    if (ds !== null && typeof(state = JSON.parse(ds)) === 'object') {
-      this._sessionState = state || {};
-    }
-  },
-
-  setOnce: function(a, b) {
-    if (!(a in this._state)) {
-      this.set(a, b);
-    }
-  },
-  set: function(name, value) {
-    this._state = this._state || {};
-    var pre_id = this._state.distinct_id;
-    this._state[name] = value;
-    if (name === 'first_id') {
-      delete this._state._first_id;
-    } else if (name === 'distinct_id') {
-      delete this._state._distinct_id;
-    }
-    this.save();
-    if (name === 'distinct_id' && pre_id) {
-      sd.events.tempAdd('changeDistinctId', value);
-    }
-  },
-  change: function(name, value) {
-    this._state['_' + name] = value;
-  },
-  setSessionProps: function(newp) {
-    var props = this._sessionState;
-    _.extend(props, newp);
-    this.sessionSave(props);
-  },
-  setSessionPropsOnce: function(newp) {
-    var props = this._sessionState;
-    _.coverExtend(props, newp);
-    this.sessionSave(props);
-  },
-  setProps: function(newp, isCover) {
-    var props = {};
-    if (!isCover) {
-      props = _.extend(this._state.props || {}, newp);
-    } else {
-      props = newp;
-    }
-    for (var key in props) {
-      if (typeof props[key] === 'string') {
-        props[key] = props[key].slice(0, sd.para.max_referrer_string_length);
-      }
-    }
-    this.set('props', props);
-  },
-  setPropsOnce: function(newp) {
-    var props = this._state.props || {};
-    _.coverExtend(props, newp);
-    this.set('props', props);
-  },
-  clearAllProps: function(arr) {
-    this._sessionState = {};
-    if (_.isArray(arr) && arr.length > 0) {
-      for (var i = 0; i < arr.length; i++) {
-        if (_.isString(arr[i]) && arr[i].indexOf('latest_') === -1 && arr[i] in this._state.props) {
-          delete this._state.props[arr[i]];
-        }
-      }
-    } else {
-      for (var i in this._state.props) {
-        if (i.indexOf('latest_') !== 1) {
-          delete this._state.props[i];
-        }
-      }
-    }
-    this.sessionSave({});
-    this.save();
-  },
-  sessionSave: function(props) {
-    this._sessionState = props;
-    _.cookie.set('sensorsdata2015session', JSON.stringify(this._sessionState), 0);
-  },
-  save: function() {
-    var copyState = JSON.parse(JSON.stringify(this._state));
-    delete copyState._first_id;
-    delete copyState._distinct_id;
-
-    var stateStr = JSON.stringify(copyState);
-    if (sd.para.encrypt_cookie) {
-      stateStr = _.cookie.encrypt(stateStr);
-    }
-    _.cookie.set(this.getCookieName(), stateStr, 73000, sd.para.cross_subdomain);
-  },
-  getCookieName: function() {
-    var sub = '';
-    if (sd.para.cross_subdomain === false) {
-      try {
-        sub = _.URL(location.href).hostname;
-      } catch (e) {
-        sd.log(e);
-      }
-      if (typeof sub === 'string' && sub !== '') {
-        sub = 'sa_jssdk_2015_' + sub.replace(/\./g, '_');
-      } else {
-        sub = 'sa_jssdk_2015_root';
-      }
-    } else {
-      sub = 'sensorsdata2015jssdkcross';
-    }
-    return sub;
-  },
-  init: function() {
-    this.initSessionState();
-    var uuid = _.UUID();
-    var cross = _.cookie.get(this.getCookieName());
-    cross = _.cookie.resolveValue(cross);
-    if (cross === null) {
-      sd.is_first_visitor = true;
-
-      this.set('distinct_id', uuid);
-    } else {
-      if (!_.isJSONString(cross) || !JSON.parse(cross).distinct_id) {
-        sd.is_first_visitor = true;
-      }
-
-      this.toState(cross);
-    }
-
-    saNewUser.setDeviceId(uuid);
-
-    saNewUser.storeInitCheck();
-    saNewUser.checkIsFirstLatest();
-  }
-});
-
-var saNewUser = {
-  checkIsAddSign: function(data) {
-    if (data.type === 'track') {
-      if (_.cookie.getNewUser()) {
-        data.properties.$is_first_day = true;
-      } else {
-        data.properties.$is_first_day = false;
-      }
-    }
-  },
-  is_first_visit_time: false,
-  checkIsFirstTime: function(data) {
-    if (data.type === 'track' && data.event === '$pageview') {
-      if (this.is_first_visit_time) {
-        data.properties.$is_first_time = true;
-        this.is_first_visit_time = false;
-      } else {
-        data.properties.$is_first_time = false;
-      }
-    }
-  },
-  setDeviceId: function(uuid) {
-    var device_id = null;
-    var ds = _.cookie.get('sensorsdata2015jssdkcross');
-    ds = _.cookie.resolveValue(ds);
-    var state = {};
-    if (ds != null && _.isJSONString(ds)) {
-      state = JSON.parse(ds);
-      if (state.$device_id) {
-        device_id = state.$device_id;
-      }
-    }
-
-    device_id = device_id || uuid;
-
-    if (sd.para.cross_subdomain === true) {
-      store.set('$device_id', device_id);
-    } else {
-      state.$device_id = device_id;
-      state = JSON.stringify(state);
-      if (sd.para.encrypt_cookie) {
-        state = _.cookie.encrypt(state);
-      }
-      _.cookie.set('sensorsdata2015jssdkcross', state, null, true);
-    }
-
-    if (sd.para.is_track_device_id) {
-      _.info.currentProps.$device_id = device_id;
-    }
-  },
-  storeInitCheck: function() {
-    if (sd.is_first_visitor) {
-      var date = new Date();
-      var obj = {
-        h: 23 - date.getHours(),
-        m: 59 - date.getMinutes(),
-        s: 59 - date.getSeconds()
-      };
-      _.cookie.set(_.cookie.getCookieName('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
-      this.is_first_visit_time = true;
-    } else {
-      if (!_.cookie.getNewUser()) {
-        this.checkIsAddSign = function(data) {
-          if (data.type === 'track') {
-            data.properties.$is_first_day = false;
-          }
-        };
-      }
-      this.checkIsFirstTime = function(data) {
-        if (data.type === 'track' && data.event === '$pageview') {
-          data.properties.$is_first_time = false;
-        }
-      };
-    }
-  },
-  checkIsFirstLatest: function() {
-    var url_domain = _.info.pageProp.url_domain;
-
-
-    var latestObj = {};
-
-    if (url_domain === '') {
-      url_domain = 'url解析失败';
-    }
-
-    var baiduKey = _.getKeywordFromReferrer(document.referrer, true);
-    if (sd.para.preset_properties.search_keyword_baidu) {
-      if (_.isReferralTraffic(document.referrer)) {
-        if (_.isBaiduTraffic() && !(_.isObject(baiduKey) && baiduKey.active)) {
-          latestObj['$search_keyword_id'] = _.getBaiduKeyword.id();
-          latestObj['$search_keyword_id_type'] = _.getBaiduKeyword.type();
-          latestObj['$search_keyword_id_hash'] = _.hashCode(latestObj['$search_keyword_id']);
-        } else {
-          sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
-          sd.store._state.props.$search_keyword_id_type && delete sd.store._state.props.$search_keyword_id_type;
-          sd.store._state.props.$search_keyword_id_hash && delete sd.store._state.props.$search_keyword_id_hash;
-        }
-      }
-    } else {
-      sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
-      sd.store._state.props.$search_keyword_id_type && delete sd.store._state.props.$search_keyword_id_type;
-      sd.store._state.props.$search_keyword_id_hash && delete sd.store._state.props.$search_keyword_id_hash;
-    }
-
-    sd.store.save();
-
-
-    _.each(sd.para.preset_properties, function(value, key) {
-      if (key.indexOf('latest_') === -1) {
-        return false;
-      }
-      key = key.slice(7);
-      if (value) {
-        if (key === 'wx_ad_click_id' && value === 'not_collect') {
-          return false;
-        }
-        if (key !== 'utm' && url_domain === 'url解析失败') {
-          if (key === 'wx_ad_click_id') {
-            latestObj['_latest_wx_ad_click_id'] = 'url的domain解析失败';
-            latestObj['_latest_wx_ad_hash_key'] = 'url的domain解析失败';
-            latestObj['_latest_wx_ad_callbacks'] = 'url的domain解析失败';
-          } else {
-            latestObj['$latest_' + key] = 'url的domain解析失败';
-          }
-        } else if (_.isReferralTraffic(document.referrer)) {
-          switch (key) {
-            case 'traffic_source_type':
-              latestObj['$latest_traffic_source_type'] = _.getSourceFromReferrer();
-              break;
-            case 'referrer':
-              latestObj['$latest_referrer'] = _.isDecodeURI(sd.para.url_is_decode, _.info.pageProp.referrer);
-              break;
-            case 'search_keyword':
-              if (_.getKeywordFromReferrer()) {
-                latestObj['$latest_search_keyword'] = _.getKeywordFromReferrer();
-              } else if (_.isObject(sd.store._state.props) && sd.store._state.props.$latest_search_keyword) {
-                delete sd.store._state.props.$latest_search_keyword;
-              }
-              break;
-            case 'landing_page':
-              latestObj['$latest_landing_page'] = _.isDecodeURI(sd.para.url_is_decode, location.href);
-              break;
-            case 'wx_ad_click_id':
-              var adObj = _.getWxAdIdFromUrl(location.href);
-              latestObj['_latest_wx_ad_click_id'] = adObj.click_id;
-              latestObj['_latest_wx_ad_hash_key'] = adObj.hash_key;
-              latestObj['_latest_wx_ad_callbacks'] = adObj.callbacks;
-              break;
-          }
-        }
-      } else {
-        if (key === 'utm' && sd.store._state.props) {
-          for (var key1 in sd.store._state.props) {
-            if (key1.indexOf('$latest_utm') === 0 || (key1.indexOf('_latest_') === 0 && key1.indexOf('_latest_wx_ad_') < 0)) {
-              delete sd.store._state.props[key1];
-            }
-          }
-        } else if (sd.store._state.props && '$latest_' + key in sd.store._state.props) {
-          delete sd.store._state.props['$latest_' + key];
-        } else if (key == 'wx_ad_click_id' && sd.store._state.props && value === false) {
-          var wxPro = ['_latest_wx_ad_click_id', '_latest_wx_ad_hash_key', '_latest_wx_ad_callbacks'];
-          _.each(wxPro, function(value) {
-            if (value in sd.store._state.props) {
-              delete sd.store._state.props[value];
-            }
-          });
-        }
-      }
-    });
-
-    sd.register(latestObj);
-
-    if (sd.para.preset_properties.latest_utm) {
-      var allUtms = _.info.campaignParamsStandard('$latest_', '_latest_');
-      var $utms = allUtms.$utms;
-      var otherUtms = allUtms.otherUtms;
-      if (!_.isEmptyObject($utms)) {
-        sd.register($utms);
-      }
-      if (!_.isEmptyObject(otherUtms)) {
-        sd.register(otherUtms);
-      }
-    }
-  }
-};;
-
-sd.bridge = {
+var bridge = {
   is_verify_success: false,
   initPara: function() {
     var app_js_bridge_default = {
@@ -5805,6 +6268,14 @@ sd.bridge = {
     }
   },
   dataSend: function(requestData, that, callback) {
+    function checkURL(originData) {
+      var data = JSON.stringify(_.extend({
+        server_url: sd.para.server_url
+      }, originData));
+      data = data.replaceAll(/\r\n/g, '');
+      data = encodeURIComponent(data);
+      return 'sensorsanalytics://trackEvent?event=' + data;
+    }
     var originData = requestData.data;
     if (_.isObject(sd.para.app_js_bridge) && !sd.para.app_js_bridge.is_mui) {
       if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage && _.isObject(window.SensorsData_iOS_JS_Bridge) && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url) {
@@ -5874,15 +6345,6 @@ sd.bridge = {
         var iframe = null;
         if (sd.bridge.iOS_UA_bridge()) {
           iframe = document.createElement('iframe');
-
-          function checkURL(originData) {
-            var data = JSON.stringify(_.extend({
-              server_url: sd.para.server_url
-            }, originData));
-            data = data.replaceAll(/\r\n/g, '');
-            data = encodeURIComponent(data);
-            return 'sensorsanalytics://trackEvent?event=' + data;
-          }
           var newurl = checkURL(originData);
           iframe.setAttribute('src', newurl);
           document.documentElement.appendChild(iframe);
@@ -5915,7 +6377,7 @@ sd.bridge = {
       }
     } else if (_.isObject(sd.para.app_js_bridge) && sd.para.app_js_bridge.is_mui) {
       if (_.isObject(window.plus) && window.plus.SDAnalytics && window.plus.SDAnalytics.trackH5Event) {
-        window.plus.SDAnalytics.trackH5Event(data);
+        window.plus.SDAnalytics.trackH5Event(requestData);
         typeof callback === 'function' && callback();
       } else {
         if (_.isObject(sd.para.app_js_bridge) && sd.para.app_js_bridge.is_send === true) {
@@ -5975,7 +6437,6 @@ sd.bridge = {
       getAndroid();
       if (!func) {
         return app_info;
-        app_info = null;
       } else {
         if (app_info === null) {
           todo = func;
@@ -5995,13 +6456,13 @@ sd.bridge = {
     window.sensorsdata_app_call_js.modules = {};
   }
 };
-sd.JSBridge = function(obj) {
+var JSBridge = function(obj) {
   this.list = {};
   this.type = obj.type;
   this.app_call_js = _.isFunction(obj.app_call_js) ? obj.app_call_js : function() {};
   this.init();
 };
-sd.JSBridge.prototype.init = function() {
+JSBridge.prototype.init = function() {
   var that = this;
   if (!window.sensorsdata_app_call_js.modules[this.type]) {
     window.sensorsdata_app_call_js.modules[this.type] = function(data) {
@@ -6009,7 +6470,7 @@ sd.JSBridge.prototype.init = function() {
     };
   }
 };
-sd.JSBridge.prototype.jsCallApp = function(data) {
+JSBridge.prototype.jsCallApp = function(data) {
   var appData = {
     callType: this.type,
     data: data
@@ -6023,7 +6484,7 @@ sd.JSBridge.prototype.jsCallApp = function(data) {
     return false;
   }
 };
-sd.JSBridge.prototype.hasAppBridge = function() {
+JSBridge.prototype.hasAppBridge = function() {
   if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker && window.webkit.messageHandlers.sensorsdataNativeTracker.postMessage) {
     return 'ios';
   } else if (_.isObject(window.SensorsData_APP_New_H5_Bridge) && window.SensorsData_APP_New_H5_Bridge.sensorsdata_js_call_app) {
@@ -6033,7 +6494,7 @@ sd.JSBridge.prototype.hasAppBridge = function() {
     return false;
   }
 };
-sd.JSBridge.prototype.requestToApp = function(obj) {
+JSBridge.prototype.requestToApp = function(obj) {
   var that = this;
   var data = _.isObject(obj.data) ? obj.data : {};
   if (!_.isFunction(obj.callback)) {
@@ -6071,7 +6532,7 @@ sd.JSBridge.prototype.requestToApp = function(obj) {
     return false;
   }
 };
-sd.JSBridge.prototype.double = function(data) {
+JSBridge.prototype.double = function(data) {
   if (data.message_id) {
     var message = this.list[data.message_id];
     if (message) {
@@ -6082,485 +6543,9 @@ sd.JSBridge.prototype.double = function(data) {
       delete this.list[data.message_id];
     }
   }
-};;
+};
 
-
-var heatmap = (sd.heatmap = {
-  otherTags: [],
-  getTargetElement: function(element, e) {
-    var that = this;
-    var target = element;
-    if (typeof target !== 'object') {
-      return null;
-    }
-    if (typeof target.tagName !== 'string') {
-      return null;
-    }
-    var tagName = target.tagName.toLowerCase();
-    if (tagName.toLowerCase() === 'body' || tagName.toLowerCase() === 'html') {
-      return null;
-    }
-    if (!target || !target.parentNode || !target.parentNode.children) {
-      return null;
-    }
-
-    var parent_ele = target.parentNode;
-    var hasAOrAttr = that.hasElement(e.originalEvent || e, function(target) {
-      return target.tagName.toLowerCase() === 'a' || _.hasAttributes(target, sd.para.heatmap.track_attr);
-    });
-
-    var otherTags = that.otherTags;
-
-    if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea') {
-      return target;
-    } else if (_.indexOf(otherTags, tagName) > -1) {
-      return target;
-    } else if (parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a') {
-      return parent_ele;
-    } else if (tagName === 'area' && parent_ele.tagName.toLowerCase() === 'map' && _.ry(parent_ele).prev().tagName && _.ry(parent_ele).prev().tagName.toLowerCase() === 'img') {
-      return _.ry(parent_ele).prev();
-    } else if (hasAOrAttr) {
-      return hasAOrAttr;
-    } else if (tagName === 'div' && sd.para.heatmap.collect_tags.div && that.isDivLevelValid(target)) {
-      var max_level = (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level) || 1;
-      if (max_level > 1 || that.isCollectableDiv(target)) {
-        return target;
-      } else {
-        return null;
-      }
-    } else if (that.isStyleTag(tagName) && sd.para.heatmap.collect_tags.div) {
-      var parentTrackDiv = that.getCollectableParent(target);
-      if (parentTrackDiv && that.isDivLevelValid(parentTrackDiv)) {
-        return parentTrackDiv;
-      }
-    }
-    return null;
-  },
-  getDivLevels: function(element, rootElement) {
-    var path = heatmap.getElementPath(element, true, rootElement);
-    var pathArr = path.split(' > ');
-    var ans = 0;
-    _.each(pathArr, function(tag) {
-      if (tag === 'div') {
-        ans++;
-      }
-    });
-    return ans;
-  },
-  isDivLevelValid: function(element) {
-    var max_level = (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level) || 1;
-
-    var allDiv = element.getElementsByTagName('div');
-    for (var i = allDiv.length - 1; i >= 0; i--) {
-      if (heatmap.getDivLevels(allDiv[i], element) > max_level) {
-        return false;
-      }
-    }
-    return true;
-  },
-  getElementPath: function(element, ignoreID, rootElement) {
-    var names = [];
-    while (element.parentNode) {
-      if (element.id && !ignoreID && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(element.id)) {
-        names.unshift(element.tagName.toLowerCase() + '#' + element.id);
-        break;
-      } else {
-        if (rootElement && element === rootElement) {
-          names.unshift(element.tagName.toLowerCase());
-          break;
-        } else if (element === document.body) {
-          names.unshift('body');
-          break;
-        } else {
-          names.unshift(element.tagName.toLowerCase());
-        }
-        element = element.parentNode;
-      }
-    }
-    return names.join(' > ');
-  },
-  getClosestLi: function(element) {
-    var getClosest = function(elem, selector) {
-      for (; elem && elem !== document && elem.nodeType === 1; elem = elem.parentNode) {
-        if (elem.tagName.toLowerCase() === selector) {
-          return elem;
-        }
-      }
-      return null;
-    };
-    return getClosest(element, 'li');
-  },
-  getElementPosition: function(element, elementPath, ignoreID) {
-    var closestLi = sd.heatmap.getClosestLi(element);
-    if (!closestLi) {
-      return null;
-    }
-    var tag = element.tagName.toLowerCase();
-    var sameTypeTags = closestLi.getElementsByTagName(tag);
-    var sameTypeTagsLen = sameTypeTags.length;
-    var arr = [];
-    if (sameTypeTagsLen > 1) {
-      for (var i = 0; i < sameTypeTagsLen; i++) {
-        var elepath = sd.heatmap.getElementPath(sameTypeTags[i], ignoreID);
-        if (elepath === elementPath) {
-          arr.push(sameTypeTags[i]);
-        }
-      }
-      if (arr.length > 1) {
-        return _.indexOf(arr, element);
-      }
-    }
-
-    function _getPosition(element) {
-      var tagName = element.tagName.toLowerCase();
-      var parentNode = element.parentNode;
-      if (!parentNode) {
-        return '';
-      }
-      var sameTypeSiblings = _.ry(element).getSameTypeSiblings();
-      var typeLen = sameTypeSiblings.length;
-      if (typeLen === 1) {
-        return 0;
-      }
-      for (var i = 0, e = element; _.ry(e).previousElementSibling().ele; e = _.ry(e).previousElementSibling().ele, i++);
-      return i;
-    }
-    return _getPosition(closestLi);
-  },
-  setNotice: function(web_url) {
-    sd.is_heatmap_render_mode = true;
-
-    if (!sd.para.heatmap) {
-      sd.errorMsg = '您SDK没有配置开启点击图，可能没有数据！';
-    }
-    if (web_url && web_url[0] && web_url[1]) {
-      if (web_url[1].slice(0, 5) === 'http:' && location.protocol === 'https:') {
-        sd.errorMsg = '您的当前页面是https的地址，神策分析环境也必须是https！';
-      }
-    }
-    if (!sd.para.heatmap_url) {
-      sd.para.heatmap_url = location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/heatmap.min.js';
-    }
-  },
-  getDomIndex: function(el) {
-    if (!el.parentNode) return -1;
-    var i = 0;
-    var nodeName = el.tagName;
-    var list = el.parentNode.children;
-    for (var n = 0; n < list.length; n++) {
-      if (list[n].tagName === nodeName) {
-        if (el === list[n]) {
-          return i;
-        } else {
-          i++;
-        }
-      }
-    }
-    return -1;
-  },
-  selector: function(el, notuseid) {
-    var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
-    if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && (!sd.para.heatmap || (sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id')) && !notuseid) {
-      return '#' + el.getAttribute('id');
-    } else {
-      return el.tagName.toLowerCase() + (~i ? ':nth-of-type(' + (i + 1) + ')' : '');
-    }
-  },
-  getDomSelector: function(el, arr, notuseid) {
-    if (!el || !el.parentNode || !el.parentNode.children) {
-      return false;
-    }
-    arr = arr && arr.join ? arr : [];
-    var name = el.nodeName.toLowerCase();
-    if (!el || name === 'body' || 1 != el.nodeType) {
-      arr.unshift('body');
-      return arr.join(' > ');
-    }
-    arr.unshift(this.selector(el, notuseid));
-    if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id' && !notuseid) return arr.join(' > ');
-    return this.getDomSelector(el.parentNode, arr, notuseid);
-  },
-  na: function() {
-    var a = document.documentElement.scrollLeft || window.pageXOffset;
-    return parseInt(isNaN(a) ? 0 : a, 10);
-  },
-  i: function() {
-    var a = 0;
-    try {
-      (a = (o.documentElement && o.documentElement.scrollTop) || m.pageYOffset), (a = isNaN(a) ? 0 : a);
-    } catch (b) {
-      a = 0;
-    }
-    return parseInt(a, 10);
-  },
-  getBrowserWidth: function() {
-    var a = window.innerWidth || document.body.clientWidth;
-    return isNaN(a) ? 0 : parseInt(a, 10);
-  },
-  getBrowserHeight: function() {
-    var a = window.innerHeight || document.body.clientHeight;
-    return isNaN(a) ? 0 : parseInt(a, 10);
-  },
-  getScrollWidth: function() {
-    var a = parseInt(document.body.scrollWidth, 10);
-    return isNaN(a) ? 0 : a;
-  },
-  W: function(a) {
-    var b = parseInt(+a.clientX + Number(this.na()), 10);
-    var a = parseInt(+a.clientY + Number(this.i()), 10);
-    return {
-      x: isNaN(b) ? 0 : b,
-      y: isNaN(a) ? 0 : a
-    };
-  },
-  getEleDetail: function(target) {
-    var selector = this.getDomSelector(target);
-    var prop = _.getEleInfo({
-      target: target
-    });
-    prop.$element_selector = selector ? selector : '';
-    prop.$element_path = sd.heatmap.getElementPath(target, sd.para.heatmap && sd.para.heatmap.element_selector === 'not_use_id');
-    var element_position = sd.heatmap.getElementPosition(target, prop.$element_path, sd.para.heatmap && sd.para.heatmap.element_selector === 'not_use_id');
-    if (_.isNumber(element_position)) {
-      prop.$element_position = element_position;
-    }
-    return prop;
-  },
-  start: function(ev, target, tagName, customProps, callback) {
-    var userCustomProps = _.isObject(customProps) ? customProps : {};
-    var userCallback = _.isFunction(callback) ? callback : _.isFunction(customProps) ? customProps : undefined;
-    if (sd.para.heatmap && sd.para.heatmap.collect_element && !sd.para.heatmap.collect_element(target)) {
-      return false;
-    }
-
-    var prop = this.getEleDetail(target);
-
-    if (sd.para.heatmap && sd.para.heatmap.custom_property) {
-      var customP = sd.para.heatmap.custom_property(target);
-      if (_.isObject(customP)) {
-        prop = _.extend(prop, customP);
-      }
-    }
-    prop = _.extend(prop, userCustomProps);
-    if (tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true) {
-      _.trackLink({
-        event: ev,
-        target: target
-      }, '$WebClick', prop);
-    } else {
-      sd.track('$WebClick', prop, userCallback);
-    }
-  },
-  hasElement: function(e, func) {
-    var path = e.path || (e._getPath && e._getPath());
-    if (path) {
-      if (_.isArray(path) && path.length > 0) {
-        for (var i = 0; i < path.length; i++) {
-          if (path[i] && path[i].tagName && func(path[i])) {
-            return path[i];
-          }
-        }
-      }
-    }
-  },
-  isStyleTag: function(tagname, isVisualMode) {
-    var defaultTag = ['a', 'div', 'input', 'button', 'textarea'];
-    var ignore_tags_default = ['mark', '/mark', 'strong', 'b', 'em', 'i', 'u', 'abbr', 'ins', 'del', 's', 'sup'];
-    if (_.indexOf(defaultTag, tagname) > -1) {
-      return false;
-    }
-    if (isVisualMode && (!sd.para.heatmap || !sd.para.heatmap.collect_tags || !sd.para.heatmap.collect_tags.div)) {
-      return _.indexOf(ignore_tags_default, tagname) > -1;
-    } else if (_.isObject(sd.para.heatmap) && _.isObject(sd.para.heatmap.collect_tags) && _.isObject(sd.para.heatmap.collect_tags.div) && _.indexOf(sd.para.heatmap.collect_tags.div.ignore_tags, tagname) > -1) {
-      return true;
-    }
-    return false;
-  },
-  isCollectableDiv: function(target, isVisualMode) {
-    try {
-      if (target.children.length === 0) {
-        return true;
-      } else {
-        for (var i = 0; i < target.children.length; i++) {
-          if (target.children[i].nodeType !== 1) {
-            continue;
-          }
-          var tag = target.children[i].tagName.toLowerCase();
-          var max_level = sd.para && sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level;
-          if ((tag === 'div' && max_level > 1) || this.isStyleTag(tag, isVisualMode)) {
-            if (!this.isCollectableDiv(target.children[i], isVisualMode)) {
-              return false;
-            }
-          } else {
-            return false;
-          }
-        }
-        return true;
-      }
-    } catch (error) {
-      sd.log(error);
-    }
-    return false;
-  },
-  getCollectableParent: function(target, isVisualMode) {
-    try {
-      var parent = target.parentNode;
-      var parentName = parent ? parent.tagName.toLowerCase() : '';
-      if (parentName === 'body') {
-        return false;
-      }
-      var max_level = sd.para && sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level;
-      if (parentName && parentName === 'div' && (max_level > 1 || this.isCollectableDiv(parent, isVisualMode))) {
-        return parent;
-      } else if (parent && this.isStyleTag(parentName, isVisualMode)) {
-        return this.getCollectableParent(parent, isVisualMode);
-      }
-    } catch (error) {
-      sd.log(error);
-    }
-    return false;
-  },
-  initScrollmap: function() {
-    if (!_.isObject(sd.para.heatmap) || sd.para.heatmap.scroll_notice_map !== 'default') {
-      return false;
-    }
-
-    var checkPage = function() {
-      if (sd.para.scrollmap && _.isFunction(sd.para.scrollmap.collect_url) && !sd.para.scrollmap.collect_url()) {
-        return false;
-      }
-      return true;
-    };
-
-    var interDelay = function(param) {
-      var interDelay = {};
-      interDelay.timeout = param.timeout || 1000;
-      interDelay.func = param.func;
-      interDelay.hasInit = false;
-      interDelay.inter = null;
-      interDelay.main = function(para, isClose) {
-        this.func(para, isClose);
-        this.inter = null;
-      };
-      interDelay.go = function(isNoDelay) {
-        var me = this;
-        var para = {};
-        if (!this.inter) {
-          para.$viewport_position = (document.documentElement && document.documentElement.scrollTop) || window.pageYOffset || document.body.scrollTop || 0;
-          para.$viewport_position = Math.round(para.$viewport_position) || 0;
-          para.$viewport_height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0;
-          para.$viewport_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
-          if (isNoDelay) {
-            interDelay.main(para, true);
-          } else {
-            this.inter = setTimeout(function() {
-              interDelay.main(para);
-            }, this.timeout);
-          }
-        }
-      };
-      return interDelay;
-    };
-
-    var delayTime = interDelay({
-      timeout: 1000,
-      func: function(para, isClose) {
-        var offsetTop = (document.documentElement && document.documentElement.scrollTop) || window.pageYOffset || document.body.scrollTop || 0;
-        var current_time = new Date();
-        var delay_time = current_time - this.current_time;
-        if ((delay_time > sd.para.heatmap.scroll_delay_time && offsetTop - para.$viewport_position !== 0) || isClose) {
-          para.$url = _.isDecodeURI(sd.para.url_is_decode, location.href);
-          para.$title = document.title;
-          para.$url_path = location.pathname;
-          para.event_duration = Math.min(sd.para.heatmap.scroll_event_duration, parseInt(delay_time) / 1000);
-          para.event_duration = para.event_duration < 0 ? 0 : para.event_duration;
-          sd.track('$WebStay', para);
-        }
-        this.current_time = current_time;
-      }
-    });
-
-    delayTime.current_time = new Date();
-
-    _.addEvent(window, 'scroll', function() {
-      if (!checkPage()) {
-        return false;
-      }
-      delayTime.go();
-    });
-
-    _.addEvent(window, 'unload', function() {
-      if (!checkPage()) {
-        return false;
-      }
-      delayTime.go('notime');
-    });
-  },
-  initHeatmap: function() {
-    var that = this;
-    if (!_.isObject(sd.para.heatmap) || sd.para.heatmap.clickmap !== 'default') {
-      return false;
-    }
-
-    if (_.isFunction(sd.para.heatmap.collect_url) && !sd.para.heatmap.collect_url()) {
-      return false;
-    }
-
-    if (sd.para.heatmap.collect_elements === 'all') {
-      sd.para.heatmap.collect_elements = 'all';
-    } else {
-      sd.para.heatmap.collect_elements = 'interact';
-    }
-    if (sd.para.heatmap.collect_elements === 'all') {
-      _.addEvent(document, 'click', function(e) {
-        var ev = e || window.event;
-        if (!ev) {
-          return false;
-        }
-        var target = ev.target || ev.srcElement;
-        if (typeof target !== 'object') {
-          return false;
-        }
-        if (typeof target.tagName !== 'string') {
-          return false;
-        }
-        var tagName = target.tagName.toLowerCase();
-        if (tagName === 'body' || tagName === 'html') {
-          return false;
-        }
-        if (!target || !target.parentNode || !target.parentNode.children) {
-          return false;
-        }
-        var parent_ele = target.parentNode.tagName.toLowerCase();
-        if (parent_ele === 'a' || parent_ele === 'button') {
-          that.start(ev, target.parentNode, parent_ele);
-        } else {
-          that.start(ev, target, tagName);
-        }
-      });
-    } else {
-      _.addEvent(document, 'click', function(e) {
-        var ev = e || window.event;
-        if (!ev) {
-          return false;
-        }
-        var target = ev.target || ev.srcElement;
-        var theTarget = sd.heatmap.getTargetElement(target, e);
-        if (theTarget) {
-          that.start(ev, theTarget, theTarget.tagName.toLowerCase());
-        } else if (_.isElement(target) && target.tagName.toLowerCase() === 'div' && _.isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config && sd.unlimitedDiv.events.length > 0) {
-          if (sd.unlimitedDiv.isTargetEle(target)) {
-            that.start(ev, target, target.tagName.toLowerCase(), {
-              $lib_method: 'vtrack'
-            });
-          }
-        }
-      });
-    }
-  }
-});;
-
-sd.unlimitedDiv = {
+var unlimitedDiv = {
   events: [],
   init: function() {
     this.filterWebClickEvents();
@@ -6591,9 +6576,7 @@ sd.unlimitedDiv = {
   }
 };
 
-
-
-sd.customProp = {
+var customProp = {
   events: [],
   configSwitch: false,
   collectAble: function() {
@@ -6625,7 +6608,7 @@ sd.customProp = {
   },
   clickCustomPropMaker: function(data, events, configs) {
     var _this = this;
-    var configs = configs || this.filterConfig(data, events, sd.vtrackcollect.url_info.page_url);
+    configs = configs || this.filterConfig(data, events, sd.vtrackcollect.url_info.page_url);
     var props = {};
     if (!configs.length) {
       return {};
@@ -6764,7 +6747,7 @@ sd.customProp = {
       }
     }
     if (data.event === '$WebClick') {
-      _.each(events, function(item, index) {
+      _.each(events, function(item) {
         if (_.isObject(item) && item.event_type === 'webclick' && _.isObject(item.event)) {
           if (item.event.url_host === page_url.host && item.event.url_path === page_url.pathname) {
             if (sd.vtrackcollect.configIsMatch(data.properties, item.event)) {
@@ -6778,10 +6761,8 @@ sd.customProp = {
   }
 };
 
-
-
-sd.vtrackcollect = {
-  unlimitedDiv: sd.unlimitedDiv,
+var vtrackcollect = {
+  unlimitedDiv: unlimitedDiv,
   config: {},
   storageEnable: true,
   storage_name: 'webjssdkvtrackcollect',
@@ -6793,7 +6774,7 @@ sd.vtrackcollect = {
   url_info: {},
   timer: null,
   update_time: null,
-  customProp: sd.customProp,
+  customProp: customProp,
   initUrl: function() {
     var url_info = {
       server_url: {
@@ -7071,7 +7052,22 @@ sd.vtrackcollect = {
     }
     return true;
   }
-};;
+};
+
+sd.modules = {};
+sd._ = _;
+sd.kit = kit;
+sd.saEvent = saEvent;
+sd.sendState = sendState;
+sd.events = events;
+sd.batchSend = batchSend;
+sd.bridge = bridge;
+sd.JSBridge = JSBridge;
+sd.store = store;
+sd.unlimitedDiv = unlimitedDiv;
+sd.customProp = customProp;
+sd.vtrackcollect = vtrackcollect;
+sd.heatmap = heatmap;
 
 sd.init = function(para) {
   if (sd.readyState && sd.readyState.state && sd.readyState.state >= 2) {
@@ -7115,9 +7111,9 @@ _.each(methods, function(method) {
     }
     return oldFunc.apply(sd, arguments);
   };
-});;
+});
 
-
+var _sd = sd;
 if (typeof window['sensorsDataAnalytic201505'] === 'string') {
   sd.setPreConfig(window[sensorsDataAnalytic201505]);
   window[sensorsDataAnalytic201505] = sd;
@@ -7126,7 +7122,9 @@ if (typeof window['sensorsDataAnalytic201505'] === 'string') {
 } else if (typeof window['sensorsDataAnalytic201505'] === 'undefined') {
   window['sensorsDataAnalytic201505'] = sd;
 } else {
-  sd = window['sensorsDataAnalytic201505'];
+  _sd = window['sensorsDataAnalytic201505'];
 }
 
-export default sd;
+var _sd$1 = _sd;
+
+export default _sd$1;
