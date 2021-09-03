@@ -4442,7 +4442,7 @@ sd.setPreConfig = function(sa) {
 
 sd.setInitVar = function() {
   sd._t = sd._t || 1 * new Date();
-  sd.lib_version = '1.18.15';
+  sd.lib_version = '1.18.16';
   sd.is_first_visitor = false;
   sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
 };
@@ -5400,7 +5400,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.18.15'
+              sdkversion: '1.18.16'
             }
           },
           '*'
@@ -5670,7 +5670,7 @@ kit.sendData = function(data, callback) {
   var data_config = _.searchConfigData(data.properties);
   if (sd.para.debug_mode === true) {
     sd.log(data);
-    this.debugPath(JSON.stringify(data), callback);
+    sd.saEvent.debugPath(JSON.stringify(data), callback);
   } else {
     sd.sendState.getSendCall(data, data_config, callback);
   }
