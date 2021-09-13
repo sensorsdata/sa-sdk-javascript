@@ -1034,14 +1034,6 @@
       return result;
     };
 
-    _.isDecodeURI = function(para, val) {
-      if (para) {
-        return _.decodeURI(val);
-      } else {
-        return val;
-      }
-    };
-
     _.encodeDates = function(obj) {
       _.each(obj, function(v, k) {
         if (_.isDate(v)) {
@@ -1624,7 +1616,6 @@
       });
 
 
-
     };
 
     _.cookie = {
@@ -1791,7 +1782,8 @@
 
       props = _.strip_empty_properties(props);
 
-      (props.$url = _.isDecodeURI(sd.para.url_is_decode, location.href)), (props.$url_path = location.pathname);
+      props.$url = _.getURL();
+      props.$url_path = location.pathname;
       props.$title = document.title;
       props.$viewport_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
 
@@ -2283,7 +2275,6 @@
       }
     };
 
-
     _.isReferralTraffic = function(refererstring) {
       refererstring = refererstring || document.referrer;
       if (refererstring === '') {
@@ -2464,11 +2455,20 @@
     };
 
 
+    _.getURL = function(para) {
+      if (_.isString(para)) {
+        return _.decodeURI(para);
+      } else {
+        return _.decodeURI(location.href);
+      }
+    };
+
     _.getReferrer = function(referrer) {
       referrer = referrer || document.referrer;
       if (typeof referrer !== 'string') {
         return '取值异常_referrer异常_' + String(referrer);
       }
+      referrer = _.decodeURI(referrer);
       if (referrer.indexOf('https://www.baidu.com/') === 0) {
         referrer = referrer.split('?')[0];
       }
@@ -2536,7 +2536,6 @@
         return '取值异常_referrer异常_' + String(referrerUrl);
       }
     };
-
 
     _.getWxAdIdFromUrl = function(url) {
       var click_id = _.getQueryParam(url, 'gdt_vid');
@@ -2622,7 +2621,7 @@
     _.info = {
       initPage: function() {
         var referrer = _.getReferrer();
-        var url = location.href;
+        var url = _.getURL();
         var url_domain = _.getCurrentDomain(url);
         if (!url_domain) {
           sd.debug.jssdkDebug('url_domain异常_' + url + '_' + url_domain);
@@ -3115,7 +3114,9 @@
             _.addEvent(window, 'blur', this.hiddenHandler);
           } else {
             var _this = this;
-            _.addEvent(document, this.visibilityChange,
+            _.addEvent(
+              document,
+              this.visibilityChange,
               function() {
                 if (!document[_this.hidden]) {
                   _this.visibleHandler();
@@ -3484,7 +3485,6 @@
 
       sd.store.save();
 
-
       _.each(sd.para.preset_properties, function(value, key) {
         if (key.indexOf('latest_') === -1) {
           return false;
@@ -3508,7 +3508,7 @@
                 latestObj['$latest_traffic_source_type'] = _.getSourceFromReferrer();
                 break;
               case 'referrer':
-                latestObj['$latest_referrer'] = _.isDecodeURI(sd.para.url_is_decode, _.info.pageProp.referrer);
+                latestObj['$latest_referrer'] = _.info.pageProp.referrer;
                 break;
               case 'search_keyword':
                 if (_.getKeywordFromReferrer()) {
@@ -3518,7 +3518,7 @@
                 }
                 break;
               case 'landing_page':
-                latestObj['$latest_landing_page'] = _.isDecodeURI(sd.para.url_is_decode, location.href);
+                latestObj['$latest_landing_page'] = _.getURL();
                 break;
               case 'wx_ad_click_id':
                 var adObj = _.getWxAdIdFromUrl(location.href);
@@ -3939,7 +3939,7 @@
           var current_time = new Date();
           var delay_time = current_time - this.current_time;
           if ((delay_time > sd.para.heatmap.scroll_delay_time && offsetTop - para.$viewport_position !== 0) || isClose) {
-            para.$url = _.isDecodeURI(sd.para.url_is_decode, location.href);
+            para.$url = _.getURL();
             para.$title = document.title;
             para.$url_path = location.pathname;
             para.event_duration = Math.min(sd.para.heatmap.scroll_event_duration, parseInt(delay_time) / 1000);
@@ -4101,8 +4101,8 @@
         return true;
       }
     },
-    'item_type': 'str',
-    'item_id': 'str',
+    item_type: 'str',
+    item_id: 'str',
     distinct_id: function(id) {
       if (_.isString(id) && /^.{1,255}$/.test(id)) {
         return true;
@@ -4143,7 +4143,6 @@
     }
 
     sd.sendState.getSendCall(data);
-
   };
 
   saEvent.send = function(p, callback) {
@@ -4194,14 +4193,11 @@
     max_referrer_string_length: 200,
     max_string_length: 500,
     cross_subdomain: true,
-    show_log: true,
+    show_log: false,
     is_debug: false,
     debug_mode: false,
     debug_mode_upload: false,
 
-    session_time: 0,
-
-    use_client_time: false,
     source_channel: [],
 
     send_type: 'image',
@@ -4218,12 +4214,10 @@
 
     source_type: {},
     callback_timeout: 200,
-    datasend_timeout: 3000,
-    queue_timeout: 300,
+    datasend_timeout: 8000,
     is_track_device_id: false,
     ignore_oom: true,
-    app_js_bridge: false,
-    url_is_decode: false
+    app_js_bridge: false
   };
 
   sd.addReferrerHost = function(data) {
@@ -4245,7 +4239,7 @@
 
   sd.addPropsHook = function(data) {
     if (sd.para.preset_properties && sd.para.preset_properties.url && (data.type === 'track' || data.type === 'track_signup') && typeof data.properties.$url === 'undefined') {
-      data.properties.$url = _.isDecodeURI(sd.para.url_is_decode, window.location.href);
+      data.properties.$url = _.getURL();
     }
     if (sd.para.preset_properties && sd.para.preset_properties.title && (data.type === 'track' || data.type === 'track_signup') && typeof data.properties.$title === 'undefined') {
       data.properties.$title = document.title;
@@ -4306,9 +4300,7 @@
     if (_.localStorage.isSupport() && _.isSupportCors() && typeof localStorage === 'object') {
       if (sd.para.batch_send === true) {
         sd.para.batch_send = _.extend({}, batch_send_default);
-        sd.para.use_client_time = true;
       } else if (typeof sd.para.batch_send === 'object') {
-        sd.para.use_client_time = true;
         sd.para.batch_send = _.extend({}, batch_send_default, sd.para.batch_send);
       }
     } else {
@@ -4410,12 +4402,6 @@
     if (sd.para.callback_timeout > sd.para.datasend_timeout) {
       sd.para.datasend_timeout = sd.para.callback_timeout;
     }
-    if (sd.para.callback_timeout > sd.para.queue_timeout) {
-      sd.para.queue_timeout = sd.para.callback_timeout;
-    }
-    if (sd.para.queue_timeout > sd.para.datasend_timeout) {
-      sd.para.datasend_timeout = sd.para.queue_timeout;
-    }
   };
 
   sd.readyState = {
@@ -4444,7 +4430,7 @@
 
   sd.setInitVar = function() {
     sd._t = sd._t || 1 * new Date();
-    sd.lib_version = '1.18.17';
+    sd.lib_version = '1.18.18';
     sd.is_first_visitor = false;
     sd.source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
   };
@@ -4580,7 +4566,7 @@
         if (_.isArray(arr) && arr.length > 0) {
           _.each(arr, function(str) {
             if (_.isJSONString(str)) {
-              sd.sendState.pushSend(JSON.parse(str));
+              sd.sendState.realtimeSend(JSON.parse(str));
             }
           });
         }
@@ -4692,8 +4678,8 @@
         sd.track(
           '$pageview',
           _.extend({
-              $referrer: _.isDecodeURI(sd.para.url_is_decode, url),
-              $url: _.isDecodeURI(sd.para.url_is_decode, location.href),
+              $referrer: url,
+              $url: _.getURL(),
               $url_path: location.pathname,
               $title: document.title
             },
@@ -4702,7 +4688,7 @@
           ),
           c
         );
-        url = location.href;
+        url = _.getURL();
       }
       closure(para, callback);
       this.autoTrackSinglePage = closure;
@@ -4719,19 +4705,19 @@
         sd.setOnceProfile(
           _.extend({
               $first_visit_time: new Date(),
-              $first_referrer: _.isDecodeURI(sd.para.url_is_decode, _.getReferrer()),
+              $first_referrer: _.getReferrer(),
               $first_browser_language: navigator.language || '取值异常',
               $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
               $first_traffic_source_type: _.getSourceFromReferrer(),
               $first_search_keyword: _.getKeywordFromReferrer()
             },
-            getUtm(), eqidObj
+            getUtm(),
+            eqidObj
           )
         );
 
         sd.is_first_visitor = false;
       }
-
     },
     autoTrackWithoutProfile: function(para, callback) {
       para = _.isObject(para) ? para : {};
@@ -4765,8 +4751,8 @@
           sd.track(
             '$pageview',
             _.extend({
-                $referrer: _.isDecodeURI(sd.para.url_is_decode, referrer),
-                $url: _.isDecodeURI(sd.para.url_is_decode, location.href),
+                $referrer: referrer,
+                $url: _.getURL(),
                 $url_path: location.pathname,
                 $title: document.title
               },
@@ -4775,14 +4761,14 @@
             ),
             callback
           );
-          current_page_url = location.href;
+          current_page_url = _.getURL();
         });
       }
       sd.track(
         '$pageview',
         _.extend({
-            $referrer: _.isDecodeURI(sd.para.url_is_decode, _.getReferrer()),
-            $url: _.isDecodeURI(sd.para.url_is_decode, location.href),
+            $referrer: _.getReferrer(),
+            $url: _.getURL(),
             $url_path: location.pathname,
             $title: document.title
           },
@@ -4804,13 +4790,14 @@
         sd.setOnceProfile(
           _.extend({
               $first_visit_time: new Date(),
-              $first_referrer: _.isDecodeURI(sd.para.url_is_decode, _.getReferrer()),
+              $first_referrer: _.getReferrer(),
               $first_browser_language: navigator.language || '取值异常',
               $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
               $first_traffic_source_type: _.getSourceFromReferrer(),
               $first_search_keyword: _.getKeywordFromReferrer()
             },
-            $utms, eqidObj
+            $utms,
+            eqidObj
           )
         );
 
@@ -4928,8 +4915,8 @@
 
   sd.setItem = function(type, id, p) {
     if (saEvent.check({
-        'item_type': type,
-        'item_id': id,
+        item_type: type,
+        item_id: id,
         properties: p
       })) {
       saEvent.sendItem({
@@ -4943,8 +4930,8 @@
 
   sd.deleteItem = function(type, id) {
     if (saEvent.check({
-        'item_type': type,
-        'item_id': id
+        item_type: type,
+        item_id: id
       })) {
       saEvent.sendItem({
         type: 'item_delete',
@@ -5246,9 +5233,9 @@
 
     var obj = {
       $is_first_day: _.cookie.getNewUser(),
-      $referrer: _.isDecodeURI(sd.para.url_is_decode, _.info.pageProp.referrer) || '',
+      $referrer: _.info.pageProp.referrer || '',
       $referrer_host: _.info.pageProp.referrer ? _.getHostname(_.info.pageProp.referrer) : '',
-      $url: _.isDecodeURI(sd.para.url_is_decode, location.href),
+      $url: _.getURL(),
       $url_path: location.pathname,
       $title: document.title || '',
       _distinct_id: store.getDistinctId()
@@ -5402,7 +5389,7 @@
               source: 'sa-web-sdk',
               type: 'v-is-vtrack',
               data: {
-                sdkversion: '1.18.17'
+                sdkversion: '1.18.18'
               }
             },
             '*'
@@ -5513,11 +5500,10 @@
           var sendData = function(extraData) {
             extraData = extraData || {};
             if (last_url !== location.href) {
-              _.info.pageProp.referrer = last_url;
-              last_url = _.isDecodeURI(sd.para.url_is_decode, last_url);
+              _.info.pageProp.referrer = _.getURL(last_url);
               sd.quick('autoTrack', _.extend({
-                $url: _.isDecodeURI(sd.para.url_is_decode, location.href),
-                $referrer: last_url
+                $url: _.getURL(),
+                $referrer: _.getURL(last_url)
               }, extraData));
             }
           };
@@ -5636,7 +5622,7 @@
         data.properties._latest_wx_ad_callbacks = '取值异常';
       }
       if (_.isString(data.properties._latest_wx_ad_click_id)) {
-        data.properties.$url = _.isDecodeURI(sd.para.url_is_decode, window.location.href);
+        data.properties.$url = _.getURL();
       }
     }
 
@@ -5644,9 +5630,7 @@
       data.time = data.properties.$time * 1;
       delete data.properties.$time;
     } else {
-      if (sd.para.use_client_time) {
-        data.time = new Date() * 1;
-      }
+      data.time = new Date() * 1;
     }
     var props = sd.vtrackcollect.customProp.getVtrackProps(JSON.parse(JSON.stringify(data)));
     if (_.isObject(props) && !_.isEmptyObject(props)) {
@@ -5861,54 +5845,6 @@
     return 'data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
   };
 
-  dataSend.getInstance = function(data) {
-    var sendType = this.getSendType(data);
-    var obj = new this[sendType](data);
-    var start = obj.start;
-    obj.start = function() {
-      if (_.isObject(sd.para.is_debug) && sd.para.is_debug.storage && sd.store.requests) {
-        sd.store.requests.push({
-          name: this.server_url,
-          initiatorType: this.img ? 'img' : 'xmlhttprequest',
-          entryType: 'resource',
-          requestData: this.data
-        });
-      }
-      var me = this;
-      start.apply(this, arguments);
-      setTimeout(function() {
-        me.isEnd(true);
-      }, sd.para.callback_timeout);
-    };
-    obj.end = function() {
-      this.callback && this.callback();
-      var self = this;
-      setTimeout(function() {
-        self.lastClear && self.lastClear();
-      }, sd.para.datasend_timeout - sd.para.callback_timeout);
-    };
-    obj.isEnd = function(isDelay) {
-      if (!this.received) {
-        this.received = true;
-        this.end();
-        var self = this;
-        if (isDelay) {
-          if (sd.para.queue_timeout - sd.para.callback_timeout <= 0) {
-            self.close();
-          } else {
-            setTimeout(function() {
-              self.close();
-            }, sd.para.queue_timeout - sd.para.callback_timeout);
-          }
-        } else {
-          self.close();
-        }
-      }
-    };
-
-    return obj;
-  };
-
   dataSend.getRealtimeInstance = function(data) {
     var sendType = this.getSendType(data);
     var obj = new this[sendType](data);
@@ -6052,9 +5988,8 @@
     }
 
     data._track_id = Number(String(_.getRandom()).slice(2, 5) + String(_.getRandom()).slice(2, 4) + String(new Date().getTime()).slice(-4));
-    if (sd.para.use_client_time) {
-      data._flush_time = new Date().getTime();
-    }
+
+    data._flush_time = new Date().getTime();
 
     var originData = data;
 
@@ -6108,21 +6043,8 @@
       data = JSON.stringify(data);
       sd.para.jsapp.setData(data);
     } else {
-      if (sd.para.use_client_time) {
-        this.realtimeSend(data);
-      } else {
-        this.pushSend(data);
-      }
+      this.realtimeSend(data);
     }
-  };
-
-  sendState.pushSend = function(data) {
-    var instance = dataSend.getInstance(data);
-    var me = this;
-    instance.close = function() {
-      me.queue.close();
-    };
-    this.queue.enqueue(instance);
   };
 
   sendState.realtimeSend = function(data) {

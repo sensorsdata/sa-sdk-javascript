@@ -8113,7 +8113,6 @@
   })();
 
   (function() {
-
     var sd = null;
     var _ = null;
 
@@ -8874,7 +8873,7 @@
         }
 
         _.each(templeUsableData, function(obj) {
-          if (obj.by_values[0] && (_.querySelectorAll(obj.by_values[0])[0])) {
+          if (obj.by_values[0] && _.querySelectorAll(obj.by_values[0])[0]) {
             usableData.push(obj);
           }
         });
@@ -9397,7 +9396,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.18.17';
+      sd.heatmap_version = '1.18.18';
       _ = sd._;
 
       _.bindReady = function(fn, win) {
