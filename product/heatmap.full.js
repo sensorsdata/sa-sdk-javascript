@@ -9396,7 +9396,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.18.18';
+      sd.heatmap_version = '1.18.19';
       _ = sd._;
 
       _.bindReady = function(fn, win) {
