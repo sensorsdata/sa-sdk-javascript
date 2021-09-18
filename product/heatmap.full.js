@@ -9228,6 +9228,7 @@
     };
 
     var heatmap = {
+      jsonp_timer: null,
       getServerData: {
         ajax: function(obj) {
           var _this = this;
@@ -9267,10 +9268,23 @@
             },
             error = _.isFunction(obj.error) ? obj.error : function() {},
             timeout = obj.timeout || 8000;
+          var me = this;
+          if (this.jsonp_timer !== null) {
+            clearTimeout(this.jsonp_timer);
+          }
+          this.jsonp_timer = setTimeout(function() {
+            error({
+              error: '由于数据量较大，请求耗时较长，请继续等待'
+            });
+          }, timeout);
+
           _.jsonp({
             url: obj.url.jsonp,
             callbackName: 'saJSSDKHeatRender',
             success: function(data) {
+              if (me.jsonp_timer !== null) {
+                clearTimeout(me.jsonp_timer);
+              }
               if (data && _.isObject(data) && data.is_success) {
                 if (_.isObject(data.data)) {
                   success(data.data);
@@ -9295,6 +9309,9 @@
               }
             },
             error: function(err) {
+              if (me.jsonp_timer !== null) {
+                clearTimeout(me.jsonp_timer);
+              }
               if (err === 'timeout') {
                 error({
                   error: 'JSONP 请求超时，请尝试刷新页面'
@@ -9310,8 +9327,7 @@
                   });
                 }
               }
-            },
-            timeout: timeout
+            }
           });
         }
       },
@@ -9396,7 +9412,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.18.19';
+      sd.heatmap_version = '1.18.20';
       _ = sd._;
 
       _.bindReady = function(fn, win) {
