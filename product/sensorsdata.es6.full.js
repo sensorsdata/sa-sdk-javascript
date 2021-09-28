@@ -1254,7 +1254,7 @@ function hasAttributes(ele, attrs) {
 function hasAttribute(ele, attr) {
   if (ele.hasAttribute) {
     return ele.hasAttribute(attr);
-  } else {
+  } else if (ele.attributes) {
     return !!(ele.attributes[attr] && ele.attributes[attr].specified);
   }
 }
@@ -2007,7 +2007,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.19.1';
+var sdkversion_placeholder = '1.19.2';
 
 function searchZZAppStyle(data) {
   if (typeof data.properties.$project !== 'undefined') {
@@ -4112,7 +4112,7 @@ var heatmap = {
     if (path) {
       if (isArray(path) && path.length > 0) {
         for (var i = 0; i < path.length; i++) {
-          if (path[i] && path[i].tagName && func(path[i])) {
+          if (typeof path[i] === 'object' && path[i].nodeType === 1 && func(path[i])) {
             return path[i];
           }
         }
@@ -5579,7 +5579,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.19.1'
+              sdkversion: '1.19.2'
             }
           },
           '*'
