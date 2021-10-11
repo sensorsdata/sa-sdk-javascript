@@ -2007,7 +2007,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.19.2';
+var sdkversion_placeholder = '1.19.3';
 
 function searchZZAppStyle(data) {
   if (typeof data.properties.$project !== 'undefined') {
@@ -2849,8 +2849,12 @@ function getUA() {
 }
 
 function isSupportBeaconSend() {
-  var Sys = getUA();
   var supported = false;
+  if (typeof navigator !== 'object' || typeof navigator.sendBeacon !== 'function') {
+    return supported;
+  }
+
+  var Sys = getUA();
   var ua = navigator.userAgent.toLowerCase();
   if (/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
     var reg = /os [\d._]*/gi;
@@ -5579,7 +5583,7 @@ sd.detectMode = function() {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.19.2'
+              sdkversion: '1.19.3'
             }
           },
           '*'
