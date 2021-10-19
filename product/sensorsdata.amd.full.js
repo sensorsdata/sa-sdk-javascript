@@ -2009,7 +2009,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.19.3';
+  var sdkversion_placeholder = '1.19.4';
 
   function searchZZAppStyle(data) {
     if (typeof data.properties.$project !== 'undefined') {
@@ -5548,7 +5548,7 @@
           }
         }
 
-        if (event.data.source !== 'sa-fe') {
+        if (!(event && event.data) || event.data.source !== 'sa-fe') {
           return false;
         }
         if (event.data.type === 'v-track-mode') {
@@ -5585,7 +5585,7 @@
               source: 'sa-web-sdk',
               type: 'v-is-vtrack',
               data: {
-                sdkversion: '1.19.3'
+                sdkversion: '1.19.4'
               }
             },
             '*'
@@ -5594,7 +5594,7 @@
       },
       notifyUser: function() {
         var fn = function(event) {
-          if (event.data.source !== 'sa-fe') {
+          if (!(event && event.data) || event.data.source !== 'sa-fe') {
             return false;
           }
           if (event.data.type === 'v-track-mode') {
