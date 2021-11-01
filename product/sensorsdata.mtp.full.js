@@ -2012,7 +2012,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.19.5';
+  var sdkversion_placeholder = '1.19.6';
 
   function searchZZAppStyle(data) {
     if (typeof data.properties.$project !== 'undefined') {
@@ -6011,8 +6011,9 @@
     }
     para = para || {};
     para.batch_send = false;
-    para.heatmap = para.heatmap || {};
-    para.heatmap.get_vtrack_config = false;
+    if (isObject(para.heatmap)) {
+      para.heatmap.get_vtrack_config = false;
+    }
 
     sd.setInitVar();
     sd.readyState.setState(2);

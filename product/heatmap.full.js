@@ -9414,7 +9414,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.19.5';
+      sd.heatmap_version = '1.19.6';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {
