@@ -8114,6 +8114,160 @@
 
   var QRCode$1 = QRCode;
 
+  var sdPara = {};
+
+  var ObjProto = Object.prototype;
+  var toString = ObjProto.toString;
+
+  var getRandomBasic = (function() {
+    var today = new Date();
+    var seed = today.getTime();
+
+    function rnd() {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280.0;
+    }
+    return function rand(number) {
+      return Math.ceil(rnd() * number);
+    };
+  })();
+
+  function isObject(obj) {
+    if (obj == null) {
+      return false;
+    } else {
+      return toString.call(obj) == '[object Object]';
+    }
+  }
+
+  function formatJsonString(obj) {
+    try {
+      return JSON.stringify(obj, null, '  ');
+    } catch (e) {
+      return JSON.stringify(obj);
+    }
+  }
+
+  function isSessionStorgaeSupport() {
+    var supported = true;
+
+    var supportName = '__sensorsdatasupport__';
+    var val = 'testIsSupportStorage';
+    try {
+      if (sessionStorage && sessionStorage.setItem) {
+        sessionStorage.setItem(supportName, val);
+        sessionStorage.removeItem(supportName, val);
+        supported = true;
+      } else {
+        supported = false;
+      }
+    } catch (e) {
+      supported = false;
+    }
+    return supported;
+  }
+
+  function sdLog() {
+    if ((isSessionStorgaeSupport() && sessionStorage.getItem('sensorsdata_jssdk_debug') === 'true') || sdPara.show_log) {
+      if (isObject(arguments[0]) && (sdPara.show_log === false)) {
+        arguments[0] = formatJsonString(arguments[0]);
+      }
+
+      if (typeof console === 'object' && console.log) {
+        try {
+          return console.log.apply(console, arguments);
+        } catch (e) {
+          console.log(arguments[0]);
+        }
+      }
+    }
+  }
+
+  function urlParse(para) {
+    var URLParser = function(a) {
+      this._fields = {
+        Username: 4,
+        Password: 5,
+        Port: 7,
+        Protocol: 2,
+        Host: 6,
+        Path: 8,
+        URL: 0,
+        QueryString: 9,
+        Fragment: 10
+      };
+      this._values = {};
+      this._regex = null;
+      this._regex = /^((\w+):\/\/)?((\w+):?(\w+)?@)?([^\/\?:]+):?(\d+)?(\/?[^\?#]+)?\??([^#]+)?#?(\w*)/;
+
+      if (typeof a != 'undefined') {
+        this._parse(a);
+      }
+    };
+    URLParser.prototype.setUrl = function(a) {
+      this._parse(a);
+    };
+    URLParser.prototype._initValues = function() {
+      for (var a in this._fields) {
+        this._values[a] = '';
+      }
+    };
+    URLParser.prototype.addQueryString = function(queryObj) {
+      if (typeof queryObj !== 'object') {
+        return false;
+      }
+      var query = this._values.QueryString || '';
+      for (var i in queryObj) {
+        if (new RegExp(i + '[^&]+').test(query)) {
+          query = query.replace(new RegExp(i + '[^&]+'), i + '=' + queryObj[i]);
+        } else {
+          if (query.slice(-1) === '&') {
+            query = query + i + '=' + queryObj[i];
+          } else {
+            if (query === '') {
+              query = i + '=' + queryObj[i];
+            } else {
+              query = query + '&' + i + '=' + queryObj[i];
+            }
+          }
+        }
+      }
+      this._values.QueryString = query;
+    };
+    URLParser.prototype.getUrl = function() {
+      var url = '';
+      url += this._values.Origin;
+      url += this._values.Port ? ':' + this._values.Port : '';
+      url += this._values.Path;
+      url += this._values.QueryString ? '?' + this._values.QueryString : '';
+      url += this._values.Fragment ? '#' + this._values.Fragment : '';
+      return url;
+    };
+
+    URLParser.prototype._parse = function(a) {
+      this._initValues();
+
+      var b = this._regex.exec(a);
+      if (!b) {
+        sdLog('DPURLParser::_parse -> Invalid URL');
+      }
+
+      var urlTmp = a.split('#');
+      var urlPart = urlTmp[0];
+      var hashPart = urlTmp.slice(1).join('#');
+      b = this._regex.exec(urlPart);
+      for (var c in this._fields) {
+        if (typeof b[this._fields[c]] != 'undefined') {
+          this._values[c] = b[this._fields[c]];
+        }
+      }
+      this._values['Hostname'] = this._values['Host'].replace(/:\d+$/, '');
+      this._values['Origin'] = this._values['Protocol'] + '://' + this._values['Hostname'];
+      this._values['Fragment'] = hashPart;
+    };
+    return new URLParser(para);
+  }
+
   (function() {
     var sd = null;
     var _ = null;
@@ -8150,7 +8304,7 @@
             this.setNoticeMap(data, url);
           }
         } else {
-          var href = _.urlParse(location.href);
+          var href = urlParse(location.href);
           if (!data) {
             return false;
           }
@@ -9414,7 +9568,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.19.6';
+      sd.heatmap_version = '1.19.7';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {

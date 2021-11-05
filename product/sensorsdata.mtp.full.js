@@ -2012,7 +2012,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.19.6';
+  var sdkversion_placeholder = '1.19.7';
 
   function searchZZAppStyle(data) {
     if (typeof data.properties.$project !== 'undefined') {
