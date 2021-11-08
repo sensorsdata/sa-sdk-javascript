@@ -2008,7 +2008,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.19.7';
+var sdkversion_placeholder = '1.19.8';
 
 function searchZZAppStyle(data) {
   if (typeof data.properties.$project !== 'undefined') {
@@ -7310,7 +7310,7 @@ var vtrackMode = {
           source: 'sa-web-sdk',
           type: 'v-is-vtrack',
           data: {
-            sdkversion: '1.19.7'
+            sdkversion: '1.19.8'
           }
         },
         '*'
