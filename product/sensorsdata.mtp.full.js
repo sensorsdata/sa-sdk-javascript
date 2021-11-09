@@ -2012,7 +2012,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.19.8';
+  var sdkversion_placeholder = '1.19.9';
 
   function searchZZAppStyle(data) {
     if (typeof data.properties.$project !== 'undefined') {
@@ -3974,9 +3974,9 @@
     var _data = data;
     var url = '';
     if (sd.para.debug_mode_url.indexOf('?') !== -1) {
-      url = sd.para.debug_mode_url + '&data=' + encodeURIComponent(base64Encode(data));
+      url = sd.para.debug_mode_url + '&' + sd.kit.encodeTrackData(data);
     } else {
-      url = sd.para.debug_mode_url + '?data=' + encodeURIComponent(base64Encode(data));
+      url = sd.para.debug_mode_url + '?' + sd.kit.encodeTrackData(data);
     }
 
     ajax({
@@ -5570,20 +5570,22 @@
     }
   };
 
+  kit.encodeTrackData = function(data) {
+    var dataStr = base64Encode(data);
+    var crc = 'crc=' + hashCode(dataStr);
+    return 'data=' + encodeURIComponent(dataStr) + '&ext=' + encodeURIComponent(crc);
+  };
+
   function getSendUrl(url, data) {
-    var base64Data = base64Encode(data);
-    var crc = 'crc=' + hashCode(base64Data);
+    var dataStr = kit.encodeTrackData(data);
     if (url.indexOf('?') !== -1) {
-      return url + '&data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
-    } else {
-      return url + '?data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
+      return url + '&' + dataStr;
     }
+    return url + '?' + dataStr;
   }
 
   function getSendData(data) {
-    var base64Data = base64Encode(data);
-    var crc = 'crc=' + hashCode(base64Data);
-    return 'data=' + encodeURIComponent(base64Data) + '&ext=' + encodeURIComponent(crc);
+    return kit.encodeTrackData(data);
   }
 
   var ImageSender = function(para) {
