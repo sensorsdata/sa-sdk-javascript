@@ -2010,7 +2010,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.19.9';
+  var sdkversion_placeholder = '1.19.10';
 
   function searchZZAppStyle(data) {
     if (typeof data.properties.$project !== 'undefined') {
@@ -7314,7 +7314,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.19.9'
+              sdkversion: '1.19.10'
             }
           },
           '*'
