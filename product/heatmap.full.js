@@ -9499,10 +9499,11 @@
         var me = this;
         _.bindReady(function() {
           if (window && window.parent && window.parent.window && window !== window.parent.window) {
+            var iframe_height = me.getScrollHeight();
             window.parent.window.postMessage({
                 method: 'setHeight',
                 params: {
-                  height: me.getScrollHeight()
+                  height: iframe_height > 600 ? iframe_height : 600
                 }
               },
               sd.para.web_url
@@ -9564,7 +9565,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.19.10';
+      sd.heatmap_version = '1.19.11';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {

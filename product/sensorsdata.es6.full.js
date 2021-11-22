@@ -2008,7 +2008,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.19.10';
+var sdkversion_placeholder = '1.19.11';
 
 function searchZZAppStyle(data) {
   if (typeof data.properties.$project !== 'undefined') {
@@ -2346,13 +2346,13 @@ function isReferralTraffic(refererstring) {
   return getCookieTopLevelDomain(getHostname(refererstring)) !== getCookieTopLevelDomain();
 }
 
-function getReferrer(referrer) {
+function getReferrer(referrer, full) {
   referrer = referrer || document.referrer;
   if (typeof referrer !== 'string') {
     return '取值异常_referrer异常_' + String(referrer);
   }
   referrer = decodeURI(referrer);
-  if (referrer.indexOf('https://www.baidu.com/') === 0) {
+  if (referrer.indexOf('https://www.baidu.com/') === 0 && !full) {
     referrer = referrer.split('?')[0];
   }
   referrer = referrer.slice(0, sdPara.max_referrer_string_length);
@@ -4653,7 +4653,7 @@ var commonWays = {
 
     if (sd.para.is_single_page) {
       addHashEvent(function() {
-        var referrer = getReferrer(current_page_url);
+        var referrer = getReferrer(current_page_url, true);
         sd.track(
           '$pageview',
           extend({
@@ -4673,7 +4673,7 @@ var commonWays = {
     sd.track(
       '$pageview',
       extend({
-          $referrer: getReferrer(),
+          $referrer: getReferrer(null, true),
           $url: getURL(),
           $url_path: location.pathname,
           $title: document.title
@@ -4696,7 +4696,7 @@ var commonWays = {
       sd.setOnceProfile(
         extend({
             $first_visit_time: new Date(),
-            $first_referrer: getReferrer(),
+            $first_referrer: getReferrer(null, true),
             $first_browser_language: navigator.language || '取值异常',
             $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
             $first_traffic_source_type: getSourceFromReferrer(),
@@ -7312,7 +7312,7 @@ var vtrackMode = {
           source: 'sa-web-sdk',
           type: 'v-is-vtrack',
           data: {
-            sdkversion: '1.19.10'
+            sdkversion: '1.19.11'
           }
         },
         '*'
