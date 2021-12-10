@@ -1169,8 +1169,6 @@
       title: true
     },
     encrypt_cookie: false,
-    enc_cookie: false,
-    login_id_key: '$identity_login_id',
     img_use_crossorigin: false,
 
     name: 'sa',
@@ -2012,7 +2010,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.20.1';
+  var sdkversion_placeholder = '1.19.12';
 
   function searchZZAppStyle(data) {
     if (typeof data.properties.$project !== 'undefined') {
@@ -2282,7 +2280,11 @@
   function getReferrerEqidType() {
     var query = getQueryParamsFromUrl(document.referrer);
     if (isEmptyObject(query) || !query.eqid) {
-      return 'baidu_sem_keyword_id';
+      var url = getQueryParamsFromUrl(location.href);
+      if (query.ck || url.utm_source) {
+        return 'baidu_sem_keyword_id';
+      }
+      return 'baidu_other_keyword_id';
     }
     return 'baidu_seo_keyword_id';
   }
@@ -2471,28 +2473,6 @@
 
     return obj;
   }
-
-  function isFalsy(arg) {
-    return isUndefined(arg) || arg === '' || arg === null;
-  }
-
-  var check = {
-    checkKeyword: function(para) {
-      var reg = /^((?!^distinct_id$|^original_id$|^device_id$|^time$|^properties$|^id$|^first_id$|^second_id$|^users$|^events$|^event$|^user_id$|^date$|^datetime$|^user_group|^user_tag)[a-zA-Z_$][a-zA-Z\d_$]{0,99})$/i;
-      if (!isString(para) || !reg.test(para)) {
-        return false;
-      }
-      return true;
-    },
-
-    checkIdLength: function(str) {
-      var temp = String(str);
-      if (temp.length > 255) {
-        return false;
-      }
-      return true;
-    }
-  };
 
   var pageInfo = {
     initPage: function() {
@@ -3453,8 +3433,6 @@
     getUA: getUA,
     getIOSVersion: getIOSVersion,
     isSupportBeaconSend: isSupportBeaconSend,
-    isFalsy: isFalsy,
-    check: check,
     searchZZAppStyle: searchZZAppStyle,
     searchObjString: searchObjString,
     filterReservedProperties: filterReservedProperties,
@@ -3681,33 +3659,12 @@
 
 
   var store = {
-    identities: {
-      set: function(name, id) {
-        var identities = {};
-        switch (name) {
-          case 'login':
-            identities[sd.para.login_id_key] = id;
-            identities.$identity_cookie_id = sd.store._state.identities.$identity_cookie_id;
-            break;
-          case 'logout':
-            identities.$identity_cookie_id = sd.store._state.identities.$identity_cookie_id;
-            break;
-          case 'identify':
-            identities = JSON.parse(JSON.stringify(sd.store._state.identities));
-            identities.$identity_anonymous_id = id;
-            break;
-        }
-        sd.store._state.identities = identities;
-        sd.store.save();
-      }
-    },
     requests: [],
     _sessionState: {},
     _state: {
       distinct_id: '',
       first_id: '',
-      props: {},
-      identities: {}
+      props: {}
     },
     getProps: function() {
       return this._state.props || {};
@@ -3718,11 +3675,10 @@
     getDistinctId: function() {
       return this._state._distinct_id || this._state.distinct_id;
     },
-    getUnionId: function(state) {
+    getUnionId: function() {
       var obj = {};
-      state = state || this._state;
-      var firstId = state._first_id || state.first_id,
-        distinct_id = state._distinct_id || state.distinct_id;
+      var firstId = this._state._first_id || this._state.first_id,
+        distinct_id = this._state._distinct_id || this._state.distinct_id;
       if (firstId && distinct_id) {
         obj.login_id = distinct_id;
         obj.anonymous_id = firstId;
@@ -3733,6 +3689,29 @@
     },
     getFirstId: function() {
       return this._state._first_id || this._state.first_id;
+    },
+    toState: function(ds) {
+      var state = null;
+      if (ds != null && isJSONString(ds)) {
+        state = JSON.parse(ds);
+        this._state = extend(state);
+        if (state.distinct_id) {
+          if (typeof state.props === 'object') {
+            for (var key in state.props) {
+              if (typeof state.props[key] === 'string') {
+                state.props[key] = state.props[key].slice(0, sd.para.max_referrer_string_length);
+              }
+            }
+            this.save();
+          }
+        } else {
+          this.set('distinct_id', UUID());
+          sd.debug.distinct_id('1', ds);
+        }
+      } else {
+        this.set('distinct_id', UUID());
+        sd.debug.distinct_id('2', ds);
+      }
     },
     initSessionState: function() {
       var ds = cookie.get('sensorsdata2015session');
@@ -3823,10 +3802,6 @@
       delete copyState._first_id;
       delete copyState._distinct_id;
 
-      if (copyState.identities) {
-        copyState.identities = rot13obfs(JSON.stringify(copyState.identities));
-      }
-
       var stateStr = JSON.stringify(copyState);
       if (sd.para.encrypt_cookie) {
         stateStr = cookie.encrypt(stateStr);
@@ -3852,100 +3827,24 @@
       return sub;
     },
     init: function() {
-      function compatibleWith3(state) {
-        var identitiesprop;
-        if (state.identities) {
-          state.identities = safeJSONParse(rot13defs(state.identities));
-        }
-
-        var unionId = store.getUnionId(state);
-
-        if (state.identities && isObject(state.identities) && !isEmptyObject(state.identities)) {
-          if (state.identities.$identity_anonymous_id && state.identities.$identity_anonymous_id !== unionId.anonymous_id) {
-            state.identities.$identity_anonymous_id = unionId.anonymous_id;
-          }
-        } else {
-          state.identities = {};
-          state.identities.$identity_anonymous_id = unionId.anonymous_id;
-          state.identities.$identity_cookie_id = UUID();
-        }
-
-
-        state.history_login_id = state.history_login_id || {};
-        var history_login_id = state.history_login_id;
-        var old_login_id_name = history_login_id.name;
-
-        if (unionId.login_id) {
-          if (old_login_id_name && isObject(state.identities) && state.identities.hasOwnProperty(old_login_id_name)) {
-            if (state.identities[old_login_id_name] !== unionId.login_id) {
-              state.identities[old_login_id_name] = unionId.login_id;
-              for (identitiesprop in state.identities) {
-                if (isObject(state.identities) && state.identities.hasOwnProperty(identitiesprop)) {
-                  if (identitiesprop !== '$identity_cookie_id' && identitiesprop !== old_login_id_name) {
-                    delete state.identities[identitiesprop];
-                  }
-                }
-              }
-              state.history_login_id.value = unionId.login_id;
-            }
-          } else {
-            state.identities[sd.para.login_id_key] = unionId.login_id;
-            for (identitiesprop in state.identities) {
-              if (isObject(state.identities) && state.identities.hasOwnProperty(identitiesprop)) {
-                if (identitiesprop !== '$identity_cookie_id' && identitiesprop !== sd.para.login_id_key) {
-                  delete state.identities[identitiesprop];
-                }
-              }
-            }
-            state.history_login_id = {
-              name: sd.para.login_id_key,
-              value: unionId.login_id
-            };
-          }
-        } else {
-          if ((isObject(state.identities) && state.identities.hasOwnProperty('$identity_login_id')) || state.identities.hasOwnProperty(old_login_id_name)) {
-            for (identitiesprop in state.identities) {
-              if (isObject(state.identities) && state.identities.hasOwnProperty(identitiesprop)) {
-                if (identitiesprop !== '$identity_cookie_id' && identitiesprop !== '$identity_anonymous_id') {
-                  delete state.identities[identitiesprop];
-                }
-              }
-            }
-          }
-          state.history_login_id = {
-            name: '',
-            value: ''
-          };
-        }
-
-        return state;
-      }
-
-      function cookieExistExpection() {
-        var uuid = UUID();
-        sd.store.set('distinct_id', uuid);
-        sd.store.set('identities', {
-          $identity_cookie_id: uuid
-        });
-        sd.store.set('history_login_id', {
-          name: '',
-          value: ''
-        });
-      }
       this.initSessionState();
       var uuid = UUID();
       var cross = cookie.get(this.getCookieName());
       cross = cookie.resolveValue(cross);
-
-      var cookieJSON = safeJSONParse(cross);
-      if (cross === null || !isJSONString(cross) || !isObject(cookieJSON) || (isObject(cookieJSON) && !cookieJSON.distinct_id)) {
+      if (cross === null) {
         sd.is_first_visitor = true;
-        cookieExistExpection();
+
+        this.set('distinct_id', uuid);
       } else {
-        sd.store._state = extend(compatibleWith3(cookieJSON));
-        sd.store.save();
+        if (!isJSONString(cross) || !JSON.parse(cross).distinct_id) {
+          sd.is_first_visitor = true;
+        }
+
+        this.toState(cross);
       }
+
       saNewUser.setDeviceId(uuid);
+
       saNewUser.storeInitCheck();
       saNewUser.checkIsFirstLatest();
     }
@@ -4032,7 +3931,7 @@
     }
   };
 
-  function check$1(p) {
+  function check(p) {
     var flag = true;
     for (var i in p) {
       if (Object.prototype.hasOwnProperty.call(p, i) && !checkOption.check(i, p[i])) {
@@ -4044,7 +3943,7 @@
 
   var saEvent = {};
 
-  saEvent.check = check$1;
+  saEvent.check = check;
 
   saEvent.sendItem = function(p) {
     var data = {
@@ -4852,13 +4751,12 @@
   sd.para_default = defaultPara;
 
   sd.addReferrerHost = function(data) {
-    var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
     var defaultHost = '取值异常';
     if (isObject(data.properties)) {
       if (data.properties.$first_referrer) {
         data.properties.$first_referrer_host = getHostname(data.properties.$first_referrer, defaultHost);
       }
-      if (isNotProfileType) {
+      if (data.type === 'track' || data.type === 'track_signup') {
         if ('$referrer' in data.properties) {
           data.properties.$referrer_host = data.properties.$referrer === '' ? '' : getHostname(data.properties.$referrer, defaultHost);
         }
@@ -4870,12 +4768,10 @@
   };
 
   sd.addPropsHook = function(data) {
-    var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
-    var isSatisfy = sd.para.preset_properties && isNotProfileType;
-    if (isSatisfy && sd.para.preset_properties.url && typeof data.properties.$url === 'undefined') {
+    if (sd.para.preset_properties && sd.para.preset_properties.url && (data.type === 'track' || data.type === 'track_signup') && typeof data.properties.$url === 'undefined') {
       data.properties.$url = getURL();
     }
-    if (isSatisfy && sd.para.preset_properties.title && typeof data.properties.$title === 'undefined') {
+    if (sd.para.preset_properties && sd.para.preset_properties.title && (data.type === 'track' || data.type === 'track_signup') && typeof data.properties.$title === 'undefined') {
       data.properties.$title = document.title;
     }
   };
@@ -4922,27 +4818,6 @@
 
     if (sd.para.send_type !== 'image' && sd.para.send_type !== 'ajax' && sd.para.send_type !== 'beacon') {
       sd.para.send_type = 'image';
-    }
-
-    function checkProp(itemName) {
-      if (isString(itemName) === false) {
-        sdLog('Key must be String');
-        return false;
-      }
-      itemName = trim(itemName);
-      if (isFalsy(itemName)) {
-        sdLog('Key is empty or null');
-        return false;
-      }
-      var reservedNames = ['$identity_anonymous_id', '$identity_cookie_id'];
-      if (indexOf(reservedNames, itemName) > -1 || check.checkKeyword(itemName) === false) {
-        sdLog('Key [{{key}}] is invalid'.replace('{{key}}', itemName));
-        return false;
-      }
-      return true;
-    }
-    if (!checkProp(sd.para.login_id_key)) {
-      sd.para.login_id_key = '$identity_login_id';
     }
 
     sd.debug.protocol.serverUrl();
@@ -5165,77 +5040,6 @@
         c
       );
     }
-  };
-
-  sd.IDENTITY_KEY = {
-    EMAIL: '$identity_email',
-    MOBILE: '$identity_mobile'
-  };
-
-  function checkBindPara(itemName, itemValue) {
-    if (isString(itemName) === false) {
-      sd.log('Key must be String');
-      return false;
-    }
-    itemName = trim(itemName);
-    if (isFalsy(itemName)) {
-      sd.log('Key is empty or null');
-      return false;
-    }
-    var reservedNames = ['$identity_login_id', '$identity_anonymous_id', '$identity_cookie_id', sd.para.login_id_key];
-    if (indexOf(reservedNames, itemName) > -1 || check.checkKeyword(itemName) === false) {
-      sd.log('Key [{{key}}] is invalid'.replace('{{key}}', itemName));
-      return false;
-    }
-
-    if (isFalsy(itemValue)) {
-      sd.log('Value is empty or null');
-      return false;
-    }
-    if (isString(itemValue) === false) {
-      sd.log('Value must be String');
-      return false;
-    }
-
-    if (check.checkIdLength(itemValue) === false) {
-      sd.log('Value [{{value}}] is beyond the maximum length 255'.replace('{{value}}', itemValue));
-      return false;
-    }
-  }
-
-  sd.bind = function(itemName, itemValue) {
-    if (checkBindPara(itemName, itemValue) === false) {
-      return false;
-    }
-
-    sd.store._state.identities[itemName] = itemValue;
-    sd.store.save();
-
-    saEvent.send({
-      type: 'track_id_bind',
-      event: '$BindID',
-      properties: {}
-    });
-  };
-
-  sd.unbind = function(itemName, itemValue) {
-    if (checkBindPara(itemName, itemValue) === false) {
-      return false;
-    }
-    if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(itemName) && sd.store._state.identities[itemName] === itemValue) {
-      delete sd.store._state.identities[itemName];
-      sd.store.save();
-    }
-
-    var identities = {};
-    identities[itemName] = itemValue;
-
-    saEvent.send({
-      identities: identities,
-      type: 'track_id_unbind',
-      event: '$UnbindID',
-      properties: {}
-    });
   };
 
   sd.trackLink = function(link, event_name, event_prop) {
@@ -5474,7 +5278,6 @@
       } else {
         store.set('distinct_id', uuid);
       }
-      sd.store.identities.set('identify', uuid);
     } else if (saEvent.check({
         distinct_id: id
       })) {
@@ -5491,8 +5294,6 @@
           store.change('distinct_id', id);
         }
       }
-
-      sd.store.identities.set('identify', id);
     } else {
       sd.log('identify的参数必须是字符串');
     }
@@ -5593,34 +5394,21 @@
     }
     if (saEvent.check({
         distinct_id: id
-      }) && id !== sd.store.getDistinctId()) {
-      if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(sd.para.login_id_key) && id === sd.store._state.first_id) {
-        callback && callback();
-        return false;
-      }
-
-      var isNewLoginId = sd.store._state.history_login_id.name !== sd.para.login_id_key || id !== sd.store._state.history_login_id.value;
-      if (isNewLoginId) {
-        sd.store._state.identities[sd.para.login_id_key] = id;
-
-        var firstId = store.getFirstId();
-        var distinctId = store.getDistinctId();
-
+      })) {
+      var firstId = store.getFirstId();
+      var distinctId = store.getDistinctId();
+      if (id !== distinctId) {
         if (!firstId) {
           store.set('first_id', distinctId);
         }
         sd.trackSignup(id, '$SignUp', {}, callback);
-
-        sd.store.identities.set('login', id);
-        sd.store.set('history_login_id', {
-          name: sd.para.login_id_key,
-          value: id
-        });
+      } else {
+        callback && callback();
       }
     } else {
-      sd.log('login 的参数必须是字符串且与匿名 id 不一致');
+      sd.log('login的参数必须是字符串');
+      callback && callback();
     }
-    callback && callback();
   };
 
   sd.logout = function(isChangeId) {
@@ -5633,12 +5421,9 @@
       } else {
         store.set('distinct_id', firstId);
       }
+    } else {
+      sd.log('没有first_id，logout失败');
     }
-    sd.store.identities.set('logout');
-    sd.store.set('history_login_id', {
-      name: '',
-      value: ''
-    });
   };
 
   sd.getPresetProperties = function() {
@@ -5695,7 +5480,6 @@
 
   kit.buildData = function(p) {
     var data = {
-      identities: {},
       distinct_id: sd.store.getDistinctId(),
       lib: {
         $lib: 'js',
@@ -5704,12 +5488,6 @@
       },
       properties: {}
     };
-
-    if (isObject(p) && isObject(p.identities) && !isEmptyObject(p.identities)) {
-      extend(data.identities, p.identities);
-    } else {
-      extend(data.identities, store._state.identities);
-    }
 
     if (isObject(p) && isObject(p.properties) && !isEmptyObject(p.properties)) {
       if (p.properties.$lib_detail) {
@@ -7540,7 +7318,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.20.1'
+              sdkversion: '1.19.12'
             }
           },
           '*'
