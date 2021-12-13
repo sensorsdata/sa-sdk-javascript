@@ -1112,7 +1112,11 @@
     var arr = map(atob(data).split(''), function(c) {
       return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
     });
-    return decodeURIComponent(arr.join(''));
+    try {
+      return decodeURIComponent(arr.join(''));
+    } catch (e) {
+      return arr.join('');
+    }
   }
 
   function rot13obfs(str, key) {
@@ -1689,14 +1693,14 @@
 
   function getQueryParam(url, param) {
     param = param.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-    url = decodeURIComponent(url);
+    url = _decodeURIComponent(url);
     var regexS = '[\\?&]' + param + '=([^&#]*)',
       regex = new RegExp(regexS),
       results = regex.exec(url);
     if (results === null || (results && typeof results[1] !== 'string' && results[1].length)) {
       return '';
     } else {
-      return decodeURIComponent(results[1]);
+      return _decodeURIComponent(results[1]);
     }
   }
 
@@ -1789,7 +1793,7 @@
   function getURLSearchParams(queryString) {
     queryString = queryString || '';
     var decodeParam = function(str) {
-      return decodeURIComponent(str);
+      return _decodeURIComponent(str);
     };
     var args = {};
     var query = queryString.substring(1);
@@ -2010,7 +2014,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.19.13';
+  var sdkversion_placeholder = '1.19.14';
 
   function searchZZAppStyle(data) {
     if (typeof data.properties.$project !== 'undefined') {
@@ -2357,7 +2361,7 @@
     if (typeof referrer !== 'string') {
       return '取值异常_referrer异常_' + String(referrer);
     }
-    referrer = decodeURI(referrer);
+    referrer = _decodeURI(referrer);
     if (referrer.indexOf('https://www.baidu.com/') === 0 && !full) {
       referrer = referrer.split('?')[0];
     }
@@ -7197,7 +7201,7 @@
       heatmap.setNotice(web_url);
       if (_sessionStorage.isSupport()) {
         if (web_url && web_url[0] && web_url[1]) {
-          sessionStorage.setItem('sensors_heatmap_url', decodeURIComponent(web_url[1]));
+          sessionStorage.setItem('sensors_heatmap_url', _decodeURIComponent(web_url[1]));
         }
         sessionStorage.setItem('sensors_heatmap_id', match[1]);
         if (type && type[0] && type[1]) {
@@ -7318,7 +7322,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.19.13'
+              sdkversion: '1.19.14'
             }
           },
           '*'
