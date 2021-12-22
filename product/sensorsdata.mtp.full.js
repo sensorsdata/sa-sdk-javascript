@@ -1213,6 +1213,8 @@
     name: 'sa',
     max_referrer_string_length: 200,
     max_string_length: 500,
+    max_id_length: 255,
+    max_key_length: 100,
     cross_subdomain: true,
     show_log: false,
     is_debug: false,
@@ -2049,70 +2051,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.20.2';
-
-  function searchZZAppStyle(data) {
-    if (typeof data.properties.$project !== 'undefined') {
-      data.project = data.properties.$project;
-      delete data.properties.$project;
-    }
-    if (typeof data.properties.$token !== 'undefined') {
-      data.token = data.properties.$token;
-      delete data.properties.$token;
-    }
-  }
-
-  function formatString(str, maxLen) {
-    if (isNumber(maxLen) && str.length > maxLen) {
-      sdLog('字符串长度超过限制，已经做截取--' + str);
-      return str.slice(0, maxLen);
-    } else {
-      return str;
-    }
-  }
-
-  function searchObjString(o) {
-    var white_list = ['$element_selector', '$element_path'];
-    var infinite_list = ['sensorsdata_app_visual_properties'];
-    if (isObject(o)) {
-      each(o, function(a, b) {
-        if (isObject(a)) {
-          searchObjString(o[b]);
-        } else {
-          if (isString(a)) {
-            if (indexOf(infinite_list, b) > -1) {
-              return;
-            }
-            o[b] = formatString(a, indexOf(white_list, b) > -1 ? 1024 : sdPara.max_string_length);
-          }
-        }
-      });
-    }
-  }
-
-  function strip_sa_properties(p) {
-    if (!isObject(p)) {
-      return p;
-    }
-    each(p, function(v, k) {
-      if (isArray(v)) {
-        var temp = [];
-        each(v, function(arrv) {
-          if (isString(arrv)) {
-            temp.push(arrv);
-          } else {
-            sdLog('您的数据-', k, v, '的数组里的值必须是字符串,已经将其删除');
-          }
-        });
-        p[k] = temp;
-      }
-      if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option')) {
-        sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
-        delete p[k];
-      }
-    });
-    return p;
-  }
+  var sdkversion_placeholder = '1.20.3';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -2132,26 +2071,7 @@
           }
         }
       });
-      strip_sa_properties(obj);
     }
-  }
-
-  function filterReservedProperties(obj) {
-    var reservedFields = ['distinct_id', 'user_id', 'id', 'date', 'datetime', 'event', 'events', 'first_id', 'original_id', 'device_id', 'properties', 'second_id', 'time', 'users'];
-    if (!isObject(obj)) {
-      return;
-    }
-    each(reservedFields, function(key, index) {
-      if (!(key in obj)) {
-        return;
-      }
-      if (index < 3) {
-        delete obj[key];
-        sdLog('您的属性- ' + key + '是保留字段，我们已经将其删除');
-      } else {
-        sdLog('您的属性- ' + key + '是保留字段，请避免其作为属性名');
-      }
-    });
   }
 
   function searchConfigData(data) {
@@ -2513,27 +2433,8 @@
     return obj;
   }
 
-  function isFalsy(arg) {
-    return isUndefined(arg) || arg === '' || arg === null;
-  }
 
-  var check = {
-    checkKeyword: function(para) {
-      var reg = /^((?!^distinct_id$|^original_id$|^device_id$|^time$|^properties$|^id$|^first_id$|^second_id$|^users$|^events$|^event$|^user_id$|^date$|^datetime$|^user_group|^user_tag)[a-zA-Z_$][a-zA-Z\d_$]{0,99})$/i;
-      if (!isString(para) || !reg.test(para)) {
-        return false;
-      }
-      return true;
-    },
 
-    checkIdLength: function(str) {
-      var temp = String(str);
-      if (temp.length > 255) {
-        return false;
-      }
-      return true;
-    }
-  };
 
   var pageInfo = {
     initPage: function() {
@@ -3501,13 +3402,7 @@
     getUA: getUA,
     getIOSVersion: getIOSVersion,
     isSupportBeaconSend: isSupportBeaconSend,
-    isFalsy: isFalsy,
-    check: check,
-    searchZZAppStyle: searchZZAppStyle,
-    searchObjString: searchObjString,
-    filterReservedProperties: filterReservedProperties,
     parseSuperProperties: parseSuperProperties,
-    strip_sa_properties: strip_sa_properties,
     searchConfigData: searchConfigData,
     strip_empty_properties: strip_empty_properties,
     UUID: UUID,
@@ -3526,7 +3421,6 @@
     getSourceFromReferrer: getSourceFromReferrer,
     info: pageInfo,
     autoExeQueue: autoExeQueue,
-    formatString: formatString,
     addEvent: addEvent,
     addHashEvent: addHashEvent,
     addSinglePageEvent: addSinglePageEvent,
@@ -4002,100 +3896,427 @@
     }
   };
 
-  var checkOption = {
-    regChecks: {
-      regName: /^((?!^distinct_id$|^original_id$|^time$|^properties$|^id$|^first_id$|^second_id$|^users$|^events$|^event$|^user_id$|^date$|^datetime$)[a-zA-Z_$][a-zA-Z\d_$]{0,99})$/i
+  var checkLog = {
+    string: function(str) {
+      sdLog(str + ' must be string');
     },
-    checkPropertiesKey: function(obj) {
-      var me = this,
-        flag = true;
-      each(obj, function(content, key) {
-        if (!me.regChecks.regName.test(key)) {
-          flag = false;
-        }
-      });
-      return flag;
+    emptyString: function(str) {
+      sdLog(str + '\'s is empty');
     },
-    check: function(a, b) {
-      if (typeof this[a] === 'string') {
-        return this[this[a]](b);
-      } else if (isFunction(this[a])) {
-        return this[a](b);
-      }
+    regexTest: function(str) {
+      sdLog(str + ' is invalid');
     },
-    str: function(s) {
-      if (isString(s) && s !== '') {
-        return true;
-      } else {
-        sdLog('请检查参数格式,必须是字符串且有值');
+    idLength: function(str) {
+      sdLog(str + ' length is longer than ' + sdPara.max_id_length);
+    },
+    keyLength: function(str) {
+      sdLog(str + ' length is longer than ' + sdPara.max_key_length);
+    },
+    stringLength: function(str) {
+      sdLog(str + ' length is longer than ' + sdPara.max_string_length);
+    },
+    voidZero: function(str) {
+      sdLog(str + '\'s is undefined');
+    },
+    reservedLoginId: function(str) {
+      sdLog(str + ' is invalid');
+    },
+    reservedBind: function(str) {
+      sdLog(str + ' is invalid');
+    }
+  };
+  var ruleOption = {
+    regName: /^((?!^distinct_id$|^original_id$|^time$|^properties$|^id$|^first_id$|^second_id$|^users$|^events$|^event$|^user_id$|^date$|^datetime$|^user_tag.*|^user_group.*)[a-zA-Z_$][a-zA-Z\d_$]*)$/i,
+    loginIDReservedNames: ['$identity_anonymous_id', '$identity_cookie_id'],
+    bindReservedNames: ['$identity_login_id', '$identity_anonymous_id', '$identity_cookie_id'],
+    string: function(str) {
+      if (!isString(str)) {
         return false;
       }
+      return true;
     },
-    properties: function(p) {
-      strip_sa_properties(p);
-      if (p) {
-        if (isObject(p)) {
-          if (this.checkPropertiesKey(p)) {
-            return true;
-          } else {
-            sdLog('properties 里的自定义属性名需要是合法的变量名，不能以数字开头，且只包含：大小写字母、数字、下划线，自定义属性不能以 $ 开头');
-            return true;
-          }
-        } else {
-          sdLog('properties可以没有，但有的话必须是对象');
-          return true;
-        }
-      } else {
-        return true;
-      }
-    },
-    propertiesMust: function(p) {
-      strip_sa_properties(p);
-      if (p === undefined || !isObject(p) || isEmptyObject(p)) {
-        sdLog('properties必须是对象且有值');
-        return true;
-      } else {
-        if (this.checkPropertiesKey(p)) {
-          return true;
-        } else {
-          sdLog('properties 里的自定义属性名需要是合法的变量名，不能以数字开头，且只包含：大小写字母、数字、下划线，自定义属性不能以 $ 开头');
-          return true;
-        }
-      }
-    },
-    event: function(s) {
-      if (!isString(s) || !this['regChecks']['regName'].test(s)) {
-        sdLog('请检查参数格式，eventName 必须是字符串，且需是合法的变量名，即不能以数字开头，且只包含：大小写字母、数字、下划线和 $,其中以 $ 开头的表明是系统的保留字段，自定义事件名请不要以 $ 开头');
-        return true;
-      } else {
-        return true;
-      }
-    },
-    item_type: 'str',
-    item_id: 'str',
-    distinct_id: function(id) {
-      if (isString(id) && /^.{1,255}$/.test(id)) {
-        return true;
-      } else {
-        sdLog('distinct_id必须是不能为空，且小于255位的字符串');
+    emptyString: function(str) {
+      if (!isString(str) || trim(str).length === 0) {
         return false;
       }
+      return true;
+    },
+    regexTest: function(str) {
+      if (!isString(str) || !this.regName.test(str)) {
+        return false;
+      }
+      return true;
+    },
+    idLength: function(str) {
+      if (!isString(str) || str.length > sdPara.max_id_length) {
+        return false;
+      }
+      return true;
+    },
+    keyLength: function(str) {
+      if (!isString(str) || str.length > sdPara.max_key_length) {
+        return false;
+      }
+      return true;
+    },
+    stringLength: function(str) {
+      if (!isString(str) || str.length > sdPara.max_string_length) {
+        return false;
+      }
+      return true;
+    },
+    voidZero: function(str) {
+      if (str === void 0) {
+        return false;
+      }
+      return true;
+    },
+    reservedLoginId: function(str) {
+      if (indexOf(this.loginIDReservedNames, str) > -1) {
+        return false;
+      }
+      return true;
+    },
+    reservedBind: function(str) {
+      if (sdPara.login_id_key) {
+        this.bindReservedNames.indexOf(sdPara.login_id_key) === -1 && this.bindReservedNames.push(sdPara.login_id_key);
+      }
+      if (indexOf(this.bindReservedNames, str) > -1) {
+        return false;
+      }
+      return true;
     }
   };
 
-  function check$1(p) {
-    var flag = true;
+  var checkOption = {
+    distinct_id: {
+      rules: ['string', 'emptyString', 'idLength'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'Id';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+          if (rule_type === 'idLength') {
+            return true;
+          }
+        }
+
+        return status;
+      }
+    },
+    event: {
+      rules: ['string', 'emptyString', 'keyLength', 'regexTest'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'eventName';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+        }
+        return true;
+      }
+    },
+    propertyKey: {
+      rules: ['string', 'emptyString', 'keyLength', 'regexTest'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'Property key';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+        }
+        return true;
+      }
+    },
+    propertyValue: {
+      rules: ['voidZero'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          val = 'Property Value';
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+        }
+        return true;
+      }
+    },
+    properties: function(p) {
+      if (isObject(p)) {
+        each(p, function(s, k) {
+          check({
+            propertyKey: k
+          });
+
+          var onComplete = function(status, val, rule_type) {
+            if (!status) {
+              val = k + '\'s Value';
+              isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+            }
+            return true;
+          };
+          check({
+            propertyValue: s
+          }, onComplete);
+        });
+      } else if (ruleOption.voidZero(p)) {
+        sdLog('properties可以没有，但有的话必须是对象');
+      }
+      return true;
+    },
+    propertiesMust: function(p) {
+      if (!(p === undefined || !isObject(p) || isEmptyObject(p))) {
+        this.properties.call(this, p);
+      } else {
+        sdLog('properties必须是对象');
+      }
+      return true;
+    },
+    item_type: {
+      rules: ['string', 'emptyString', 'keyLength', 'regexTest'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'item_type';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+        }
+        return true;
+      }
+    },
+    item_id: {
+      rules: ['string', 'emptyString', 'stringLength'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'item_id';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+        }
+        return true;
+      }
+    },
+    loginIdKey: {
+      rules: ['string', 'emptyString', 'keyLength', 'regexTest', 'reservedLoginId'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'login_id_key';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+          if (rule_type === 'keyLength') {
+            return true;
+          }
+        }
+        return status;
+      }
+    },
+    bindKey: {
+      rules: ['string', 'emptyString', 'keyLength', 'regexTest', 'reservedBind'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'Key';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+          if (rule_type === 'keyLength') {
+            return true;
+          }
+        }
+        return status;
+      }
+    },
+    bindValue: {
+      rules: ['string', 'emptyString', 'idLength'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'Value';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+          if (rule_type === 'idLength') {
+            return true;
+          }
+        }
+        return status;
+      }
+    },
+
+    check: function(a, b, onComplete) {
+      var checkRules = this[a];
+      if (isFunction(checkRules)) {
+        return checkRules.call(this, b);
+      } else if (!checkRules) {
+        return false;
+      }
+      for (var i = 0; i < checkRules.rules.length; i++) {
+        var rule = checkRules.rules[i];
+        var status = ruleOption[rule](b);
+        var result = isFunction(onComplete) ? onComplete(status, b, rule) : checkRules.onComplete(status, b, rule);
+        if (!status) {
+          return result;
+        }
+      }
+      return true;
+    }
+  };
+
+  function check(p, onComplete) {
     for (var i in p) {
-      if (Object.prototype.hasOwnProperty.call(p, i) && !checkOption.check(i, p[i])) {
+      if (Object.prototype.hasOwnProperty.call(p, i) && !checkOption.check(i, p[i], onComplete)) {
         return false;
       }
     }
-    return flag;
+    return true;
+  }
+
+  function strip_sa_properties(p) {
+    if (!isObject(p)) {
+      return p;
+    }
+    each(p, function(v, k) {
+      if (isArray(v)) {
+        var temp = [];
+        each(v, function(arrv) {
+          if (isString(arrv)) {
+            temp.push(arrv);
+          } else {
+            sdLog('您的数据-', k, v, '的数组里的值必须是字符串,已经将其删除');
+          }
+        });
+        p[k] = temp;
+      }
+      if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option')) {
+        sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
+        delete p[k];
+      }
+    });
+    return p;
+  }
+
+  function formatString(str, maxLen) {
+    if (isNumber(maxLen) && str.length > maxLen) {
+      sdLog('字符串长度超过限制，已经做截取--' + str);
+      return str.slice(0, maxLen);
+    } else {
+      return str;
+    }
+  }
+
+  function filterReservedProperties(obj) {
+    var reservedFields = ['distinct_id', 'user_id', 'id', 'date', 'datetime', 'event', 'events', 'first_id', 'original_id', 'device_id', 'properties', 'second_id', 'time', 'users'];
+    if (!isObject(obj)) {
+      return;
+    }
+    each(reservedFields, function(key, index) {
+      if (!(key in obj)) {
+        return;
+      }
+      if (index < 3) {
+        delete obj[key];
+        sdLog('您的属性- ' + key + '是保留字段，我们已经将其删除');
+      } else {
+        sdLog('您的属性- ' + key + '是保留字段，请避免其作为属性名');
+      }
+    });
+  }
+
+  function searchObjString(o) {
+    var white_list = ['$element_selector', '$element_path'];
+    var infinite_list = ['sensorsdata_app_visual_properties'];
+    if (isObject(o)) {
+      each(o, function(a, b) {
+        if (isObject(a)) {
+          searchObjString(o[b]);
+        } else {
+          if (isString(a)) {
+            if (indexOf(infinite_list, b) > -1) {
+              return;
+            }
+            o[b] = formatString(a, indexOf(white_list, b) > -1 ? 1024 : sdPara.max_string_length);
+          }
+        }
+      });
+    }
+  }
+
+  function searchZZAppStyle(data) {
+    if (typeof data.properties.$project !== 'undefined') {
+      data.project = data.properties.$project;
+      delete data.properties.$project;
+    }
+    if (typeof data.properties.$token !== 'undefined') {
+      data.token = data.properties.$token;
+      delete data.properties.$token;
+    }
+  }
+
+  function formatItem(data) {
+    if ('item_type' in data) {
+      var item_type = data['item_type'];
+
+      var typeOnComplete = function(status) {
+        if (!status) {
+          delete data['item_type'];
+        }
+        return true;
+      };
+
+      check({
+        item_type: item_type
+      }, typeOnComplete);
+    }
+    if ('item_id' in data) {
+      var item_id = data['item_id'];
+      var idOnComplete = function(status, val, rule) {
+        if (!status && rule === 'string') {
+          delete data['item_id'];
+        }
+        return true;
+      };
+      check({
+        item_id: item_id
+      }, idOnComplete);
+    }
+  }
+
+  function formatProperties(p) {
+    each(p, function(val, key) {
+      var onComplete = function(status, value, rule_type) {
+        if (!status && rule_type !== 'keyLength') {
+          delete p[key];
+        }
+        return true;
+      };
+      check({
+        propertyKey: key
+      }, onComplete);
+    });
+  }
+
+  function formatData(data) {
+    var p = data.properties;
+
+    if (isObject(p)) {
+      strip_sa_properties(p);
+
+      filterReservedProperties(p);
+
+      searchZZAppStyle(data);
+
+      formatProperties(p);
+
+      searchObjString(p);
+    } else if ('properties' in data) {
+      data.properties = {};
+    }
+
+    searchObjDate(data);
+
+    formatItem(data);
   }
 
   var saEvent = {};
 
-  saEvent.check = check$1;
+  saEvent.check = check;
 
   saEvent.sendItem = function(p) {
     var data = {
@@ -4108,13 +4329,7 @@
     };
 
     extend(data, p);
-    filterReservedProperties(data.properties);
-    searchObjDate(data);
-    searchObjString(data);
-    if (data.properties && '$project' in data.properties) {
-      data.project = String(data.properties.$project);
-      delete data.properties.$project;
-    }
+    formatData(data);
 
     sd.sendState.getSendCall(data);
   };
@@ -4975,24 +5190,9 @@
       sd.para.send_type = 'image';
     }
 
-    function checkProp(itemName) {
-      if (isString(itemName) === false) {
-        sdLog('Key must be String');
-        return false;
-      }
-      itemName = trim(itemName);
-      if (isFalsy(itemName)) {
-        sdLog('Key is empty or null');
-        return false;
-      }
-      var reservedNames = ['$identity_anonymous_id', '$identity_cookie_id'];
-      if (indexOf(reservedNames, itemName) > -1 || check.checkKeyword(itemName) === false) {
-        sdLog('Key [{{key}}] is invalid'.replace('{{key}}', itemName));
-        return false;
-      }
-      return true;
-    }
-    if (!checkProp(sd.para.login_id_key)) {
+    if (!saEvent.check({
+        loginIdKey: sd.para.login_id_key
+      })) {
       sd.para.login_id_key = '$identity_login_id';
     }
 
@@ -5223,39 +5423,14 @@
     MOBILE: '$identity_mobile'
   };
 
-  function checkBindPara(itemName, itemValue) {
-    if (isString(itemName) === false) {
-      sd.log('Key must be String');
-      return false;
-    }
-    itemName = trim(itemName);
-    if (isFalsy(itemName)) {
-      sd.log('Key is empty or null');
-      return false;
-    }
-    var reservedNames = ['$identity_login_id', '$identity_anonymous_id', '$identity_cookie_id', sd.para.login_id_key];
-    if (indexOf(reservedNames, itemName) > -1 || check.checkKeyword(itemName) === false) {
-      sd.log('Key [{{key}}] is invalid'.replace('{{key}}', itemName));
-      return false;
-    }
 
-    if (isFalsy(itemValue)) {
-      sd.log('Value is empty or null');
-      return false;
-    }
-    if (isString(itemValue) === false) {
-      sd.log('Value must be String');
-      return false;
-    }
 
-    if (check.checkIdLength(itemValue) === false) {
-      sd.log('Value [{{value}}] is beyond the maximum length 255'.replace('{{value}}', itemValue));
-      return false;
-    }
-  }
 
   sd.bind = function(itemName, itemValue) {
-    if (checkBindPara(itemName, itemValue) === false) {
+    if (!saEvent.check({
+        bindKey: itemName,
+        bindValue: itemValue
+      })) {
       return false;
     }
 
@@ -5270,7 +5445,10 @@
   };
 
   sd.unbind = function(itemName, itemValue) {
-    if (checkBindPara(itemName, itemValue) === false) {
+    if (!saEvent.check({
+        bindKey: itemName,
+        bindValue: itemValue
+      })) {
       return false;
     }
     if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(itemName) && sd.store._state.identities[itemName] === itemValue) {
@@ -5542,29 +5720,32 @@
           store.change('distinct_id', id);
         }
       }
-
-      sd.store.identities.set('identify', id);
-    } else {
-      sd.log('identify的参数必须是字符串');
     }
   };
+
+  function sendSignup(id, e, p, c) {
+    var original_id = store.getFirstId() || store.getDistinctId();
+    store.set('distinct_id', id);
+    saEvent.send({
+        original_id: original_id,
+        distinct_id: id,
+        type: 'track_signup',
+        event: e,
+        properties: p
+      },
+      c
+    );
+  }
   sd.trackSignup = function(id, e, p, c) {
+    if (typeof id === 'number') {
+      id = String(id);
+    }
     if (saEvent.check({
         distinct_id: id,
         event: e,
         properties: p
       })) {
-      var original_id = store.getFirstId() || store.getDistinctId();
-      store.set('distinct_id', id);
-      saEvent.send({
-          original_id: original_id,
-          distinct_id: id,
-          type: 'track_signup',
-          event: e,
-          properties: p
-        },
-        c
-      );
+      sendSignup(id, e, p, c);
     }
   };
 
@@ -5660,7 +5841,8 @@
         if (!firstId) {
           store.set('first_id', distinctId);
         }
-        sd.trackSignup(id, '$SignUp', {}, callback);
+
+        sendSignup(id, '$SignUp', {}, callback);
 
         sd.store.identities.set('login', id);
         sd.store.set('history_login_id', {
@@ -5669,7 +5851,7 @@
         });
       }
     } else {
-      sd.log('login 的参数必须是字符串且与匿名 id 不一致');
+      callback && callback();
     }
     callback && callback();
   };
@@ -5822,10 +6004,7 @@
 
     parseSuperProperties(data);
 
-    filterReservedProperties(data.properties);
-    searchObjDate(data);
-    searchObjString(data);
-    searchZZAppStyle(data);
+    formatData(data);
 
     saNewUser.checkIsAddSign(data);
     saNewUser.checkIsFirstTime(data);
