@@ -1,4 +1,10 @@
-(function() {
+(function(global, factory) {
+  if (typeof exports === 'object' && typeof module === 'object') {
+    module.exports = factory();
+  } else {
+    factory();
+  }
+}(this, (function() {
 
   var sd = {};
 
@@ -2049,7 +2055,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.20.3';
+  var sdkversion_placeholder = '1.21.1';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -5113,9 +5119,7 @@
   };
 
 
-  sd.para_default = defaultPara;
-
-  sd.addReferrerHost = function(data) {
+  function addReferrerHost(data) {
     var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
     var defaultHost = '取值异常';
     if (isObject(data.properties)) {
@@ -5131,9 +5135,9 @@
         }
       }
     }
-  };
+  }
 
-  sd.addPropsHook = function(data) {
+  function addPropsHook(data) {
     var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
     var isSatisfy = sd.para.preset_properties && isNotProfileType;
     if (isSatisfy && sd.para.preset_properties.url && typeof data.properties.$url === 'undefined') {
@@ -5142,9 +5146,9 @@
     if (isSatisfy && sd.para.preset_properties.title && typeof data.properties.$title === 'undefined') {
       data.properties.$title = document.title;
     }
-  };
+  }
 
-  sd.initPara = function(para) {
+  function initPara(para) {
     extend(sdPara, para || sd.para || {});
 
     sd.para = sdPara;
@@ -5317,9 +5321,9 @@
         }
       });
     }
-  };
+  }
 
-  sd.readyState = {
+  var readyState = {
     state: 0,
     historyState: [],
     stateType: {
@@ -5338,21 +5342,14 @@
     }
   };
 
-  sd.setPreConfig = function(sa) {
-    sd.para = sa.para;
-    sd._q = sa._q;
-  };
-
-  sd.setInitVar = function() {
+  function setInitVar() {
     sd._t = sd._t || 1 * new Date();
     sd.lib_version = sdkversion_placeholder;
     sd.is_first_visitor = false;
     sd.source_channel_standard = source_channel_standard;
-  };
+  }
 
-  sd.log = sdLog;
-
-  sd.enableLocalLog = function() {
+  function enableLocalLog() {
     if (_sessionStorage.isSupport()) {
       try {
         sessionStorage.setItem('sensorsdata_jssdk_debug', 'true');
@@ -5360,17 +5357,15 @@
         sd.log('enableLocalLog error: ' + e.message);
       }
     }
-  };
+  }
 
-  sd.disableLocalLog = function() {
+  function disableLocalLog() {
     if (_sessionStorage.isSupport()) {
       sessionStorage.removeItem('sensorsdata_jssdk_debug');
     }
-  };
+  }
 
-  sd.debug = debug;
-
-  sd.quick = function() {
+  function quick() {
     var arg = Array.prototype.slice.call(arguments);
     var arg0 = arg[0];
     var arg1 = arg.slice(1);
@@ -5381,10 +5376,10 @@
     } else {
       sd.log('quick方法中没有这个功能' + arg[0]);
     }
-  };
+  }
 
 
-  sd.use = function(name, option) {
+  function use(name, option) {
     if (!isString(name)) {
       sd.log('use插件名称必须是字符串！');
       return false;
@@ -5399,9 +5394,9 @@
     } else {
       sd.log(name + '没有获取到,请查阅文档，调整' + name + '的引入顺序！');
     }
-  };
+  }
 
-  sd.track = function(e, p, c) {
+  function track(e, p, c) {
     if (saEvent.check({
         event: e,
         properties: p
@@ -5414,9 +5409,9 @@
         c
       );
     }
-  };
+  }
 
-  sd.IDENTITY_KEY = {
+  var IDENTITY_KEY = {
     EMAIL: '$identity_email',
     MOBILE: '$identity_mobile'
   };
@@ -5424,7 +5419,7 @@
 
 
 
-  sd.bind = function(itemName, itemValue) {
+  function bind(itemName, itemValue) {
     if (!saEvent.check({
         bindKey: itemName,
         bindValue: itemValue
@@ -5440,9 +5435,9 @@
       event: '$BindID',
       properties: {}
     });
-  };
+  }
 
-  sd.unbind = function(itemName, itemValue) {
+  function unbind(itemName, itemValue) {
     if (!saEvent.check({
         bindKey: itemName,
         bindValue: itemValue
@@ -5463,9 +5458,9 @@
       event: '$UnbindID',
       properties: {}
     });
-  };
+  }
 
-  sd.trackLink = function(link, event_name, event_prop) {
+  function trackLink(link, event_name, event_prop) {
     function _trackLink(obj, event_name, event_prop) {
       obj = obj || {};
       var link = null;
@@ -5520,9 +5515,9 @@
     } else if (typeof link === 'object' && link.target && link.event) {
       _trackLink(link, event_name, event_prop);
     }
-  };
+  }
 
-  sd.trackLinks = function(link, event_name, event_prop) {
+  function trackLinks(link, event_name, event_prop) {
     event_prop = event_prop || {};
     if (!link || typeof link !== 'object') {
       return false;
@@ -5543,9 +5538,9 @@
       }
       sd.track(event_name, event_prop, track_a_click);
     });
-  };
+  }
 
-  sd.setItem = function(type, id, p) {
+  function setItem(type, id, p) {
     if (saEvent.check({
         item_type: type,
         item_id: id,
@@ -5558,9 +5553,9 @@
         properties: p || {}
       });
     }
-  };
+  }
 
-  sd.deleteItem = function(type, id) {
+  function deleteItem(type, id) {
     if (saEvent.check({
         item_type: type,
         item_id: id
@@ -5571,9 +5566,9 @@
         item_id: id
       });
     }
-  };
+  }
 
-  sd.setProfile = function(p, c) {
+  function setProfile(p, c) {
     if (saEvent.check({
         propertiesMust: p
       })) {
@@ -5584,9 +5579,9 @@
         c
       );
     }
-  };
+  }
 
-  sd.setOnceProfile = function(p, c) {
+  function setOnceProfile(p, c) {
     if (saEvent.check({
         propertiesMust: p
       })) {
@@ -5597,9 +5592,9 @@
         c
       );
     }
-  };
+  }
 
-  sd.appendProfile = function(p, c) {
+  function appendProfile(p, c) {
     if (saEvent.check({
         propertiesMust: p
       })) {
@@ -5622,8 +5617,9 @@
         );
       }
     }
-  };
-  sd.incrementProfile = function(p, c) {
+  }
+
+  function incrementProfile(p, c) {
     var str = p;
     if (isString(p)) {
       p = {};
@@ -5653,9 +5649,9 @@
         sd.log('profile_increment的值只能是数字');
       }
     }
-  };
+  }
 
-  sd.deleteProfile = function(c) {
+  function deleteProfile(c) {
     saEvent.send({
         type: 'profile_delete'
       },
@@ -5663,8 +5659,9 @@
     );
     store.set('distinct_id', UUID());
     store.set('first_id', '');
-  };
-  sd.unsetProfile = function(p, c) {
+  }
+
+  function unsetProfile(p, c) {
     var str = p;
     var temp = {};
     if (isString(p)) {
@@ -5688,8 +5685,9 @@
     } else {
       sd.log('profile_unset的参数是数组');
     }
-  };
-  sd.identify = function(id, isSave) {
+  }
+
+  function identify(id, isSave) {
     if (typeof id === 'number') {
       id = String(id);
     }
@@ -5719,7 +5717,7 @@
         }
       }
     }
-  };
+  }
 
   function sendSignup(id, e, p, c) {
     var original_id = store.getFirstId() || store.getDistinctId();
@@ -5734,7 +5732,8 @@
       c
     );
   }
-  sd.trackSignup = function(id, e, p, c) {
+
+  function trackSignup(id, e, p, c) {
     if (typeof id === 'number') {
       id = String(id);
     }
@@ -5745,10 +5744,10 @@
       })) {
       sendSignup(id, e, p, c);
     }
-  };
+  }
 
 
-  sd.registerPage = function(obj) {
+  function registerPage(obj) {
     if (saEvent.check({
         properties: obj
       })) {
@@ -5756,13 +5755,13 @@
     } else {
       sd.log('register输入的参数有误');
     }
-  };
+  }
 
-  sd.clearAllRegister = function(arr) {
+  function clearAllRegister(arr) {
     store.clearAllProps(arr);
-  };
+  }
 
-  sd.clearPageRegister = function(arr) {
+  function clearPageRegister(arr) {
     var i;
     if (isArray(arr) && arr.length > 0) {
       for (i = 0; i < arr.length; i++) {
@@ -5775,9 +5774,9 @@
         delete pageInfo.currentProps[i];
       }
     }
-  };
+  }
 
-  sd.register = function(props) {
+  function register(props) {
     if (saEvent.check({
         properties: props
       })) {
@@ -5785,9 +5784,9 @@
     } else {
       sd.log('register输入的参数有误');
     }
-  };
+  }
 
-  sd.registerOnce = function(props) {
+  function registerOnce(props) {
     if (saEvent.check({
         properties: props
       })) {
@@ -5795,9 +5794,9 @@
     } else {
       sd.log('registerOnce输入的参数有误');
     }
-  };
+  }
 
-  sd.registerSession = function(props) {
+  function registerSession(props) {
     if (saEvent.check({
         properties: props
       })) {
@@ -5805,9 +5804,9 @@
     } else {
       sd.log('registerSession输入的参数有误');
     }
-  };
+  }
 
-  sd.registerSessionOnce = function(props) {
+  function registerSessionOnce(props) {
     if (saEvent.check({
         properties: props
       })) {
@@ -5815,9 +5814,9 @@
     } else {
       sd.log('registerSessionOnce输入的参数有误');
     }
-  };
+  }
 
-  sd.login = function(id, callback) {
+  function login(id, callback) {
     if (typeof id === 'number') {
       id = String(id);
     }
@@ -5852,9 +5851,9 @@
       callback && callback();
     }
     callback && callback();
-  };
+  }
 
-  sd.logout = function(isChangeId) {
+  function logout(isChangeId) {
     var firstId = store.getFirstId();
     if (firstId) {
       store.set('first_id', '');
@@ -5870,9 +5869,9 @@
       name: '',
       value: ''
     });
-  };
+  }
 
-  sd.getPresetProperties = function() {
+  function getPresetProperties() {
     function getUtm() {
       var utms = pageInfo.campaignParams();
       var $utms = {};
@@ -5900,8 +5899,9 @@
       result.$latest_referrer_host = result.$latest_referrer === '' ? '' : getHostname(result.$latest_referrer);
     }
     return result;
-  };
-  sd.iOSWebClickPolyfill = function() {
+  }
+
+  function iOSWebClickPolyfill() {
     var iOS_other_tags_css = '';
     var default_cursor_css = ' { cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0); }';
     if (sd.heatmap && isArray(sd.heatmap.otherTags)) {
@@ -5920,6 +5920,49 @@
         sd._.setCssStyle(iOS_other_tags_css);
       }
     }
+  }
+
+  var functions = {
+    __proto__: null,
+    addReferrerHost: addReferrerHost,
+    addPropsHook: addPropsHook,
+    initPara: initPara,
+    setInitVar: setInitVar,
+    enableLocalLog: enableLocalLog,
+    disableLocalLog: disableLocalLog,
+    quick: quick,
+    use: use,
+    track: track,
+    bind: bind,
+    unbind: unbind,
+    trackLink: trackLink,
+    trackLinks: trackLinks,
+    setItem: setItem,
+    deleteItem: deleteItem,
+    setProfile: setProfile,
+    setOnceProfile: setOnceProfile,
+    appendProfile: appendProfile,
+    incrementProfile: incrementProfile,
+    deleteProfile: deleteProfile,
+    unsetProfile: unsetProfile,
+    identify: identify,
+    trackSignup: trackSignup,
+    registerPage: registerPage,
+    clearAllRegister: clearAllRegister,
+    clearPageRegister: clearPageRegister,
+    register: register,
+    registerOnce: registerOnce,
+    registerSession: registerSession,
+    registerSessionOnce: registerSessionOnce,
+    login: login,
+    logout: logout,
+    getPresetProperties: getPresetProperties,
+    iOSWebClickPolyfill: iOSWebClickPolyfill,
+    readyState: readyState,
+    para_default: defaultPara,
+    log: sdLog,
+    debug: debug,
+    IDENTITY_KEY: IDENTITY_KEY
   };
 
   var kit = {};
@@ -7601,32 +7644,6 @@
     }
   };
 
-  var methods = ['setItem', 'deleteItem', 'getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister'];
-
-  function checkState() {
-    each(methods, function(method) {
-      var oldFunc = sd[method];
-      sd[method] = function() {
-        if (sd.readyState.state < 3) {
-          if (!isArray(sd._q)) {
-            sd._q = [];
-          }
-          sd._q.push([method, arguments]);
-          return false;
-        }
-        if (!sd.readyState.getState()) {
-          try {
-            console.error('请先初始化神策JS SDK');
-          } catch (e) {
-            sd.log(e);
-          }
-          return;
-        }
-        return oldFunc.apply(sd, arguments);
-      };
-    });
-  }
-
   var heatmapMode = {
     searchKeywordMatch: location.search.match(/sa-request-id=([^&#]+)/),
     isSeachHasKeyword: function() {
@@ -7768,7 +7785,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.20.3'
+              sdkversion: '1.21.1'
             }
           },
           '*'
@@ -7947,29 +7964,94 @@
     }
   }
 
-  sd.modules = {};
-  sd._ = _;
-  sd.kit = kit;
-  sd.saEvent = saEvent;
-  sd.sendState = sendState;
-  sd.events = new EventEmitter();
-  sd.batchSend = batchSend;
-  sd.bridge = bridge;
-  sd.JSBridge = JSBridge;
-  sd.store = store;
-  sd.vtrackBase = vtrackBase;
-  sd.unlimitedDiv = unlimitedDiv;
-  sd.customProp = customProp;
-  sd.vtrackcollect = vtrackcollect;
-  sd.vapph5collect = vapph5collect;
+  var methods = ['setItem', 'deleteItem', 'getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister'];
 
-  sd.heatmap = heatmap;
-  sd.detectMode = detectMode;
+  function checkState() {
+    each(methods, function(method) {
+      var oldFunc = sd[method];
+      sd[method] = function() {
+        if (sd.readyState.state < 3) {
+          if (!isArray(sd._q)) {
+            sd._q = [];
+          }
+          sd._q.push([method, arguments]);
+          return false;
+        }
+        if (!sd.readyState.getState()) {
+          try {
+            console.error('请先初始化神策JS SDK');
+          } catch (e) {
+            sd.log(e);
+          }
+          return;
+        }
+        return oldFunc.apply(sd, arguments);
+      };
+    });
+  }
+
+  var saEmpty = {
+    track: function(e, p, c) {},
+    quick: function(name, p, t, c) {},
+    register: function(obj) {},
+    registerPage: function(obj) {},
+    registerOnce: function(obj) {},
+    clearAllRegister: function(arr) {},
+    trackSignup: function(id, e, p, c) {},
+    setProfile: function(prop, c) {},
+    setOnceProfile: function(prop, c) {},
+    appendProfile: function(prop, c) {},
+    incrementProfile: function(prop, c) {},
+    deleteProfile: function(c) {},
+    unsetProfile: function(prop, c) {},
+    identify: function(id, isSave) {},
+    login: function(id, callback) {},
+    logout: function(isChangeId) {},
+    trackLink: function(link, event_name, event_prop) {},
+    deleteItem: function(type, id) {},
+    setItem: function(type, id, p) {},
+    getAppStatus: function(func) {},
+    clearPageRegister: function(arr) {}
+  };
+
+  var preCfg = window['sensors_data_pre_config'];
+  var is_compliance_enabled = isObject(preCfg) ? preCfg.is_compliance_enabled : false;
+
+  function implementCore(isRealImp) {
+    if (isRealImp) {
+      sd._ = _;
+      sd.kit = kit;
+      sd.saEvent = saEvent;
+      sd.sendState = sendState;
+      sd.events = new EventEmitter();
+      sd.batchSend = batchSend;
+      sd.bridge = bridge;
+      sd.JSBridge = JSBridge;
+      sd.store = store;
+      sd.vtrackBase = vtrackBase;
+      sd.unlimitedDiv = unlimitedDiv;
+      sd.customProp = customProp;
+      sd.vtrackcollect = vtrackcollect;
+      sd.vapph5collect = vapph5collect;
+      sd.heatmap = heatmap;
+      sd.detectMode = detectMode;
+    }
+
+    var imp = isRealImp ? functions : saEmpty;
+    for (var f in imp) {
+      sd[f] = imp[f];
+    }
+  }
 
   sd.init = function(para) {
     if (sd.readyState && sd.readyState.state && sd.readyState.state >= 2) {
       return false;
     }
+
+    if (is_compliance_enabled) {
+      implementCore(true);
+    }
+
     sd.setInitVar();
     sd.readyState.setState(2);
     sd.initPara(para);
@@ -7978,38 +8060,41 @@
     sd.iOSWebClickPolyfill();
   };
 
-  checkState();
+  if (is_compliance_enabled) {
+    implementCore(false);
+  } else {
+    implementCore(true);
+    checkState();
+  }
 
+  var _sd = sd;
+  try {
+    sd.modules = {};
 
-  (function(factory) {
-    if (typeof exports === 'object' && typeof module === 'object') {
-      module.exports = factory();
+    if (typeof window['sensorsDataAnalytic201505'] === 'string') {
+      sd.para = window[sensorsDataAnalytic201505].para;
+      sd._q = window[sensorsDataAnalytic201505]._q;
+
+      window[sensorsDataAnalytic201505] = sd;
+      window['sensorsDataAnalytic201505'] = sd;
+      sd.init();
+    } else if (typeof window['sensorsDataAnalytic201505'] === 'undefined') {
+      window['sensorsDataAnalytic201505'] = sd;
     } else {
-      factory();
+      _sd = window['sensorsDataAnalytic201505'];
     }
-  })(function() {
-    try {
-
-      if (typeof window['sensorsDataAnalytic201505'] === 'string') {
-        sd.setPreConfig(window[sensorsDataAnalytic201505]);
-        window[sensorsDataAnalytic201505] = sd;
-        window['sensorsDataAnalytic201505'] = sd;
-        sd.init();
-      } else if (typeof window['sensorsDataAnalytic201505'] === 'undefined') {
-        window['sensorsDataAnalytic201505'] = sd;
-        return sd;
-      } else {
-        return window['sensorsDataAnalytic201505'];
-      }
-    } catch (err) {
-      if (typeof console === 'object' && console.log) {
-        try {
-          console.log(err);
-        } catch (e) {
-          sd.log(e);
-        }
+  } catch (err) {
+    if (typeof console === 'object' && console.log) {
+      try {
+        console.log(err);
+      } catch (e) {
+        sd.log(e);
       }
     }
-  });
+  }
 
-}());
+  var _sd$1 = _sd;
+
+  return _sd$1;
+
+})));

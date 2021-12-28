@@ -2051,7 +2051,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.20.3';
+  var sdkversion_placeholder = '1.21.1';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -5115,9 +5115,7 @@
   };
 
 
-  sd.para_default = defaultPara;
-
-  sd.addReferrerHost = function(data) {
+  function addReferrerHost(data) {
     var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
     var defaultHost = '取值异常';
     if (isObject(data.properties)) {
@@ -5133,9 +5131,9 @@
         }
       }
     }
-  };
+  }
 
-  sd.addPropsHook = function(data) {
+  function addPropsHook(data) {
     var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
     var isSatisfy = sd.para.preset_properties && isNotProfileType;
     if (isSatisfy && sd.para.preset_properties.url && typeof data.properties.$url === 'undefined') {
@@ -5144,9 +5142,9 @@
     if (isSatisfy && sd.para.preset_properties.title && typeof data.properties.$title === 'undefined') {
       data.properties.$title = document.title;
     }
-  };
+  }
 
-  sd.initPara = function(para) {
+  function initPara(para) {
     extend(sdPara, para || sd.para || {});
 
     sd.para = sdPara;
@@ -5319,9 +5317,9 @@
         }
       });
     }
-  };
+  }
 
-  sd.readyState = {
+  var readyState = {
     state: 0,
     historyState: [],
     stateType: {
@@ -5340,21 +5338,14 @@
     }
   };
 
-  sd.setPreConfig = function(sa) {
-    sd.para = sa.para;
-    sd._q = sa._q;
-  };
-
-  sd.setInitVar = function() {
+  function setInitVar() {
     sd._t = sd._t || 1 * new Date();
     sd.lib_version = sdkversion_placeholder;
     sd.is_first_visitor = false;
     sd.source_channel_standard = source_channel_standard;
-  };
+  }
 
-  sd.log = sdLog;
-
-  sd.enableLocalLog = function() {
+  function enableLocalLog() {
     if (_sessionStorage.isSupport()) {
       try {
         sessionStorage.setItem('sensorsdata_jssdk_debug', 'true');
@@ -5362,17 +5353,15 @@
         sd.log('enableLocalLog error: ' + e.message);
       }
     }
-  };
+  }
 
-  sd.disableLocalLog = function() {
+  function disableLocalLog() {
     if (_sessionStorage.isSupport()) {
       sessionStorage.removeItem('sensorsdata_jssdk_debug');
     }
-  };
+  }
 
-  sd.debug = debug;
-
-  sd.quick = function() {
+  function quick() {
     var arg = Array.prototype.slice.call(arguments);
     var arg0 = arg[0];
     var arg1 = arg.slice(1);
@@ -5383,10 +5372,10 @@
     } else {
       sd.log('quick方法中没有这个功能' + arg[0]);
     }
-  };
+  }
 
 
-  sd.use = function(name, option) {
+  function use(name, option) {
     if (!isString(name)) {
       sd.log('use插件名称必须是字符串！');
       return false;
@@ -5401,9 +5390,9 @@
     } else {
       sd.log(name + '没有获取到,请查阅文档，调整' + name + '的引入顺序！');
     }
-  };
+  }
 
-  sd.track = function(e, p, c) {
+  function track(e, p, c) {
     if (saEvent.check({
         event: e,
         properties: p
@@ -5416,9 +5405,9 @@
         c
       );
     }
-  };
+  }
 
-  sd.IDENTITY_KEY = {
+  var IDENTITY_KEY = {
     EMAIL: '$identity_email',
     MOBILE: '$identity_mobile'
   };
@@ -5426,7 +5415,7 @@
 
 
 
-  sd.bind = function(itemName, itemValue) {
+  function bind(itemName, itemValue) {
     if (!saEvent.check({
         bindKey: itemName,
         bindValue: itemValue
@@ -5442,9 +5431,9 @@
       event: '$BindID',
       properties: {}
     });
-  };
+  }
 
-  sd.unbind = function(itemName, itemValue) {
+  function unbind(itemName, itemValue) {
     if (!saEvent.check({
         bindKey: itemName,
         bindValue: itemValue
@@ -5465,9 +5454,9 @@
       event: '$UnbindID',
       properties: {}
     });
-  };
+  }
 
-  sd.trackLink = function(link, event_name, event_prop) {
+  function trackLink(link, event_name, event_prop) {
     function _trackLink(obj, event_name, event_prop) {
       obj = obj || {};
       var link = null;
@@ -5522,9 +5511,9 @@
     } else if (typeof link === 'object' && link.target && link.event) {
       _trackLink(link, event_name, event_prop);
     }
-  };
+  }
 
-  sd.trackLinks = function(link, event_name, event_prop) {
+  function trackLinks(link, event_name, event_prop) {
     event_prop = event_prop || {};
     if (!link || typeof link !== 'object') {
       return false;
@@ -5545,9 +5534,9 @@
       }
       sd.track(event_name, event_prop, track_a_click);
     });
-  };
+  }
 
-  sd.setItem = function(type, id, p) {
+  function setItem(type, id, p) {
     if (saEvent.check({
         item_type: type,
         item_id: id,
@@ -5560,9 +5549,9 @@
         properties: p || {}
       });
     }
-  };
+  }
 
-  sd.deleteItem = function(type, id) {
+  function deleteItem(type, id) {
     if (saEvent.check({
         item_type: type,
         item_id: id
@@ -5573,9 +5562,9 @@
         item_id: id
       });
     }
-  };
+  }
 
-  sd.setProfile = function(p, c) {
+  function setProfile(p, c) {
     if (saEvent.check({
         propertiesMust: p
       })) {
@@ -5586,9 +5575,9 @@
         c
       );
     }
-  };
+  }
 
-  sd.setOnceProfile = function(p, c) {
+  function setOnceProfile(p, c) {
     if (saEvent.check({
         propertiesMust: p
       })) {
@@ -5599,9 +5588,9 @@
         c
       );
     }
-  };
+  }
 
-  sd.appendProfile = function(p, c) {
+  function appendProfile(p, c) {
     if (saEvent.check({
         propertiesMust: p
       })) {
@@ -5624,8 +5613,9 @@
         );
       }
     }
-  };
-  sd.incrementProfile = function(p, c) {
+  }
+
+  function incrementProfile(p, c) {
     var str = p;
     if (isString(p)) {
       p = {};
@@ -5655,9 +5645,9 @@
         sd.log('profile_increment的值只能是数字');
       }
     }
-  };
+  }
 
-  sd.deleteProfile = function(c) {
+  function deleteProfile(c) {
     saEvent.send({
         type: 'profile_delete'
       },
@@ -5665,8 +5655,9 @@
     );
     store.set('distinct_id', UUID());
     store.set('first_id', '');
-  };
-  sd.unsetProfile = function(p, c) {
+  }
+
+  function unsetProfile(p, c) {
     var str = p;
     var temp = {};
     if (isString(p)) {
@@ -5690,8 +5681,9 @@
     } else {
       sd.log('profile_unset的参数是数组');
     }
-  };
-  sd.identify = function(id, isSave) {
+  }
+
+  function identify(id, isSave) {
     if (typeof id === 'number') {
       id = String(id);
     }
@@ -5721,7 +5713,7 @@
         }
       }
     }
-  };
+  }
 
   function sendSignup(id, e, p, c) {
     var original_id = store.getFirstId() || store.getDistinctId();
@@ -5736,7 +5728,8 @@
       c
     );
   }
-  sd.trackSignup = function(id, e, p, c) {
+
+  function trackSignup(id, e, p, c) {
     if (typeof id === 'number') {
       id = String(id);
     }
@@ -5747,10 +5740,10 @@
       })) {
       sendSignup(id, e, p, c);
     }
-  };
+  }
 
 
-  sd.registerPage = function(obj) {
+  function registerPage(obj) {
     if (saEvent.check({
         properties: obj
       })) {
@@ -5758,13 +5751,13 @@
     } else {
       sd.log('register输入的参数有误');
     }
-  };
+  }
 
-  sd.clearAllRegister = function(arr) {
+  function clearAllRegister(arr) {
     store.clearAllProps(arr);
-  };
+  }
 
-  sd.clearPageRegister = function(arr) {
+  function clearPageRegister(arr) {
     var i;
     if (isArray(arr) && arr.length > 0) {
       for (i = 0; i < arr.length; i++) {
@@ -5777,9 +5770,9 @@
         delete pageInfo.currentProps[i];
       }
     }
-  };
+  }
 
-  sd.register = function(props) {
+  function register(props) {
     if (saEvent.check({
         properties: props
       })) {
@@ -5787,9 +5780,9 @@
     } else {
       sd.log('register输入的参数有误');
     }
-  };
+  }
 
-  sd.registerOnce = function(props) {
+  function registerOnce(props) {
     if (saEvent.check({
         properties: props
       })) {
@@ -5797,9 +5790,9 @@
     } else {
       sd.log('registerOnce输入的参数有误');
     }
-  };
+  }
 
-  sd.registerSession = function(props) {
+  function registerSession(props) {
     if (saEvent.check({
         properties: props
       })) {
@@ -5807,9 +5800,9 @@
     } else {
       sd.log('registerSession输入的参数有误');
     }
-  };
+  }
 
-  sd.registerSessionOnce = function(props) {
+  function registerSessionOnce(props) {
     if (saEvent.check({
         properties: props
       })) {
@@ -5817,9 +5810,9 @@
     } else {
       sd.log('registerSessionOnce输入的参数有误');
     }
-  };
+  }
 
-  sd.login = function(id, callback) {
+  function login(id, callback) {
     if (typeof id === 'number') {
       id = String(id);
     }
@@ -5854,9 +5847,9 @@
       callback && callback();
     }
     callback && callback();
-  };
+  }
 
-  sd.logout = function(isChangeId) {
+  function logout(isChangeId) {
     var firstId = store.getFirstId();
     if (firstId) {
       store.set('first_id', '');
@@ -5872,9 +5865,9 @@
       name: '',
       value: ''
     });
-  };
+  }
 
-  sd.getPresetProperties = function() {
+  function getPresetProperties() {
     function getUtm() {
       var utms = pageInfo.campaignParams();
       var $utms = {};
@@ -5902,8 +5895,9 @@
       result.$latest_referrer_host = result.$latest_referrer === '' ? '' : getHostname(result.$latest_referrer);
     }
     return result;
-  };
-  sd.iOSWebClickPolyfill = function() {
+  }
+
+  function iOSWebClickPolyfill() {
     var iOS_other_tags_css = '';
     var default_cursor_css = ' { cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0); }';
     if (sd.heatmap && isArray(sd.heatmap.otherTags)) {
@@ -5922,6 +5916,49 @@
         sd._.setCssStyle(iOS_other_tags_css);
       }
     }
+  }
+
+  var functions = {
+    __proto__: null,
+    addReferrerHost: addReferrerHost,
+    addPropsHook: addPropsHook,
+    initPara: initPara,
+    setInitVar: setInitVar,
+    enableLocalLog: enableLocalLog,
+    disableLocalLog: disableLocalLog,
+    quick: quick,
+    use: use,
+    track: track,
+    bind: bind,
+    unbind: unbind,
+    trackLink: trackLink,
+    trackLinks: trackLinks,
+    setItem: setItem,
+    deleteItem: deleteItem,
+    setProfile: setProfile,
+    setOnceProfile: setOnceProfile,
+    appendProfile: appendProfile,
+    incrementProfile: incrementProfile,
+    deleteProfile: deleteProfile,
+    unsetProfile: unsetProfile,
+    identify: identify,
+    trackSignup: trackSignup,
+    registerPage: registerPage,
+    clearAllRegister: clearAllRegister,
+    clearPageRegister: clearPageRegister,
+    register: register,
+    registerOnce: registerOnce,
+    registerSession: registerSession,
+    registerSessionOnce: registerSessionOnce,
+    login: login,
+    logout: logout,
+    getPresetProperties: getPresetProperties,
+    iOSWebClickPolyfill: iOSWebClickPolyfill,
+    readyState: readyState,
+    para_default: defaultPara,
+    log: sdLog,
+    debug: debug,
+    IDENTITY_KEY: IDENTITY_KEY
   };
 
   var kit = {};
@@ -6446,6 +6483,10 @@
       });
     }
   };
+
+  for (var i in functions) {
+    sd[i] = functions[i];
+  }
 
   sd.modules = {};
   sd._ = _;
