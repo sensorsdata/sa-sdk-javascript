@@ -2055,7 +2055,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.1';
+  var sdkversion_placeholder = '1.21.2';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -3447,6 +3447,7 @@
       }
     },
     is_first_visit_time: false,
+    is_page_first_visited: false,
     checkIsFirstTime: function(data) {
       if (data.type === 'track' && data.event === '$pageview') {
         if (this.is_first_visit_time) {
@@ -3496,6 +3497,7 @@
         };
         cookie.set(cookie.getCookieName('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
         this.is_first_visit_time = true;
+        this.is_page_first_visited = true;
       } else {
         if (!cookie.getNewUser()) {
           this.checkIsAddSign = function(data) {
@@ -5887,6 +5889,7 @@
 
     var obj = {
       $is_first_day: cookie.getNewUser(),
+      $is_first_time: saNewUser.is_page_first_visited,
       $referrer: pageInfo.pageProp.referrer || '',
       $referrer_host: pageInfo.pageProp.referrer ? getHostname(pageInfo.pageProp.referrer) : '',
       $url: getURL(),
@@ -6958,11 +6961,28 @@
     }
     return true;
   };
-  vtrackBase.configIsMatch = function(properties, eventConf) {
-    if (!eventConf.element_path) {
-      return false;
-    }
 
+  vtrackBase.configIsMatchNew = function(properties, eventConf) {
+    if (isString(properties.$element_selector) && isString(eventConf.element_selector)) {
+      if (eventConf.element_field === 'element_selector' && eventConf['function'] === 'equal') {
+        return properties.$element_selector === eventConf.element_selector;
+      }
+      if (eventConf.element_field === 'element_selector' && eventConf['function'] === 'contain') {
+        return properties.$element_selector.indexOf(eventConf.element_selector) > -1;
+      }
+    }
+    if (isString(properties.$element_path) && isString(eventConf.element_path)) {
+      if (eventConf.element_field === 'element_path' && eventConf['function'] === 'equal') {
+        return properties.$element_path === eventConf.element_path;
+      }
+      if (eventConf.element_field === 'element_path' && eventConf['function'] === 'contain') {
+        return properties.$element_path.indexOf(eventConf.element_path) > -1;
+      }
+    }
+    return false;
+  };
+
+  vtrackBase.configIsMatch = function(properties, eventConf) {
     if (eventConf.limit_element_content) {
       if (eventConf.element_content !== properties.$element_content) {
         return false;
@@ -6974,12 +6994,23 @@
       }
     }
 
+    if (eventConf.element_field && eventConf['function']) {
+      return vtrackBase.configIsMatchNew(properties, eventConf);
+    } else {
+      return vtrackBase.configIsMatchOldVersion(properties, eventConf);
+    }
+  };
+
+  vtrackBase.configIsMatchOldVersion = function(properties, eventConf) {
+    if (!eventConf.element_path) {
+      return false;
+    }
     if (properties.$element_position !== undefined) {
       if (eventConf.element_path !== properties.$element_path) {
         return false;
       }
     } else {
-      if (vtrackBase.isDiv({
+      if (sd.vtrackBase.isDiv({
           element_path: eventConf.element_path
         })) {
         if (properties.$element_path.indexOf(eventConf.element_path) < 0) {
@@ -6993,6 +7024,7 @@
     }
     return true;
   };
+
   vtrackBase.filterConfig = function(data, events, page_url) {
     var arr = [];
     if (!page_url) {
@@ -7278,7 +7310,6 @@
     timer: null,
     update_time: null,
     customProp: customProp,
-
     initUrl: function() {
       var info = vtrackBase.initUrl();
       if (info) {
@@ -7455,6 +7486,7 @@
         }
       });
     },
+
     getAssignConfigs: vtrackBase.getAssignConfigs,
 
     configIsMatch: vtrackBase.configIsMatch
@@ -7785,7 +7817,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.21.1'
+              sdkversion: '1.21.2'
             }
           },
           '*'

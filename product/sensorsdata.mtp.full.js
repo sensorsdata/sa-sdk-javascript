@@ -2051,7 +2051,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.1';
+  var sdkversion_placeholder = '1.21.2';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -3443,6 +3443,7 @@
       }
     },
     is_first_visit_time: false,
+    is_page_first_visited: false,
     checkIsFirstTime: function(data) {
       if (data.type === 'track' && data.event === '$pageview') {
         if (this.is_first_visit_time) {
@@ -3492,6 +3493,7 @@
         };
         cookie.set(cookie.getCookieName('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
         this.is_first_visit_time = true;
+        this.is_page_first_visited = true;
       } else {
         if (!cookie.getNewUser()) {
           this.checkIsAddSign = function(data) {
@@ -5883,6 +5885,7 @@
 
     var obj = {
       $is_first_day: cookie.getNewUser(),
+      $is_first_time: saNewUser.is_page_first_visited,
       $referrer: pageInfo.pageProp.referrer || '',
       $referrer_host: pageInfo.pageProp.referrer ? getHostname(pageInfo.pageProp.referrer) : '',
       $url: getURL(),
