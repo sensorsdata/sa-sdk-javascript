@@ -2047,7 +2047,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.21.2';
+var sdkversion_placeholder = '1.21.3';
 
 function parseSuperProperties(data) {
   var obj = data.properties;
@@ -7809,7 +7809,7 @@ var vtrackMode = {
           source: 'sa-web-sdk',
           type: 'v-is-vtrack',
           data: {
-            sdkversion: '1.21.2'
+            sdkversion: '1.21.3'
           }
         },
         '*'
