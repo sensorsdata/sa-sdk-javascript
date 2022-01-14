@@ -1,6 +1,6 @@
 {
   "name": "sa-sdk-javascript",
-  "version": "1.21.3",
+  "version": "1.21.4",
   "description": "official sensorsdata javascript sdk",
   "main": "sensorsdata.min.js",
   "scripts": {

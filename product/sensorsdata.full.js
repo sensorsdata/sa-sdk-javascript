@@ -1066,6 +1066,34 @@
     return hash;
   }
 
+  function hashCode53(str) {
+    var max53 = 9007199254740992;
+    var min53 = -9007199254740992;
+    var factor = 31;
+    var hash = 0;
+    if (str.length > 0) {
+      var val = str.split('');
+      for (var i = 0; i < val.length; i++) {
+        var aVal = val[i].charCodeAt();
+        var nextHash = factor * hash + aVal;
+        if (nextHash > max53) {
+          hash = min53 + hash;
+          while (((nextHash = factor * hash + aVal), nextHash < min53)) {
+            hash = hash / 2 + aVal;
+          }
+        }
+        if (nextHash < min53) {
+          hash = max53 + hash;
+          while (((nextHash = factor * hash + aVal), nextHash > max53)) {
+            hash = hash / 2 + aVal;
+          }
+        }
+        hash = factor * hash + aVal;
+      }
+    }
+    return hash;
+  }
+
   function getRandom() {
     if (typeof Uint32Array === 'function') {
       var cry = '';
@@ -2055,7 +2083,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.3';
+  var sdkversion_placeholder = '1.21.4';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -3375,6 +3403,7 @@
     rot13defs: rot13defs,
     dfmapping: dfmapping,
     strToUnicode: strToUnicode,
+    hashCode53: hashCode53,
     hasAttributes: hasAttributes,
     hasAttribute: hasAttribute,
     getElementContent: getElementContent,
@@ -3529,7 +3558,7 @@
           if (isBaiduTraffic() && !(isObject(baiduKey) && baiduKey.active)) {
             latestObj['$search_keyword_id'] = getBaiduKeyword.id();
             latestObj['$search_keyword_id_type'] = getBaiduKeyword.type();
-            latestObj['$search_keyword_id_hash'] = hashCode(latestObj['$search_keyword_id']);
+            latestObj['$search_keyword_id_hash'] = hashCode53(latestObj['$search_keyword_id']);
           } else {
             if (sd.store._state && sd.store._state.props) {
               sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
@@ -4984,7 +5013,7 @@
         if (sd.para.preset_properties.search_keyword_baidu && isReferralTraffic(document.referrer) && isBaiduTraffic()) {
           eqidObj['$search_keyword_id'] = getBaiduKeyword.id();
           eqidObj['$search_keyword_id_type'] = getBaiduKeyword.type();
-          eqidObj['$search_keyword_id_hash'] = hashCode(eqidObj['$search_keyword_id']);
+          eqidObj['$search_keyword_id_hash'] = hashCode53(eqidObj['$search_keyword_id']);
         }
 
         sd.setOnceProfile(
@@ -5069,7 +5098,7 @@
         if (sd.para.preset_properties.search_keyword_baidu && isReferralTraffic(document.referrer) && isBaiduTraffic()) {
           eqidObj['$search_keyword_id'] = getBaiduKeyword.id();
           eqidObj['$search_keyword_id_type'] = getBaiduKeyword.type();
-          eqidObj['$search_keyword_id_hash'] = hashCode(eqidObj['$search_keyword_id']);
+          eqidObj['$search_keyword_id_hash'] = hashCode53(eqidObj['$search_keyword_id']);
         }
 
         sd.setOnceProfile(
@@ -7817,7 +7846,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.21.3'
+              sdkversion: '1.21.4'
             }
           },
           '*'
