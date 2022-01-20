@@ -2081,7 +2081,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.4';
+  var sdkversion_placeholder = '1.21.5';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -2238,7 +2238,6 @@
     props.$url = getURL();
     props.$url_path = location.pathname;
     props.$title = document.title;
-    props.$viewport_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
 
     return props;
   }
@@ -2521,13 +2520,18 @@
       };
     },
     properties: function() {
-      return {
+      var viewportHeightValue = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0;
+      var viewportWidthValue = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
+      var propertiesObj = {
         $timezone_offset: new Date().getTimezoneOffset(),
         $screen_height: Number(screen.height) || 0,
         $screen_width: Number(screen.width) || 0,
+        $viewport_height: viewportHeightValue,
+        $viewport_width: viewportWidthValue,
         $lib: 'js',
         $lib_version: sdkversion_placeholder
       };
+      return propertiesObj;
     },
     currentProps: {},
     register: function(obj) {
@@ -2958,40 +2962,70 @@
     addEvent(window, hashEvent, callback);
   }
 
+  var singlePage = {
+    is_create: false,
+    current_url: location.href,
+    eventList: [],
+    create: function() {
+      var _this = this;
+
+      function publish() {
+        each(_this.eventList, function(event) {
+          if (isFunction(event)) {
+            event(_this.current_url);
+          }
+        });
+        _this.current_url = location.href;
+      }
+      var historyPushState = window.history.pushState;
+      var historyReplaceState = window.history.replaceState;
+
+      if (isFunction(window.history.pushState)) {
+        window.history.pushState = function() {
+          historyPushState.apply(window.history, arguments);
+          publish();
+        };
+      }
+
+      if (isFunction(window.history.replaceState)) {
+        window.history.replaceState = function() {
+          historyReplaceState.apply(window.history, arguments);
+          publish();
+        };
+      }
+
+      var singlePageEvent;
+      if (window.document.documentMode) {
+        singlePageEvent = 'hashchange';
+      } else {
+        singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
+      }
+
+      addEvent(window, singlePageEvent, function() {
+        publish();
+      });
+      this.is_create = true;
+    },
+    subscribe: function(callback) {
+      if (!this.is_create) {
+        this.create();
+      }
+      if (isFunction(callback)) {
+        this.eventList.push(callback);
+      }
+    },
+    prepend: function(callback) {
+      if (!this.is_create) {
+        this.create();
+      }
+      if (isFunction(callback)) {
+        this.eventList.unshift(callback);
+      }
+    }
+  };
+
   function addSinglePageEvent(callback) {
-    var current_url = location.href;
-    var historyPushState = window.history.pushState;
-    var historyReplaceState = window.history.replaceState;
-
-    if (isFunction(window.history.pushState)) {
-      window.history.pushState = function() {
-        historyPushState.apply(window.history, arguments);
-        callback(current_url);
-        current_url = location.href;
-      };
-    }
-
-    if (isFunction(window.history.replaceState)) {
-      window.history.replaceState = function() {
-        historyReplaceState.apply(window.history, arguments);
-        callback(current_url);
-        current_url = location.href;
-      };
-    }
-
-    var singlePageEvent;
-    if (window.document.documentMode) {
-      singlePageEvent = 'hashchange';
-    } else {
-      singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
-    }
-
-    addEvent(window, singlePageEvent, function() {
-      callback(current_url);
-      current_url = location.href;
-    });
-
-
+    singlePage.subscribe(callback);
   }
 
   function listenPageState(obj) {
@@ -3457,6 +3491,7 @@
     addSinglePageEvent: addSinglePageEvent,
     listenPageState: listenPageState,
     bindReady: bindReady,
+    singlePage: singlePage,
     xhr: xhr,
     ajax: ajax,
     jsonp: jsonp,
@@ -4630,6 +4665,40 @@
       }
       return prop;
     },
+    addPointerEventProp: function(ev, target) {
+      function getScroll() {
+        var scrollLeft = document.body.scrollLeft || document.documentElement.scrollLeft || 0;
+        var scrollTop = document.body.scrollTop || document.documentElement.scrollTop || 0;
+        return {
+          scrollLeft: scrollLeft,
+          scrollTop: scrollTop
+        };
+      }
+
+      function getElementPosition(target) {
+        if (document.documentElement.getBoundingClientRect) {
+          var targetEle = target.getBoundingClientRect();
+          return {
+            targetEleX: targetEle.left + getScroll().scrollLeft || 0,
+            targetEleY: targetEle.top + getScroll().scrollTop || 0
+          };
+        }
+      }
+
+      function toFixedThree(val) {
+        return Number(Number(val).toFixed(3));
+      }
+
+      function getPage(ev) {
+        var pageX = ev.pageX || ev.clientX + getScroll().scrollLeft || ev.offsetX + getElementPosition(target).targetEleX || 0;
+        var pageY = ev.pageY || ev.clientY + getScroll().scrollTop || ev.offsetY + getElementPosition(target).targetEleY || 0;
+        return {
+          $page_x: toFixedThree(pageX),
+          $page_y: toFixedThree(pageY)
+        };
+      }
+      return getPage(ev);
+    },
     start: function(ev, target, tagName, customProps, callback) {
       var userCustomProps = isObject(customProps) ? customProps : {};
       var userCallback = isFunction(callback) ? callback : isFunction(customProps) ? customProps : undefined;
@@ -4645,7 +4714,7 @@
           prop = extend(prop, customP);
         }
       }
-      prop = extend(prop, userCustomProps);
+      prop = extend(prop, this.addPointerEventProp(ev, target), userCustomProps);
       if (tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true) {
         sd.trackLink({
           event: ev,
@@ -4758,8 +4827,6 @@
           if (!this.inter) {
             para.$viewport_position = (document.documentElement && document.documentElement.scrollTop) || window.pageYOffset || document.body.scrollTop || 0;
             para.$viewport_position = Math.round(para.$viewport_position) || 0;
-            para.$viewport_height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0;
-            para.$viewport_width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
             if (isNoDelay) {
               interDelay.main(para, true);
             } else {
@@ -5853,7 +5920,7 @@
         distinct_id: id
       }) && id !== sd.store.getDistinctId()) {
       if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(sd.para.login_id_key) && id === sd.store._state.first_id) {
-        callback && callback();
+        isFunction(callback) && callback();
         return false;
       }
 
@@ -5877,9 +5944,8 @@
         });
       }
     } else {
-      callback && callback();
+      isFunction(callback) && callback();
     }
-    callback && callback();
   }
 
   function logout(isChangeId) {
@@ -7844,7 +7910,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.21.4'
+              sdkversion: '1.21.5'
             }
           },
           '*'
