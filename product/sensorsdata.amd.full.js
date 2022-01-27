@@ -2081,7 +2081,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.5';
+  var sdkversion_placeholder = '1.21.6';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -4665,7 +4665,11 @@
       }
       return prop;
     },
-    addPointerEventProp: function(ev, target) {
+    getPointerEventProp: function(ev, target) {
+      if (!ev) {
+        return {};
+      }
+
       function getScroll() {
         var scrollLeft = document.body.scrollLeft || document.documentElement.scrollLeft || 0;
         var scrollTop = document.body.scrollTop || document.documentElement.scrollTop || 0;
@@ -4714,7 +4718,7 @@
           prop = extend(prop, customP);
         }
       }
-      prop = extend(prop, this.addPointerEventProp(ev, target), userCustomProps);
+      prop = extend(prop, this.getPointerEventProp(ev, target), userCustomProps);
       if (tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true) {
         sd.trackLink({
           event: ev,
@@ -7910,7 +7914,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.21.5'
+              sdkversion: '1.21.6'
             }
           },
           '*'
