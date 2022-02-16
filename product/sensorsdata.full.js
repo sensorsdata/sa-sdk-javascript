@@ -1276,7 +1276,7 @@
     app_js_bridge: false
   };
 
-  function isSessionStorgaeSupport() {
+  function isSessionStorageSupport() {
     var supported = true;
 
     var supportName = '__sensorsdatasupport__';
@@ -1296,7 +1296,7 @@
   }
 
   function sdLog() {
-    if ((isSessionStorgaeSupport() && sessionStorage.getItem('sensorsdata_jssdk_debug') === 'true') || sdPara.show_log) {
+    if ((isSessionStorageSupport() && sessionStorage.getItem('sensorsdata_jssdk_debug') === 'true') || sdPara.show_log) {
       if (isObject(arguments[0]) && (sdPara.show_log === true || sdPara.show_log === 'string' || sdPara.show_log === false)) {
         arguments[0] = formatJsonString(arguments[0]);
       }
@@ -1903,9 +1903,14 @@
         })();
       }
     } else {
+      if (!isString(url)) {
+        url = String(url);
+      }
+      url = trim(url);
       var _regex = /^https?:\/\/.+/;
       if (_regex.test(url) === false) {
         sdLog('Invalid URL');
+        return;
       }
       var instance = urlParse(url);
       result.hash = '';
@@ -1956,6 +1961,7 @@
 
   function getURL(para) {
     if (isString(para)) {
+      para = trim(para);
       return _decodeURI(para);
     } else {
       return _decodeURI(location.href);
@@ -2083,7 +2089,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.6';
+  var sdkversion_placeholder = '1.21.7';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -2347,6 +2353,7 @@
     if (typeof referrer !== 'string') {
       return '取值异常_referrer异常_' + String(referrer);
     }
+    referrer = trim(referrer);
     referrer = _decodeURI(referrer);
     if (referrer.indexOf('https://www.baidu.com/') === 0 && !full) {
       referrer = referrer.split('?')[0];
@@ -4238,151 +4245,12 @@
     return true;
   }
 
-  function strip_sa_properties(p) {
-    if (!isObject(p)) {
-      return p;
+  var dataStageImpl = {
+    stage: null,
+    init: function(stage) {
+      this.stage = stage;
     }
-    each(p, function(v, k) {
-      if (isArray(v)) {
-        var temp = [];
-        each(v, function(arrv) {
-          if (isString(arrv)) {
-            temp.push(arrv);
-          } else {
-            sdLog('您的数据-', k, v, '的数组里的值必须是字符串,已经将其删除');
-          }
-        });
-        p[k] = temp;
-      }
-      if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option')) {
-        sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
-        delete p[k];
-      }
-    });
-    return p;
-  }
-
-  function formatString(str, maxLen) {
-    if (isNumber(maxLen) && str.length > maxLen) {
-      sdLog('字符串长度超过限制，已经做截取--' + str);
-      return str.slice(0, maxLen);
-    } else {
-      return str;
-    }
-  }
-
-  function filterReservedProperties(obj) {
-    var reservedFields = ['distinct_id', 'user_id', 'id', 'date', 'datetime', 'event', 'events', 'first_id', 'original_id', 'device_id', 'properties', 'second_id', 'time', 'users'];
-    if (!isObject(obj)) {
-      return;
-    }
-    each(reservedFields, function(key, index) {
-      if (!(key in obj)) {
-        return;
-      }
-      if (index < 3) {
-        delete obj[key];
-        sdLog('您的属性- ' + key + '是保留字段，我们已经将其删除');
-      } else {
-        sdLog('您的属性- ' + key + '是保留字段，请避免其作为属性名');
-      }
-    });
-  }
-
-  function searchObjString(o) {
-    var white_list = ['$element_selector', '$element_path'];
-    var infinite_list = ['sensorsdata_app_visual_properties'];
-    if (isObject(o)) {
-      each(o, function(a, b) {
-        if (isObject(a)) {
-          searchObjString(o[b]);
-        } else {
-          if (isString(a)) {
-            if (indexOf(infinite_list, b) > -1) {
-              return;
-            }
-            o[b] = formatString(a, indexOf(white_list, b) > -1 ? 1024 : sdPara.max_string_length);
-          }
-        }
-      });
-    }
-  }
-
-  function searchZZAppStyle(data) {
-    if (typeof data.properties.$project !== 'undefined') {
-      data.project = data.properties.$project;
-      delete data.properties.$project;
-    }
-    if (typeof data.properties.$token !== 'undefined') {
-      data.token = data.properties.$token;
-      delete data.properties.$token;
-    }
-  }
-
-  function formatItem(data) {
-    if ('item_type' in data) {
-      var item_type = data['item_type'];
-
-      var typeOnComplete = function(status) {
-        if (!status) {
-          delete data['item_type'];
-        }
-        return true;
-      };
-
-      check({
-        item_type: item_type
-      }, typeOnComplete);
-    }
-    if ('item_id' in data) {
-      var item_id = data['item_id'];
-      var idOnComplete = function(status, val, rule) {
-        if (!status && rule === 'string') {
-          delete data['item_id'];
-        }
-        return true;
-      };
-      check({
-        item_id: item_id
-      }, idOnComplete);
-    }
-  }
-
-  function formatProperties(p) {
-    each(p, function(val, key) {
-      var onComplete = function(status, value, rule_type) {
-        if (!status && rule_type !== 'keyLength') {
-          delete p[key];
-        }
-        return true;
-      };
-      check({
-        propertyKey: key
-      }, onComplete);
-    });
-  }
-
-  function formatData(data) {
-    var p = data.properties;
-
-    if (isObject(p)) {
-      strip_sa_properties(p);
-
-      filterReservedProperties(p);
-
-      searchZZAppStyle(data);
-
-      formatProperties(p);
-
-      searchObjString(p);
-    } else if ('properties' in data) {
-      data.properties = {};
-    }
-
-    searchObjDate(data);
-
-    formatItem(data);
-  }
+  };
 
   var saEvent = {};
 
@@ -4399,7 +4267,7 @@
     };
 
     extend(data, p);
-    formatData(data);
+    dataStageImpl.stage.process('formatData', data);
 
     sd.sendState.getSendCall(data);
   };
@@ -4582,8 +4450,8 @@
       if (!sd.para.heatmap) {
         sd.errorMsg = '您SDK没有配置开启点击图，可能没有数据！';
       }
-      if (web_url && web_url[0] && web_url[1]) {
-        if (web_url[1].slice(0, 5) === 'http:' && location.protocol === 'https:') {
+      if (web_url) {
+        if (web_url.slice(0, 5) === 'http:' && location.protocol === 'https:') {
           sd.errorMsg = '您的当前页面是https的地址，神策分析环境也必须是https！';
         }
       }
@@ -5818,6 +5686,7 @@
           store.change('distinct_id', id);
         }
       }
+      sd.store.identities.set('identify', id);
     }
   }
 
@@ -6147,7 +6016,7 @@
 
     parseSuperProperties(data);
 
-    formatData(data);
+    dataStageImpl.stage.process('addCustomProps', data);
 
     saNewUser.checkIsAddSign(data);
     saNewUser.checkIsFirstTime(data);
@@ -7775,11 +7644,31 @@
     }
   };
 
+  function getFlagValue(param) {
+    var result = null;
+    var reg = new RegExp(param + '=([^&#]+)');
+    try {
+      var nameParams = JSON.parse(window.name);
+      each(nameParams, function(val, key) {
+        if (param === key) {
+          result = val;
+        }
+      });
+    } catch (e) {
+      result = null;
+    }
+    if (result === null) {
+      var matchs = location.href.match(reg);
+      if (matchs && matchs[0] && matchs[1]) {
+        result = _decodeURIComponent(matchs[1]);
+      }
+    }
+    return result;
+  }
+
   var heatmapMode = {
-    searchKeywordMatch: location.search.match(/sa-request-id=([^&#]+)/),
     isSeachHasKeyword: function() {
-      var match = this.searchKeywordMatch;
-      if (match && match[0] && match[1]) {
+      if (getFlagValue('sa-request-id') !== null) {
         if (typeof sessionStorage.getItem('sensors-visual-mode') === 'string') {
           sessionStorage.removeItem('sensors-visual-mode');
         }
@@ -7789,18 +7678,17 @@
       }
     },
     hasKeywordHandle: function() {
-      var match = this.searchKeywordMatch;
-      var type = location.search.match(/sa-request-type=([^&#]+)/);
-      var web_url = location.search.match(/sa-request-url=([^&#]+)/);
+      var id = getFlagValue('sa-request-id');
+      var type = getFlagValue('sa-request-type');
+      var web_url = getFlagValue('sa-request-url');
       heatmap.setNotice(web_url);
       if (_sessionStorage.isSupport()) {
-        if (web_url && web_url[0] && web_url[1]) {
-          sessionStorage.setItem('sensors_heatmap_url', _decodeURIComponent(web_url[1]));
+        if (web_url !== null) {
+          sessionStorage.setItem('sensors_heatmap_url', web_url);
         }
-        sessionStorage.setItem('sensors_heatmap_id', match[1]);
-        if (type && type[0] && type[1]) {
-          if (type[1] === '1' || type[1] === '2' || type[1] === '3') {
-            type = type[1];
+        sessionStorage.setItem('sensors_heatmap_id', id);
+        if (type !== null) {
+          if (type === '1' || type === '2' || type === '3') {
             sessionStorage.setItem('sensors_heatmap_type', type);
           } else {
             type = null;
@@ -7813,7 +7701,7 @@
           }
         }
       }
-      this.isReady(match[1], type);
+      this.isReady(id, type);
     },
     isReady: function(data, type, url) {
       if (sd.para.heatmap_url) {
@@ -7852,7 +7740,7 @@
       return _sessionStorage.isSupport() && typeof sessionStorage.getItem('sensors-visual-mode') === 'string';
     },
     isSearchHasKeyword: function() {
-      if (location.search.match(/sa-visual-mode=true/)) {
+      if (getFlagValue('sa-visual-mode') === true || getFlagValue('sa-visual-mode') === 'true') {
         if (typeof sessionStorage.getItem('sensors_heatmap_id') === 'string') {
           sessionStorage.removeItem('sensors_heatmap_id');
         }
@@ -7887,7 +7775,7 @@
           if (_sessionStorage.isSupport()) {
             sessionStorage.setItem('sensors-visual-mode', 'true');
           }
-          if (event.data.data.userURL && location.search.match(/sa-visual-mode=true/)) {
+          if (event.data.data.userURL && location.href.match(/sa-visual-mode=true/)) {
             var valid_url = validUrl(event.data.data.userURL);
             if (valid_url) {
               window.location.href = valid_url;
@@ -7916,7 +7804,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.21.6'
+              sdkversion: '1.21.7'
             }
           },
           '*'
@@ -8145,14 +8033,304 @@
     clearPageRegister: function(arr) {}
   };
 
+  function CancelationToken(canceled) {
+    this.cancel = function() {
+      canceled = true;
+    };
+    this.getCanceled = function() {
+      return canceled || false;
+    };
+  }
+
+  function InterceptorContext(data, pos, sd) {
+    var originalData = null;
+    try {
+      originalData = JSON.parse(JSON.stringify(data));
+    } catch (e) {
+      sdLog(e);
+    }
+    this.getOriginalData = function() {
+      return originalData;
+    };
+    this.getPosition = function() {
+      return pos;
+    };
+    this.cancelationToken = new CancelationToken();
+    this.sensors = sd;
+  }
+
+  function Stage(processDef) {
+    if (!isObject(processDef)) {
+      throw 'error: Stage constructor requires arguments.';
+    }
+    this.processDef = processDef;
+    this.registeredInterceptors = {};
+  }
+
+  Stage.prototype.process = function(proc, data) {
+    if (!proc || !(proc in this.processDef)) {
+      sdLog('process [' + proc + '] is not supported');
+      return;
+    }
+
+    var itcptrs = this.registeredInterceptors[proc];
+    if (itcptrs && isArray(itcptrs) && itcptrs.length > 0) {
+      var pos = {
+        current: 0,
+        total: itcptrs.length
+      };
+      var context = new InterceptorContext(data, pos, sd);
+
+      for (var i = 0; i < itcptrs.length; i++) {
+        try {
+          pos.current = i + 1;
+          data = itcptrs[i].call(null, data, context) || data;
+          if (context.cancelationToken.getCanceled()) {
+            sdLog('process [' + proc + '] has been canceled.');
+            break;
+          }
+        } catch (e) {
+          sdLog('interceptor error:' + e);
+        }
+      }
+    }
+
+    if (this.processDef[proc] && this.processDef[proc] in this.processDef) {
+      data = this.process(this.processDef[proc], data);
+    }
+    return data;
+  };
+
+  Stage.prototype.registerStageImplementation = function(stageImpl) {
+    if (!stageImpl || !stageImpl.init || !isFunction(stageImpl.init)) {
+      return;
+    }
+    stageImpl.init(this);
+    stageImpl.interceptor && this.registerInterceptor(stageImpl.interceptor);
+  };
+
+  Stage.prototype.registerInterceptor = function(interceptor) {
+    if (!interceptor) {
+      return;
+    }
+    for (var i in interceptor) {
+      var itcptr = interceptor[i];
+      if (!itcptr || !isObject(itcptr) || !isFunction(itcptr.entry)) {
+        continue;
+      }
+
+      if (!isNumber(itcptr.priority)) {
+        itcptr.priority = 10000000;
+      }
+
+      if (!this.registeredInterceptors[i]) {
+        this.registeredInterceptors[i] = [];
+      }
+
+      var curIts = this.registeredInterceptors[i];
+      var priority = itcptr.priority;
+      var entry = itcptr.entry;
+
+      switch (true) {
+        case priority <= 0:
+          curIts.unshift(entry);
+          break;
+        case priority >= curIts.length:
+          curIts.push(entry);
+          break;
+        default:
+          curIts.splice(priority, 0, entry);
+          break;
+      }
+    }
+  };
+
+  var processDef = {
+    addCustomProps: 'formatData',
+    formatData: null
+  };
+
+  var dataStage = new Stage(processDef);
+
+  function registerFeature(feature) {
+    feature && feature.dataStage && dataStage.registerStageImplementation(feature.dataStage);
+  }
+
+  function CoreFeature(sd) {
+    sd.kit = kit;
+    sd.saEvent = saEvent;
+    this.dataStage = dataStageImpl;
+  }
+
+  function strip_sa_properties(p) {
+    if (!isObject(p)) {
+      return p;
+    }
+    each(p, function(v, k) {
+      if (isArray(v)) {
+        var temp = [];
+        each(v, function(arrv) {
+          if (isString(arrv)) {
+            temp.push(arrv);
+          } else {
+            sdLog('您的数据-', k, v, '的数组里的值必须是字符串,已经将其删除');
+          }
+        });
+        p[k] = temp;
+      }
+      if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option')) {
+        sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
+        delete p[k];
+      }
+    });
+    return p;
+  }
+
+  function formatString(str, maxLen) {
+    if (isNumber(maxLen) && str.length > maxLen) {
+      sdLog('字符串长度超过限制，已经做截取--' + str);
+      return str.slice(0, maxLen);
+    } else {
+      return str;
+    }
+  }
+
+  function filterReservedProperties(obj) {
+    var reservedFields = ['distinct_id', 'user_id', 'id', 'date', 'datetime', 'event', 'events', 'first_id', 'original_id', 'device_id', 'properties', 'second_id', 'time', 'users'];
+    if (!isObject(obj)) {
+      return;
+    }
+    each(reservedFields, function(key, index) {
+      if (!(key in obj)) {
+        return;
+      }
+      if (index < 3) {
+        delete obj[key];
+        sdLog('您的属性- ' + key + '是保留字段，我们已经将其删除');
+      } else {
+        sdLog('您的属性- ' + key + '是保留字段，请避免其作为属性名');
+      }
+    });
+  }
+
+  function searchObjString(o) {
+    var white_list = ['$element_selector', '$element_path'];
+    var infinite_list = ['sensorsdata_app_visual_properties'];
+    if (isObject(o)) {
+      each(o, function(a, b) {
+        if (isObject(a)) {
+          searchObjString(o[b]);
+        } else {
+          if (isString(a)) {
+            if (indexOf(infinite_list, b) > -1) {
+              return;
+            }
+            o[b] = formatString(a, indexOf(white_list, b) > -1 ? 1024 : sdPara.max_string_length);
+          }
+        }
+      });
+    }
+  }
+
+  function searchZZAppStyle(data) {
+    if (typeof data.properties.$project !== 'undefined') {
+      data.project = data.properties.$project;
+      delete data.properties.$project;
+    }
+    if (typeof data.properties.$token !== 'undefined') {
+      data.token = data.properties.$token;
+      delete data.properties.$token;
+    }
+  }
+
+  function formatItem(data) {
+    if ('item_type' in data) {
+      var item_type = data['item_type'];
+
+      var typeOnComplete = function(status) {
+        if (!status) {
+          delete data['item_type'];
+        }
+        return true;
+      };
+
+      check({
+        item_type: item_type
+      }, typeOnComplete);
+    }
+    if ('item_id' in data) {
+      var item_id = data['item_id'];
+      var idOnComplete = function(status, val, rule) {
+        if (!status && rule === 'string') {
+          delete data['item_id'];
+        }
+        return true;
+      };
+      check({
+        item_id: item_id
+      }, idOnComplete);
+    }
+  }
+
+  function formatProperties(p) {
+    each(p, function(val, key) {
+      var onComplete = function(status, value, rule_type) {
+        if (!status && rule_type !== 'keyLength') {
+          delete p[key];
+        }
+        return true;
+      };
+      check({
+        propertyKey: key
+      }, onComplete);
+    });
+  }
+
+  function formatData(data) {
+    var p = data.properties;
+
+    if (isObject(p)) {
+      strip_sa_properties(p);
+
+      filterReservedProperties(p);
+
+      searchZZAppStyle(data);
+
+      formatProperties(p);
+
+      searchObjString(p);
+    } else if ('properties' in data) {
+      data.properties = {};
+    }
+
+    searchObjDate(data);
+
+    formatItem(data);
+  }
+
+  var dataStageImpl$1 = {
+    init: function() {},
+    interceptor: {
+      formatData: {
+        priority: 0,
+        entry: function(data) {
+          formatData(data);
+          return data;
+        }
+      }
+    }
+  };
+
+  function DataFormatFeature() {
+    this.dataStage = dataStageImpl$1;
+  }
+
   var preCfg = window['sensors_data_pre_config'];
   var is_compliance_enabled = isObject(preCfg) ? preCfg.is_compliance_enabled : false;
 
   function implementCore(isRealImp) {
     if (isRealImp) {
       sd._ = _;
-      sd.kit = kit;
-      sd.saEvent = saEvent;
       sd.sendState = sendState;
       sd.events = new EventEmitter();
       sd.batchSend = batchSend;
@@ -8166,6 +8344,9 @@
       sd.vapph5collect = vapph5collect;
       sd.heatmap = heatmap;
       sd.detectMode = detectMode;
+
+      registerFeature(new CoreFeature(sd));
+      registerFeature(new DataFormatFeature(sd));
     }
 
     var imp = isRealImp ? functions : saEmpty;

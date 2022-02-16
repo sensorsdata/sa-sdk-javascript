@@ -1,3 +1,12 @@
+## 1.21.7 (2021-02-16)
+1.  新增
+    - `Web JS SDK` 重构二期，新增单元测试框架
+    - 新增 `pageload` 插件获取页面资源大小
+2.  修复
+    - 修复前向域名显示为 `https` 的问题
+    - 修复 `url` 路径中有 `#` 网页热力图无法加载的问题
+    - 修复调用 `identify` 未设置 `$identity_anonymous_id` 的问题
+
 ## 1.21.6 (2021-01-27)
 1.  修复
     - 修复调用 `trackAllHeatMap` 或 `trackHeatMap` 接口报错的问题
