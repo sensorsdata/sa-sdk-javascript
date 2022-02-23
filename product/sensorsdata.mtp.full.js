@@ -2085,7 +2085,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.7';
+  var sdkversion_placeholder = '1.21.8';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
