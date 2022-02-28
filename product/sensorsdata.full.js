@@ -2089,7 +2089,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.8';
+  var sdkversion_placeholder = '1.21.9';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -2701,31 +2701,9 @@
         document.cookie = valid_name + '=' + encodeURIComponent(valid_value) + expires + '; path=/' + valid_domain + samesite + secure;
       }
     },
-    encrypt: function(v) {
-      return 'dfm-enc-' + dfmapping(v);
-    },
-    decrypt: function(v) {
-      if (v.indexOf('data:enc;') === 0) {
-        v = v.substring('data:enc;'.length);
-        v = rot13defs(v);
-      } else if (v.indexOf('dfm-enc-') === 0) {
-        v = v.substring('dfm-enc-'.length);
-        v = dfmapping(v);
-      }
-      return v;
-    },
-    resolveValue: function(cross) {
-      var flag = 'data:enc;';
-      var flag_dfm = 'dfm-enc-';
-      if (isString(cross) && (cross.indexOf(flag) === 0 || cross.indexOf(flag_dfm) === 0)) {
-        cross = cookie.decrypt(cross);
-      }
-      return cross;
-    },
-
     remove: function(name, cross_subdomain) {
       cross_subdomain = typeof cross_subdomain === 'undefined' ? sdPara.cross_subdomain : cross_subdomain;
-      cookie.set(name, '', -1, cross_subdomain);
+      cookie.set(name, '1', -1, cross_subdomain);
     },
 
     getCookieName: function(name_prefix, url) {
@@ -2747,13 +2725,31 @@
       }
       return sub;
     },
+
     getNewUser: function() {
       var prefix = 'new_user';
-      if (this.get('sensorsdata_is_new_user') !== null || this.get(this.getCookieName(prefix)) !== null) {
-        return true;
+      if (this.isSupport()) {
+        if (this.get('sensorsdata_is_new_user') !== null || this.get(this.getCookieName(prefix)) !== null) return true;
+        return false;
       } else {
+        if (memory.get(memory.getMemoryName(prefix)) !== null) return true;
         return false;
       }
+    },
+
+    isSupport: function(name, value) {
+      name = name || 'sajssdk_2015_cookie_access_test';
+      value = value || '1';
+      var self = this;
+
+      function accessNormal() {
+        self.set(name, value);
+        var val = self.get(name);
+        if (val !== value) return false;
+        self.remove(name);
+        return true;
+      }
+      return navigator.cookieEnabled && accessNormal();
     }
   };
 
@@ -2794,6 +2790,43 @@
         supported = false;
       }
       return supported;
+    }
+  };
+
+  var memory = {
+    data: {},
+
+    get: function(name) {
+      var value = this.data[name];
+      if (value === undefined) return null;
+      if (value._expirationTimestamp_ !== undefined) {
+        if (new Date().getTime() > value._expirationTimestamp_) {
+          return null;
+        }
+        return value.value;
+      }
+      return value;
+    },
+
+    set: function(name, value, days) {
+      if (days) {
+        var date = new Date();
+        var expirationTimestamp;
+        if (String(days).slice(-1) === 's') {
+          expirationTimestamp = date.getTime() + Number(String(days).slice(0, -1)) * 1000;
+        } else {
+          expirationTimestamp = date.getTime() + days * 24 * 60 * 60 * 1000;
+        }
+        value = {
+          value: value,
+          _expirationTimestamp_: expirationTimestamp
+        };
+      }
+      this.data[name] = value;
+    },
+
+    getMemoryName: function(name_prefix) {
+      return 'sajssdk_2015_' + sdPara.sdk_id + name_prefix;
     }
   };
 
@@ -3404,6 +3437,31 @@
     isReady: function() {}
   };
 
+  var flag = 'data:enc;';
+  var flag_dfm = 'dfm-enc-';
+
+  function decrypt(v) {
+    if (v.indexOf(flag) === 0) {
+      v = v.substring(flag.length);
+      v = rot13defs(v);
+    } else if (v.indexOf(flag_dfm) === 0) {
+      v = v.substring(flag_dfm.length);
+      v = dfmapping(v);
+    }
+    return v;
+  }
+
+  function decryptIfNeeded(cross) {
+    if (isString(cross) && (cross.indexOf(flag) === 0 || cross.indexOf(flag_dfm) === 0)) {
+      cross = decrypt(cross);
+    }
+    return cross;
+  }
+
+  function encrypt(v) {
+    return flag_dfm + dfmapping(v);
+  }
+
 
   var _ = {
     __proto__: null,
@@ -3476,6 +3534,7 @@
     getUA: getUA,
     getIOSVersion: getIOSVersion,
     isSupportBeaconSend: isSupportBeaconSend,
+    memory: memory,
     parseSuperProperties: parseSuperProperties,
     searchConfigData: searchConfigData,
     strip_empty_properties: strip_empty_properties,
@@ -3504,7 +3563,9 @@
     xhr: xhr,
     ajax: ajax,
     jsonp: jsonp,
-    eventEmitter: EventEmitter
+    eventEmitter: EventEmitter,
+    encrypt: encrypt,
+    decryptIfNeeded: decryptIfNeeded
   };
 
   var saNewUser = {
@@ -3532,7 +3593,7 @@
     setDeviceId: function(uuid) {
       var device_id = null;
       var ds = cookie.get('sensorsdata2015jssdkcross' + sd.para.sdk_id);
-      ds = cookie.resolveValue(ds);
+      ds = decryptIfNeeded(ds);
       var state = {};
       if (ds != null && isJSONString(ds)) {
         state = JSON.parse(ds);
@@ -3549,7 +3610,7 @@
         state.$device_id = device_id;
         state = JSON.stringify(state);
         if (sd.para.encrypt_cookie) {
-          state = cookie.encrypt(state);
+          state = encrypt(state);
         }
         cookie.set('sensorsdata2015jssdkcross' + sd.para.sdk_id, state, null, true);
       }
@@ -3566,7 +3627,11 @@
           m: 59 - date.getMinutes(),
           s: 59 - date.getSeconds()
         };
-        cookie.set(cookie.getCookieName('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
+        if (cookie.isSupport()) {
+          cookie.set(cookie.getCookieName('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
+        } else {
+          memory.set(memory.getMemoryName('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
+        }
         this.is_first_visit_time = true;
         this.is_page_first_visited = true;
       } else {
@@ -3755,8 +3820,9 @@
     },
     initSessionState: function() {
       var ds = cookie.get('sensorsdata2015session');
+      ds = decryptIfNeeded(ds);
       var state = null;
-      if (ds !== null && typeof(state = JSON.parse(ds)) === 'object') {
+      if (ds !== null && typeof(state = safeJSONParse(ds)) === 'object') {
         this._sessionState = state || {};
       }
     },
@@ -3835,7 +3901,11 @@
     },
     sessionSave: function(props) {
       this._sessionState = props;
-      cookie.set('sensorsdata2015session', JSON.stringify(this._sessionState), 0);
+      var sessionStateStr = JSON.stringify(this._sessionState);
+      if (sd.para.encrypt_cookie) {
+        sessionStateStr = encrypt(sessionStateStr);
+      }
+      cookie.set('sensorsdata2015session', sessionStateStr, 0);
     },
     save: function() {
       var copyState = JSON.parse(JSON.stringify(this._state));
@@ -3848,7 +3918,7 @@
 
       var stateStr = JSON.stringify(copyState);
       if (sd.para.encrypt_cookie) {
-        stateStr = cookie.encrypt(stateStr);
+        stateStr = encrypt(stateStr);
       }
       cookie.set(this.getCookieName(), stateStr, 73000, sd.para.cross_subdomain);
     },
@@ -3956,11 +4026,13 @@
       }
       this.initSessionState();
       var uuid = UUID();
-      var cross = cookie.get(this.getCookieName());
-      cross = cookie.resolveValue(cross);
-
-      var cookieJSON = safeJSONParse(cross);
-      if (cross === null || !isJSONString(cross) || !isObject(cookieJSON) || (isObject(cookieJSON) && !cookieJSON.distinct_id)) {
+      var cross, cookieJSON;
+      if (cookie.isSupport()) {
+        cross = cookie.get(this.getCookieName());
+        cross = decryptIfNeeded(cross);
+        cookieJSON = safeJSONParse(cross);
+      }
+      if (!cookie.isSupport() || cross === null || !isJSONString(cross) || !isObject(cookieJSON) || (isObject(cookieJSON) && !cookieJSON.distinct_id)) {
         sd.is_first_visitor = true;
         cookieExistExpection(uuid);
       } else {
@@ -3970,6 +4042,21 @@
       saNewUser.setDeviceId(uuid);
       saNewUser.storeInitCheck();
       saNewUser.checkIsFirstLatest();
+    },
+    saveObjectVal: function(name, value) {
+      if (!isString(value)) {
+        value = JSON.stringify(value);
+      }
+      if (sd.para.encrypt_cookie == true) {
+        value = encrypt(value);
+      }
+      _localstorage.set(name, value);
+    },
+    readObjectVal: function(name) {
+      var value = _localstorage.get(name);
+      if (!value) return null;
+      value = decryptIfNeeded(value);
+      return safeJSONParse(value);
     }
   };
 
@@ -4845,7 +4932,7 @@
       if (!isObject(obj) || isEmptyObject(obj)) {
         return false;
       }
-      var saveData = _localstorage.parse('sensorsdata_2015_jssdk_profile');
+      var saveData = sd.store.readObjectVal('sensorsdata_2015_jssdk_profile');
       var isNeedSend = false;
       if (isObject(saveData) && !isEmptyObject(saveData)) {
         for (var i in obj) {
@@ -4855,11 +4942,11 @@
           }
         }
         if (isNeedSend) {
-          _localstorage.set('sensorsdata_2015_jssdk_profile', JSON.stringify(saveData));
+          sd.store.saveObjectVal('sensorsdata_2015_jssdk_profile', saveData);
           sd.setProfile(obj);
         }
       } else {
-        _localstorage.set('sensorsdata_2015_jssdk_profile', JSON.stringify(obj));
+        sd.store.saveObjectVal('sensorsdata_2015_jssdk_profile', obj);
         sd.setProfile(obj);
       }
     },
@@ -6339,7 +6426,7 @@
       try {
         var existingItems = this.getPendingItems();
         var newItems = unique(existingItems.concat(newKeys));
-        localStorage.setItem('sawebjssdk-sendingitems', JSON.stringify(newItems));
+        sd.store.saveObjectVal('sawebjssdk-sendingitems', newItems);
       } catch (e) {}
     },
     removePendingItems: function(keys) {
@@ -6356,18 +6443,11 @@
         var newItems = filter(existingItems, function(item) {
           return indexOf(keys, item) === -1;
         });
-        localStorage.setItem('sawebjssdk-sendingitems', JSON.stringify(newItems));
+        sd.store.saveObjectVal('sawebjssdk-sendingitems', newItems);
       } catch (e) {}
     },
     getPendingItems: function() {
-      var items = [];
-      try {
-        var value = localStorage.getItem('sawebjssdk-sendingitems');
-        if (value) {
-          items = JSON.parse(value);
-        }
-      } catch (e) {}
-      return items;
+      return sd.store.readObjectVal('sawebjssdk-sendingitems') || [];
     },
     sendPrepare: function(data) {
       this.appendPendingItems(data.keys);
@@ -6409,9 +6489,8 @@
           if (pendingItems.length && indexOf(pendingItems, itemName) > -1) {
             continue;
           }
-          val = localStorage.getItem(itemName);
+          val = sd.store.readObjectVal(itemName);
           if (val) {
-            val = safeJSONParse(val);
             if (val && isObject(val)) {
               val._flush_time = now;
               keys.push(itemName);
@@ -6433,7 +6512,7 @@
     },
     writeStore: function(data) {
       var uuid = String(getRandom()).slice(2, 5) + String(getRandom()).slice(2, 5) + String(new Date().getTime()).slice(3);
-      localStorage.setItem('sawebjssdk-' + uuid, JSON.stringify(data));
+      sd.store.saveObjectVal('sawebjssdk-' + uuid, data);
     }
   };
 
@@ -7310,7 +7389,7 @@
       if (!this.storageEnable) {
         this.getConfigFromServer();
       } else {
-        var data = _localstorage.parse(this.storage_name);
+        var data = sd.store.readObjectVal(this.storage_name);
         if (!(isObject(data) && isObject(data.data))) {
           this.getConfigFromServer();
         } else if (!this.serverUrlIsSame(data.serverUrl)) {
@@ -7431,7 +7510,7 @@
         data: data,
         serverUrl: server_url
       };
-      _localstorage.set(this.storage_name, JSON.stringify(obj));
+      sd.store.saveObjectVal(this.storage_name, obj);
     },
     sendRequest: function(suc, err) {
       var _this = this;
@@ -7804,7 +7883,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.21.8'
+              sdkversion: '1.21.9'
             }
           },
           '*'
