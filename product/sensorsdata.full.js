@@ -31,6 +31,8 @@
       if (typeof nativeJSON == "object" && nativeJSON) {
         exports.stringify = nativeJSON.stringify;
         exports.parse = nativeJSON.parse;
+        exports.runInContext = runInContext;
+        return exports
       }
 
       var objectProto = Object.prototype,
@@ -941,13 +943,6 @@
       }
     }
     return ret;
-  }
-
-  function inherit(subclass, superclass) {
-    subclass.prototype = new superclass();
-    subclass.prototype.constructor = subclass;
-    subclass.superclass = superclass.prototype;
-    return subclass;
   }
 
   function trim(str) {
@@ -2089,7 +2084,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.9';
+  var sdkversion_placeholder = '1.21.10';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -2324,13 +2319,13 @@
       var domainStr = '.' + splitResult.splice(splitResult.length - 1, 1);
       while (splitResult.length > 0) {
         domainStr = '.' + splitResult.splice(splitResult.length - 1, 1) + domainStr;
-        document.cookie = 'sensorsdata_domain_test=true; path=/; domain=' + domainStr;
+        document.cookie = 'sensorsdata_domain_test=true; path=/; SameSite=Lax; domain=' + domainStr;
 
         if (document.cookie.indexOf('sensorsdata_domain_test=true') !== -1) {
           var now = new Date();
           now.setTime(now.getTime() - 1000);
 
-          document.cookie = 'sensorsdata_domain_test=true; expires=' + now.toGMTString() + '; path=/; domain=' + domainStr;
+          document.cookie = 'sensorsdata_domain_test=true; expires=' + now.toGMTString() + '; path=/; SameSite=Lax; domain=' + domainStr;
 
           return domainStr;
         }
@@ -3004,72 +2999,6 @@
     addEvent(window, hashEvent, callback);
   }
 
-  var singlePage = {
-    is_create: false,
-    current_url: location.href,
-    eventList: [],
-    create: function() {
-      var _this = this;
-
-      function publish() {
-        each(_this.eventList, function(event) {
-          if (isFunction(event)) {
-            event(_this.current_url);
-          }
-        });
-        _this.current_url = location.href;
-      }
-      var historyPushState = window.history.pushState;
-      var historyReplaceState = window.history.replaceState;
-
-      if (isFunction(window.history.pushState)) {
-        window.history.pushState = function() {
-          historyPushState.apply(window.history, arguments);
-          publish();
-        };
-      }
-
-      if (isFunction(window.history.replaceState)) {
-        window.history.replaceState = function() {
-          historyReplaceState.apply(window.history, arguments);
-          publish();
-        };
-      }
-
-      var singlePageEvent;
-      if (window.document.documentMode) {
-        singlePageEvent = 'hashchange';
-      } else {
-        singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
-      }
-
-      addEvent(window, singlePageEvent, function() {
-        publish();
-      });
-      this.is_create = true;
-    },
-    subscribe: function(callback) {
-      if (!this.is_create) {
-        this.create();
-      }
-      if (isFunction(callback)) {
-        this.eventList.push(callback);
-      }
-    },
-    prepend: function(callback) {
-      if (!this.is_create) {
-        this.create();
-      }
-      if (isFunction(callback)) {
-        this.eventList.unshift(callback);
-      }
-    }
-  };
-
-  function addSinglePageEvent(callback) {
-    singlePage.subscribe(callback);
-  }
-
   function listenPageState(obj) {
     var visibilystore = {
       visibleHandler: isFunction(obj.visible) ? obj.visible : function() {},
@@ -3387,12 +3316,144 @@
     script.src = obj.url;
   }
 
-  var EventEmitter = function() {
+  function isValidListener(listener) {
+    if (typeof listener === 'function') {
+      return true;
+    } else if (listener && typeof listener === 'object') {
+      return isValidListener(listener.listener);
+    } else {
+      return false;
+    }
+  }
+
+
+
+  function EventEmitter() {
+    this._events = {};
+  }
+
+  var proto = EventEmitter.prototype;
+
+  proto.on = function(eventName, listener) {
+    if (!eventName || !listener) {
+      return false;
+    }
+
+    if (!isValidListener(listener)) {
+      throw new Error('listener must be a function');
+    }
+
+    this._events[eventName] = this._events[eventName] || [];
+    var listenerIsWrapped = typeof listener === 'object';
+
+    this._events[eventName].push(
+      listenerIsWrapped ?
+      listener :
+      {
+        listener: listener,
+        once: false
+      }
+    );
+
+    return this;
+  };
+
+  proto.prepend = function(eventName, listener) {
+    if (!eventName || !listener) {
+      return false;
+    }
+
+    if (!isValidListener(listener)) {
+      throw new Error('listener must be a function');
+    }
+
+    this._events[eventName] = this._events[eventName] || [];
+    var listenerIsWrapped = typeof listener === 'object';
+
+    this._events[eventName].unshift(
+      listenerIsWrapped ?
+      listener :
+      {
+        listener: listener,
+        once: false
+      }
+    );
+
+    return this;
+  };
+
+  proto.prependOnce = function(eventName, listener) {
+    return this.prepend(eventName, {
+      listener: listener,
+      once: true
+    });
+  };
+
+  proto.once = function(eventName, listener) {
+    return this.on(eventName, {
+      listener: listener,
+      once: true
+    });
+  };
+
+  proto.off = function(eventName, listener) {
+    var listeners = this._events[eventName];
+    if (!listeners) {
+      return false;
+    }
+    if (typeof listener === 'number') {
+      listeners.splice(listener, 1);
+    } else if (typeof listener === 'function') {
+      for (var i = 0, len = listeners.length; i < len; i++) {
+        if (listeners[i] && listeners[i].listener === listener) {
+          listeners.splice(i, 1);
+        }
+      }
+    }
+    return this;
+  };
+
+  proto.emit = function(eventName, args) {
+    var listeners = this._events[eventName];
+    if (!listeners) {
+      return false;
+    }
+
+    for (var i = 0; i < listeners.length; i++) {
+      var listener = listeners[i];
+      if (listener) {
+        listener.listener.call(this, args || {});
+        if (listener.once) {
+          this.off(eventName, i);
+        }
+      }
+    }
+
+    return this;
+  };
+
+  proto.removeAllListeners = function(eventName) {
+    if (eventName && this._events[eventName]) {
+      this._events[eventName] = [];
+    } else {
+      this._events = {};
+    }
+  };
+
+  proto.listeners = function(eventName) {
+    if (eventName && typeof eventName === 'string') {
+      return this._events[eventName];
+    } else {
+      return this._events;
+    }
+  };
+
+  var EventEmitterSa = function() {
     this._events = [];
     this.pendingEvents = [];
   };
 
-  EventEmitter.prototype = {
+  EventEmitterSa.prototype = {
     emit: function(type) {
       var args = [].slice.call(arguments, 1);
 
@@ -3477,7 +3538,6 @@
     values: values,
     indexOf: indexOf,
     filter: filter,
-    inherit: inherit,
     trim: trim,
     isObject: isObject,
     isEmptyObject: isEmptyObject,
@@ -3556,14 +3616,13 @@
     autoExeQueue: autoExeQueue,
     addEvent: addEvent,
     addHashEvent: addHashEvent,
-    addSinglePageEvent: addSinglePageEvent,
     listenPageState: listenPageState,
     bindReady: bindReady,
-    singlePage: singlePage,
     xhr: xhr,
     ajax: ajax,
     jsonp: jsonp,
-    eventEmitter: EventEmitter,
+    EventEmitter: EventEmitter,
+    EventEmitterSa: EventEmitterSa,
     encrypt: encrypt,
     decryptIfNeeded: decryptIfNeeded
   };
@@ -6103,13 +6162,13 @@
 
     parseSuperProperties(data);
 
-    dataStageImpl.stage.process('addCustomProps', data);
-
     saNewUser.checkIsAddSign(data);
     saNewUser.checkIsFirstTime(data);
 
     sd.addReferrerHost(data);
     sd.addPropsHook(data);
+
+    dataStageImpl.stage.process('formatData', data);
     return data;
   };
 
@@ -7723,6 +7782,50 @@
     }
   };
 
+  function addSinglePageEvent(callback) {
+    var current_url = location.href;
+    var historyPushState = window.history.pushState;
+    var historyReplaceState = window.history.replaceState;
+
+    if (isFunction(window.history.pushState)) {
+      window.history.pushState = function() {
+        historyPushState.apply(window.history, arguments);
+        callback(current_url);
+        current_url = location.href;
+      };
+    }
+
+    if (isFunction(window.history.replaceState)) {
+      window.history.replaceState = function() {
+        historyReplaceState.apply(window.history, arguments);
+        callback(current_url);
+        current_url = location.href;
+      };
+    }
+
+    var singlePageEvent;
+    if (window.document.documentMode) {
+      singlePageEvent = 'hashchange';
+    } else {
+      singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
+    }
+
+    addEvent(window, singlePageEvent, function() {
+      callback(current_url);
+      current_url = location.href;
+    });
+  }
+
+  var spa = new EventEmitter();
+
+  var ee = {};
+  ee.spa = spa;
+  ee.initSystemEvent = function() {
+    addSinglePageEvent(function(url) {
+      spa.emit('switch', url);
+    });
+  };
+
   function getFlagValue(param) {
     var result = null;
     var reg = new RegExp(param + '=([^&#]+)');
@@ -7883,7 +7986,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.21.9'
+              sdkversion: '1.21.10'
             }
           },
           '*'
@@ -7972,7 +8075,7 @@
 
   function listenSinglePage() {
     if (sd.para.is_track_single_page) {
-      addSinglePageEvent(function(last_url) {
+      spa.on('switch', function(last_url) {
         var sendData = function(extraData) {
           extraData = extraData || {};
           if (last_url !== location.href) {
@@ -8410,8 +8513,9 @@
   function implementCore(isRealImp) {
     if (isRealImp) {
       sd._ = _;
+      sd.ee = ee;
       sd.sendState = sendState;
-      sd.events = new EventEmitter();
+      sd.events = new EventEmitterSa();
       sd.batchSend = batchSend;
       sd.bridge = bridge;
       sd.JSBridge = JSBridge;
@@ -8442,6 +8546,8 @@
     if (is_compliance_enabled) {
       implementCore(true);
     }
+
+    sd.ee.initSystemEvent();
 
     sd.setInitVar();
     sd.readyState.setState(2);
