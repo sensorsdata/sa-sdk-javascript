@@ -2080,7 +2080,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.10';
+  var sdkversion_placeholder = '1.21.11';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -6789,9 +6789,20 @@
     this.dataStage = dataStageImpl$1;
   }
 
-  sd.use = function() {
-    sdLog('当前版本支持多文件实例，不支持插件。');
-  };
+  function use$1(name, option) {
+    if (!isString(name)) {
+      sdLog('use插件名称必须是字符串！');
+      return false;
+    }
+
+    if (isObject(window.SensorsDataWebJSSDKPlugin) && isObject(window.SensorsDataWebJSSDKPlugin[name]) && isFunction(window.SensorsDataWebJSSDKPlugin[name].__constructor__)) {
+      var instance = new window.SensorsDataWebJSSDKPlugin[name].__constructor__();
+      instance.init(sd, option);
+      return instance;
+    } else {
+      sdLog(name + '多版本 SDK，不支持' + name + '插件！');
+    }
+  }
 
   var bridge = {
     initPara: function() {},
@@ -6839,6 +6850,7 @@
   sd.JSBridge = JSBridge;
   sd.vtrackBase = vtrackBase;
   sd.batchSend = batchSend;
+  sd.use = use$1;
 
   registerFeature(new CoreFeature(sd));
   registerFeature(new DataFormatFeature(sd));

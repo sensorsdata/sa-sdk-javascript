@@ -2082,7 +2082,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.21.10';
+  var sdkversion_placeholder = '1.21.11';
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -7984,7 +7984,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.21.10'
+              sdkversion: '1.21.11'
             }
           },
           '*'
