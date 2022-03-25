@@ -2076,7 +2076,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.21.12';
+var sdkversion_placeholder = '1.21.13';
 
 function parseSuperProperties(data) {
   var obj = data.properties;
@@ -7828,7 +7828,7 @@ function getFlagValue(param) {
     var nameParams = JSON.parse(window.name);
     each(nameParams, function(val, key) {
       if (param === key) {
-        result = val;
+        result = _decodeURIComponent(val);
       }
     });
   } catch (e) {
@@ -7844,6 +7844,41 @@ function getFlagValue(param) {
 }
 
 var heatmapMode = {
+  getOriginalUrl: function() {
+    var url = location.protocol + '//' + location.host + location.pathname;
+    var search_params = '';
+    var hash_params = '';
+
+    function getParam(str) {
+      var params = str.split('&');
+      var sa_params = ['sa-request-id', 'sa-request-type', 'sa-request-url'];
+      var new_params = [];
+      each(params, function(param) {
+        if (sa_params.indexOf(param.split('=')[0]) < 0) {
+          new_params.push(param);
+        }
+      });
+      return new_params.join('&');
+    }
+    if (location.search) {
+      var _params = getParam(location.search.slice(1));
+      if (_params) {
+        search_params = '?' + _params;
+      }
+    }
+    if (location.hash) {
+      hash_params = location.hash;
+      if (location.hash.indexOf('?') > -1) {
+        var hashs = location.hash.split('?');
+        var hashParams = getParam(hashs[1]);
+        if (hashParams) {
+          hash_params = hashs[0] + '?' + hashParams;
+        }
+      }
+    }
+
+    return decodeURI(url + search_params + hash_params);
+  },
   isSeachHasKeyword: function() {
     if (getFlagValue('sa-request-id') !== null) {
       if (typeof sessionStorage.getItem('sensors-visual-mode') === 'string') {
@@ -7878,7 +7913,8 @@ var heatmapMode = {
         }
       }
     }
-    this.isReady(id, type);
+
+    this.isReady(id, type, this.getOriginalUrl());
   },
   isReady: function(data, type, url) {
     if (sd.para.heatmap_url) {
@@ -7908,7 +7944,7 @@ var heatmapMode = {
   },
   storageHasKeywordHandle: function() {
     heatmap.setNotice();
-    heatmapMode.isReady(sessionStorage.getItem('sensors_heatmap_id'), sessionStorage.getItem('sensors_heatmap_type'), location.href);
+    heatmapMode.isReady(sessionStorage.getItem('sensors_heatmap_id'), sessionStorage.getItem('sensors_heatmap_type'), this.getOriginalUrl());
   }
 };
 
@@ -7981,7 +8017,7 @@ var vtrackMode = {
           source: 'sa-web-sdk',
           type: 'v-is-vtrack',
           data: {
-            sdkversion: '1.21.12'
+            sdkversion: '1.21.13'
           }
         },
         '*'

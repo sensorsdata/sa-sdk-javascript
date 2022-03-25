@@ -9389,7 +9389,7 @@
         }
 
         var web_url = sd.para.web_url || null;
-        if (_.sessionStorage.isSupport() && sessionStorage.getItem && sessionStorage.getItem('sensors_heatmap_url')) {
+        if (!web_url && _.sessionStorage.isSupport() && sessionStorage.getItem && sessionStorage.getItem('sensors_heatmap_url')) {
           web_url = sessionStorage.getItem('sensors_heatmap_url') || null;
         }
 
@@ -9420,7 +9420,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.21.12';
+      sd.heatmap_version = '1.21.13';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {
