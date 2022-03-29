@@ -2447,9 +2447,32 @@ sensorsDataAnalytic201505.modules['AesEncryption'] = (function () {
     return CryptoJS.AES;
   });
 
-  var ObjProto = Object.prototype;
-  var toString = ObjProto.toString;
+  /** 检测传入参数是否是对象类型
+   * @category Util
+   * @param {*} arg 传入参数
+   * @returns {Boolean} 是否是对象类型
+   * @function isObject
+   * @example 
+   * isObject({}) //=> true
+   * isObject(1) //=> false
+   */
+  function isObject(arg) {
+    if (arg == null) {
+      return false;
+    } else {
+      return Object.prototype.toString.call(arg) == '[object Object]';
+    }
+  }
 
+  /** 获取指定数字范围内的随随机数
+   * @param {Number} max 随机数最大值
+   * @category Math
+   * @function getRandomBasic
+   * @return 指定数字范围内的随机数
+   * 
+   * @example
+   * getRandomBasic(100) //=> 85
+   */
   var getRandomBasic = (function () {
     var today = new Date();
     var seed = today.getTime();
@@ -2462,20 +2485,21 @@ sensorsDataAnalytic201505.modules['AesEncryption'] = (function () {
     };
   })();
 
-  function isObject(obj) {
-    if (obj == null) {
-      return false;
-    } else {
-      return toString.call(obj) == '[object Object]';
-    }
-  }
-
+  /** 安全的 js 随机数生成方式,返回与原生 Math.random 类似的 0-1 的随机数值
+   * @function getRandom
+   * @category Math
+   * @returns {Number} 一个介于 0 -1 的数字
+   *
+   * @example
+   * getRandom() //=> 0.8368784293552812
+   */
   function getRandom() {
     if (typeof Uint32Array === 'function') {
       var cry = '';
       if (typeof crypto !== 'undefined') {
         cry = crypto;
       } else if (typeof msCrypto !== 'undefined') {
+        // eslint-disable-next-line no-undef
         cry = msCrypto;
       }
       if (isObject(cry) && cry.getRandomValues) {
