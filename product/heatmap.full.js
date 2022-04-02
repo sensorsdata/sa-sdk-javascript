@@ -8187,13 +8187,13 @@
           1: '方案一',
           2: '方案二'
         };
+        var offScrollAndResizeEventHandle = null;
 
         var me = this;
 
-        function v2Event() {
+        function addScrollAndResizeEvent() {
           var timer = null;
           var clearFlag = false;
-          $(window).off('scroll.v2');
           $(window).on('scroll.v2', function() {
             if (!clearFlag) {
               $('#heatMapContainer').html('');
@@ -8205,7 +8205,6 @@
               clearFlag = false;
             }, sd.para.heatmap.renderRefreshTime || 1000);
           });
-          $(window).off('resize.v2');
           $(window).on('resize.v2', function() {
             if (!clearFlag) {
               $('#heatMapContainer').html('');
@@ -8217,6 +8216,15 @@
               clearFlag = false;
             }, sd.para.heatmap.renderRefreshTime || 1000);
           });
+          return function() {
+            $(window).off('scroll.v2');
+            $(window).off('resize.v2');
+            if (timer) {
+              clearTimeout(timer);
+              timer = null;
+              clearFlag = false;
+            }
+          };
         }
 
         function dropdwon(obj) {
@@ -8264,6 +8272,10 @@
           }
           if (name === 'version') {
             $(document).on('keypress', function(event) {
+              if (offScrollAndResizeEventHandle) {
+                offScrollAndResizeEventHandle();
+                offScrollAndResizeEventHandle = null;
+              }
               if (event.keyCode == 114) {
                 heatmap_render.refreshHeatData(heatmap_render.heatMode);
               }
@@ -8275,7 +8287,7 @@
               if (event.keyCode == 120) {
                 $('#chooseVersion').find('span:first').text('方案二');
                 heatmap_render.refreshHeatData(2);
-                v2Event();
+                offScrollAndResizeEventHandle = addScrollAndResizeEvent();
                 state = '2';
               }
             });
@@ -8304,11 +8316,15 @@
             id: '#chooseVersion',
             click: function(state, isFirst) {
               if (!isFirst) {
+                if (offScrollAndResizeEventHandle) {
+                  offScrollAndResizeEventHandle();
+                  offScrollAndResizeEventHandle = null;
+                }
                 if (state === '1') {
                   heatmap_render.refreshHeatData(1);
                 } else if (state === '2') {
                   heatmap_render.refreshHeatData(2);
-                  v2Event();
+                  offScrollAndResizeEventHandle = addScrollAndResizeEvent();
                 }
               }
             }
@@ -9420,7 +9436,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.22.1';
+      sd.heatmap_version = '1.22.2';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {

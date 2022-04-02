@@ -3049,7 +3049,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.22.1';
+  var sdkversion_placeholder = '1.22.2';
   var domain_test_key = 'sensorsdata_domain_test';
 
   function parseSuperProperties(data) {
@@ -4394,8 +4394,27 @@
   };
 
 
+  var UNLIMITED_TAGS_MAP = {
+    label: false,
+    li: false,
+    a: true,
+    button: true
+  };
+
   var heatmap = {
     otherTags: [],
+    initUnlimitedTags: function() {
+      each(heatmap.otherTags, function(tagName) {
+        if (tagName in UNLIMITED_TAGS_MAP) {
+          UNLIMITED_TAGS_MAP[tagName] = true;
+        }
+      });
+    },
+    isUnlimitedTag: function(el) {
+      if (!el || el.nodeType !== 1) return false;
+      var tagName = el.nodeName.toLowerCase();
+      return UNLIMITED_TAGS_MAP[tagName] || hasAttributes(el, sd.para.heatmap.track_attr);
+    },
     getTargetElement: function(element, e) {
       var that = this;
       var target = element;
@@ -4414,39 +4433,37 @@
       }
 
       var parent_ele = target.parentNode;
-      var hasAOrAttr = that.hasElement({
-        event: (e && e.originalEvent) || e,
-        element: element
-      }, function(target) {
-        return target.tagName.toLowerCase() === 'a' || hasAttributes(target, sd.para.heatmap.track_attr);
-      });
 
       var otherTags = that.otherTags;
 
       if (tagName === 'a' || tagName === 'button' || tagName === 'input' || tagName === 'textarea') {
         return target;
-      } else if (indexOf(otherTags, tagName) > -1) {
+      }
+      if (indexOf(otherTags, tagName) > -1) {
         return target;
-      } else if (parent_ele.tagName.toLowerCase() === 'button' || parent_ele.tagName.toLowerCase() === 'a') {
-        return parent_ele;
-      } else if (tagName === 'area' && parent_ele.tagName.toLowerCase() === 'map' && ry(parent_ele).prev().tagName && ry(parent_ele).prev().tagName.toLowerCase() === 'img') {
+      }
+      if (tagName === 'area' && parent_ele.tagName.toLowerCase() === 'map' && ry(parent_ele).prev().tagName && ry(parent_ele).prev().tagName.toLowerCase() === 'img') {
         return ry(parent_ele).prev();
-      } else if (hasAOrAttr) {
-        return hasAOrAttr;
-      } else if (tagName === 'div' && sd.para.heatmap.collect_tags.div && that.isDivLevelValid(target)) {
+      }
+      if (tagName === 'div' && sd.para.heatmap.collect_tags.div && that.isDivLevelValid(target)) {
         var max_level = (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level) || 1;
         if (max_level > 1 || that.isCollectableDiv(target)) {
           return target;
-        } else {
-          return null;
         }
-      } else if (that.isStyleTag(tagName) && sd.para.heatmap.collect_tags.div) {
+      }
+      if (that.isStyleTag(tagName) && sd.para.heatmap.collect_tags.div) {
         var parentTrackDiv = that.getCollectableParent(target);
         if (parentTrackDiv && that.isDivLevelValid(parentTrackDiv)) {
           return parentTrackDiv;
         }
       }
-      return null;
+      var unlimitedTag = that.hasElement({
+        event: (e && e.originalEvent) || e,
+        element: element
+      }, function(target) {
+        return that.isUnlimitedTag(target);
+      });
+      return unlimitedTag || null;
     },
     getDivLevels: function(element, rootElement) {
       var path = heatmap.getElementPath(element, true, rootElement);
@@ -4768,17 +4785,22 @@
       }
       return false;
     },
+    listenUrlChange: function(callback) {
+      callback();
+      sd.ee.spa.on('switch', function() {
+        callback();
+      });
+    },
     initScrollmap: function() {
       if (!isObject(sd.para.heatmap) || sd.para.heatmap.scroll_notice_map !== 'default') {
         return false;
       }
-
-      var checkPage = function() {
-        if (sd.para.scrollmap && isFunction(sd.para.scrollmap.collect_url) && !sd.para.scrollmap.collect_url()) {
-          return false;
-        }
-        return true;
-      };
+      var isPageCollect = true;
+      if (sd.para.scrollmap && isFunction(sd.para.scrollmap.collect_url)) {
+        this.listenUrlChange(function() {
+          isPageCollect = !!sd.para.scrollmap.collect_url();
+        });
+      }
 
       var interDelay = function(param) {
         var interDelay = {};
@@ -4828,14 +4850,14 @@
       delayTime.current_time = new Date();
 
       addEvent$1(window, 'scroll', function() {
-        if (!checkPage()) {
+        if (!isPageCollect) {
           return false;
         }
         delayTime.go();
       });
 
       addEvent$1(window, 'unload', function() {
-        if (!checkPage()) {
+        if (!isPageCollect) {
           return false;
         }
         delayTime.go('notime');
@@ -4843,12 +4865,15 @@
     },
     initHeatmap: function() {
       var that = this;
+      var isPageCollect = true;
       if (!isObject(sd.para.heatmap) || sd.para.heatmap.clickmap !== 'default') {
         return false;
       }
 
-      if (isFunction(sd.para.heatmap.collect_url) && !sd.para.heatmap.collect_url()) {
-        return false;
+      if (isFunction(sd.para.heatmap.collect_url)) {
+        this.listenUrlChange(function() {
+          isPageCollect = !!sd.para.heatmap.collect_url();
+        });
       }
 
       if (sd.para.heatmap.collect_elements === 'all') {
@@ -4858,6 +4883,7 @@
       }
       if (sd.para.heatmap.collect_elements === 'all') {
         addEvent$1(document, 'click', function(e) {
+          if (!isPageCollect) return false;
           var ev = e || window.event;
           if (!ev) {
             return false;
@@ -4885,6 +4911,7 @@
         });
       } else {
         addEvent$1(document, 'click', function(e) {
+          if (!isPageCollect) return false;
           var ev = e || window.event;
           if (!ev) {
             return false;
@@ -5384,6 +5411,9 @@
           sd.heatmap.otherTags.push(key);
         }
       });
+    }
+    if (sd.para.heatmap && sd.para.heatmap.clickmap === 'default') {
+      sd.heatmap.initUnlimitedTags();
     }
   }
 
@@ -6142,6 +6172,8 @@
 
     extend(data, sd.store.getUnionId(), p);
 
+    dataStageImpl.stage.process('addCustomProps', data);
+
     if (isObject(p.properties) && !isEmptyObject(p.properties)) {
       extend(data.properties, p.properties);
     }
@@ -6645,7 +6677,7 @@
   };
 
   var processDef = {
-    addCustomProps: 'formatData',
+    addCustomProps: null,
     formatData: null
   };
 
