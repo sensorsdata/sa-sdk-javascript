@@ -1,3 +1,11 @@
+## 1.22.3 (2022-04-15)
+1.  新增
+    - `ID-Mapping 3.0` 新增 `loginwithkey` 接口，删除 `loginIDKey` 配置
+    - `$WebPageLoad` 新增 `$url`、`$title` 属性 
+2.  修复
+    - `$first_browser_language` 属性值统一使用小写
+    - 修复 `$url_path` 中文部分编码未解码的问题
+
 ## 1.22.2 (2022-04-2)
 1.  新增
     - 新增支持自定义属性插件

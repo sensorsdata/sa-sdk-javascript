@@ -1274,12 +1274,12 @@
 
         return {
           top: rect.top + window.pageYOffset - docElem.clientTop,
-          left: rect.left + window.pageXOffset - docElem.clientLeft,
+          left: rect.left + window.pageXOffset - docElem.clientLeft
         };
       } else {
         return {
           top: 0,
-          left: 0,
+          left: 0
         };
       }
     },
@@ -1401,7 +1401,7 @@
       } catch (err) {
         return [];
       }
-    },
+    }
   };
 
   function addEvent(target, eventName, eventHandler, useCapture) {
@@ -2184,6 +2184,15 @@
     }
   }
 
+  function getURLPath(url_path) {
+    if (isString(url_path)) {
+      url_path = trim(url_path);
+      return _decodeURI(url_path);
+    } else {
+      return _decodeURI(location.pathname);
+    }
+  }
+
   function hasAttribute(ele, attrName) {
     if (ele.hasAttribute) {
       return ele.hasAttribute(attrName);
@@ -2818,6 +2827,7 @@
     getScreenOrientation: getScreenOrientation,
     getUA: getUA,
     getURL: getURL,
+    getURLPath: getURLPath,
     getURLSearchParams: getURLSearchParams,
     hasAttribute: hasAttribute,
     hasAttributes: hasAttributes,
@@ -2885,7 +2895,6 @@
     },
     encrypt_cookie: false,
     enc_cookie: false,
-    login_id_key: '$identity_login_id',
     img_use_crossorigin: false,
 
     name: 'sa',
@@ -3051,8 +3060,14 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.22.2';
+  var sdkversion_placeholder = '1.22.3';
   var domain_test_key = 'sensorsdata_domain_test';
+
+  var IDENTITY_KEY = {
+    EMAIL: '$identity_email',
+    MOBILE: '$identity_mobile',
+    LOGIN: '$identity_login_id'
+  };
 
   function parseSuperProperties(data) {
     var obj = data.properties;
@@ -3145,7 +3160,7 @@
     props.$element_content = getElementContent$1(target, tagName);
     props = strip_empty_properties(props);
     props.$url = getURL();
-    props.$url_path = location.pathname;
+    props.$url_path = getURLPath();
     props.$title = document.title;
 
     return props;
@@ -3774,26 +3789,6 @@
 
 
   var store = {
-    identities: {
-      set: function(name, id) {
-        var identities = {};
-        switch (name) {
-          case 'login':
-            identities[sd.para.login_id_key] = id;
-            identities.$identity_cookie_id = sd.store._state.identities.$identity_cookie_id;
-            break;
-          case 'logout':
-            identities.$identity_cookie_id = sd.store._state.identities.$identity_cookie_id;
-            break;
-          case 'identify':
-            identities = JSON.parse(JSON.stringify(sd.store._state.identities));
-            identities.$identity_anonymous_id = id;
-            break;
-        }
-        sd.store._state.identities = identities;
-        sd.store.save();
-      }
-    },
     requests: [],
     _sessionState: {},
     _state: {
@@ -3808,10 +3803,10 @@
     getSessionProps: function() {
       return this._sessionState;
     },
-    getDistinctId: function() {
+    getOriginDistinctId: function() {
       return this._state._distinct_id || this._state.distinct_id;
     },
-    getUnionId: function(state) {
+    getOriginUnionId: function(state) {
       var obj = {};
       state = state || this._state;
       var firstId = state._first_id || state.first_id,
@@ -3821,6 +3816,17 @@
         obj.anonymous_id = firstId;
       } else {
         obj.anonymous_id = distinct_id;
+      }
+      return obj;
+    },
+    getDistinctId: function() {
+      var unionId = this.getUnionId();
+      return unionId.login_id || unionId.anonymous_id;
+    },
+    getUnionId: function(state) {
+      var obj = this.getOriginUnionId(state);
+      if (obj.login_id && this._state.history_login_id && this._state.history_login_id.name && this._state.history_login_id.name !== sd.IDENTITY_KEY.LOGIN) {
+        obj.login_id = this._state.history_login_id.name + '+' + obj.login_id;
       }
       return obj;
     },
@@ -3960,7 +3966,7 @@
           }
         }
 
-        var unionId = store.getUnionId(state);
+        var unionId = store.getOriginUnionId(state);
 
         if (state.identities && isObject(state.identities) && !isEmptyObject(state.identities)) {
           if (state.identities.$identity_anonymous_id && state.identities.$identity_anonymous_id !== unionId.anonymous_id) {
@@ -3978,11 +3984,11 @@
         var old_login_id_name = history_login_id.name;
 
         if (unionId.login_id) {
-          if (old_login_id_name && isObject(state.identities) && state.identities.hasOwnProperty(old_login_id_name)) {
+          if (old_login_id_name && state.identities.hasOwnProperty(old_login_id_name)) {
             if (state.identities[old_login_id_name] !== unionId.login_id) {
               state.identities[old_login_id_name] = unionId.login_id;
               for (identitiesprop in state.identities) {
-                if (isObject(state.identities) && state.identities.hasOwnProperty(identitiesprop)) {
+                if (state.identities.hasOwnProperty(identitiesprop)) {
                   if (identitiesprop !== '$identity_cookie_id' && identitiesprop !== old_login_id_name) {
                     delete state.identities[identitiesprop];
                   }
@@ -3991,23 +3997,25 @@
               state.history_login_id.value = unionId.login_id;
             }
           } else {
-            state.identities[sd.para.login_id_key] = unionId.login_id;
+            var currentLoginKey = old_login_id_name || sd.IDENTITY_KEY.LOGIN;
+            state.identities[currentLoginKey] = unionId.login_id;
             for (identitiesprop in state.identities) {
-              if (isObject(state.identities) && state.identities.hasOwnProperty(identitiesprop)) {
-                if (identitiesprop !== '$identity_cookie_id' && identitiesprop !== sd.para.login_id_key) {
+              if (state.identities.hasOwnProperty(identitiesprop)) {
+                if (identitiesprop !== '$identity_cookie_id' && identitiesprop !== currentLoginKey) {
                   delete state.identities[identitiesprop];
                 }
               }
             }
             state.history_login_id = {
-              name: sd.para.login_id_key,
+              name: currentLoginKey,
               value: unionId.login_id
             };
           }
         } else {
-          if ((isObject(state.identities) && state.identities.hasOwnProperty('$identity_login_id')) || state.identities.hasOwnProperty(old_login_id_name)) {
+
+          if (state.identities.hasOwnProperty('$identity_login_id') || state.identities.hasOwnProperty(old_login_id_name)) {
             for (identitiesprop in state.identities) {
-              if (isObject(state.identities) && state.identities.hasOwnProperty(identitiesprop)) {
+              if (state.identities.hasOwnProperty(identitiesprop)) {
                 if (identitiesprop !== '$identity_cookie_id' && identitiesprop !== '$identity_anonymous_id') {
                   delete state.identities[identitiesprop];
                 }
@@ -4096,12 +4104,16 @@
     },
     reservedBind: function(str) {
       sdLog(str + ' is invalid');
+    },
+    reservedUnbind: function(str) {
+      sdLog(str + ' is invalid');
     }
   };
   var ruleOption = {
     regName: /^((?!^distinct_id$|^original_id$|^time$|^properties$|^id$|^first_id$|^second_id$|^users$|^events$|^event$|^user_id$|^date$|^datetime$|^user_tag.*|^user_group.*)[a-zA-Z_$][a-zA-Z\d_$]*)$/i,
     loginIDReservedNames: ['$identity_anonymous_id', '$identity_cookie_id'],
     bindReservedNames: ['$identity_login_id', '$identity_anonymous_id', '$identity_cookie_id'],
+    unbindReservedNames: ['$identity_anonymous_id', IDENTITY_KEY.LOGIN],
     string: function(str) {
       if (!isString(str)) {
         return false;
@@ -4150,9 +4162,16 @@
       }
       return true;
     },
+    reservedUnbind: function(str) {
+      if (indexOf(this.unbindReservedNames, str) > -1) {
+        return false;
+      }
+      return true;
+    },
     reservedBind: function(str) {
-      if (sdPara.login_id_key) {
-        this.bindReservedNames.indexOf(sdPara.login_id_key) === -1 && this.bindReservedNames.push(sdPara.login_id_key);
+      var historyId = store._state.history_login_id;
+      if (historyId && historyId.name && historyId.name === str) {
+        return false;
       }
       if (indexOf(this.bindReservedNames, str) > -1) {
         return false;
@@ -4284,6 +4303,21 @@
     },
     bindKey: {
       rules: ['string', 'emptyString', 'keyLength', 'regexTest', 'reservedBind'],
+      onComplete: function(status, val, rule_type) {
+        if (!status) {
+          if (rule_type === 'emptyString') {
+            val = 'Key';
+          }
+          isFunction(checkLog[rule_type]) && checkLog[rule_type](val);
+          if (rule_type === 'keyLength') {
+            return true;
+          }
+        }
+        return status;
+      }
+    },
+    unbindKey: {
+      rules: ['string', 'emptyString', 'keyLength', 'regexTest', 'reservedUnbind'],
       onComplete: function(status, val, rule_type) {
         if (!status) {
           if (rule_type === 'emptyString') {
@@ -4840,7 +4874,7 @@
           if ((delay_time > sd.para.heatmap.scroll_delay_time && offsetTop - para.$viewport_position !== 0) || isClose) {
             para.$url = getURL();
             para.$title = document.title;
-            para.$url_path = location.pathname;
+            para.$url_path = getURLPath();
             para.event_duration = Math.min(sd.para.heatmap.scroll_event_duration, parseInt(delay_time) / 1000);
             para.event_duration = para.event_duration < 0 ? 0 : para.event_duration;
             sd.track('$WebStay', para);
@@ -5056,7 +5090,7 @@
           extend({
               $referrer: url,
               $url: getURL(),
-              $url_path: location.pathname,
+              $url_path: getURLPath(),
               $title: document.title
             },
             p,
@@ -5082,7 +5116,7 @@
           extend({
               $first_visit_time: new Date(),
               $first_referrer: getReferrer(),
-              $first_browser_language: navigator.language || '取值异常',
+              $first_browser_language: isString(navigator.language) ? navigator.language.toLowerCase() : '取值异常',
               $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
               $first_traffic_source_type: getSourceFromReferrer(),
               $first_search_keyword: getKeywordFromReferrer()
@@ -5129,7 +5163,7 @@
             extend({
                 $referrer: referrer,
                 $url: getURL(),
-                $url_path: location.pathname,
+                $url_path: getURLPath(),
                 $title: document.title
               },
               $utms,
@@ -5145,7 +5179,7 @@
         extend({
             $referrer: getReferrer(null, true),
             $url: getURL(),
-            $url_path: location.pathname,
+            $url_path: getURLPath(),
             $title: document.title
           },
           $utms,
@@ -5167,7 +5201,7 @@
           extend({
               $first_visit_time: new Date(),
               $first_referrer: getReferrer(null, true),
-              $first_browser_language: navigator.language || '取值异常',
+              $first_browser_language: isString(navigator.language) ? navigator.language.toLowerCase() : '取值异常',
               $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
               $first_traffic_source_type: getSourceFromReferrer(),
               $first_search_keyword: getKeywordFromReferrer()
@@ -5283,12 +5317,6 @@
 
     if (sd.para.send_type !== 'image' && sd.para.send_type !== 'ajax' && sd.para.send_type !== 'beacon') {
       sd.para.send_type = 'image';
-    }
-
-    if (!saEvent.check({
-        loginIdKey: sd.para.login_id_key
-      })) {
-      sd.para.login_id_key = '$identity_login_id';
     }
 
     sd.debug.protocol.serverUrl();
@@ -5438,6 +5466,15 @@
     }
   };
 
+  function resetIdentities(resetObj) {
+    var identities = {};
+    for (var i in resetObj) {
+      identities[i] = resetObj[i];
+    }
+    sd.store._state.identities = identities;
+    sd.store.save();
+  }
+
   function setInitVar() {
     sd._t = sd._t || 1 * new Date();
     sd.lib_version = sdkversion_placeholder;
@@ -5507,14 +5544,6 @@
     }
   }
 
-  var IDENTITY_KEY = {
-    EMAIL: '$identity_email',
-    MOBILE: '$identity_mobile'
-  };
-
-
-
-
   function bind(itemName, itemValue) {
     if (!saEvent.check({
         bindKey: itemName,
@@ -5535,14 +5564,27 @@
 
   function unbind(itemName, itemValue) {
     if (!saEvent.check({
-        bindKey: itemName,
+        unbindKey: itemName,
         bindValue: itemValue
       })) {
       return false;
     }
+
     if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(itemName) && sd.store._state.identities[itemName] === itemValue) {
-      delete sd.store._state.identities[itemName];
-      sd.store.save();
+      var loginID = sd.store.getUnionId().login_id;
+      if (loginID && itemName + '+' + itemValue === loginID) {
+        sd.store._state.distinct_id = sd.store._state.first_id;
+        sd.store._state.first_id = '';
+        sd.store.set('history_login_id', {
+          name: '',
+          value: ''
+        });
+      }
+
+      if (itemName !== '$identity_cookie_id') {
+        delete sd.store._state.identities[itemName];
+        sd.store.save();
+      }
     }
 
     var identities = {};
@@ -5787,6 +5829,12 @@
     if (typeof id === 'number') {
       id = String(id);
     }
+
+    function saveIdentities(id) {
+      sd.store._state.identities.$identity_anonymous_id = id;
+      sd.store.save();
+    }
+
     var firstId = store.getFirstId();
     if (typeof id === 'undefined') {
       var uuid = UUID();
@@ -5795,7 +5843,7 @@
       } else {
         store.set('distinct_id', uuid);
       }
-      sd.store.identities.set('identify', uuid);
+      saveIdentities(uuid);
     } else if (saEvent.check({
         distinct_id: id
       })) {
@@ -5812,7 +5860,7 @@
           store.change('distinct_id', id);
         }
       }
-      sd.store.identities.set('identify', id);
+      saveIdentities(id);
     }
   }
 
@@ -5821,7 +5869,7 @@
     store.set('distinct_id', id);
     saEvent.send({
         original_id: original_id,
-        distinct_id: id,
+        distinct_id: sd.store.getDistinctId(),
         type: 'track_signup',
         event: e,
         properties: p
@@ -5913,40 +5961,87 @@
     }
   }
 
+  function loginBody(obj) {
+    var id = obj.id;
+    var callback = obj.callback;
+    var name = obj.name;
+
+    var firstId = store.getFirstId();
+    var distinctId = store.getOriginDistinctId();
+
+    if (!saEvent.check({
+        distinct_id: id
+      })) {
+      sd.log('login id is invalid');
+      return false;
+    }
+    if (id === sd.store.getOriginDistinctId() && !firstId) {
+      sd.log('login id is equal to distinct_id');
+      return false;
+    }
+    if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(name) && id === sd.store._state.first_id) {
+      return false;
+    }
+
+    var isNewLoginId = sd.store._state.history_login_id.name !== name || id !== sd.store._state.history_login_id.value;
+    if (isNewLoginId) {
+      sd.store._state.identities[name] = id;
+      sd.store.set('history_login_id', {
+        name: name,
+        value: id
+      });
+
+      if (!firstId) {
+        store.set('first_id', distinctId);
+      }
+
+      sendSignup(id, '$SignUp', {}, callback);
+
+      var tempObj = {
+        $identity_cookie_id: sd.store._state.identities.$identity_cookie_id
+      };
+      tempObj[name] = id;
+      resetIdentities(tempObj);
+    }
+  }
+
   function login(id, callback) {
     if (typeof id === 'number') {
       id = String(id);
     }
-    if (saEvent.check({
-        distinct_id: id
-      }) && id !== sd.store.getDistinctId()) {
-      if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(sd.para.login_id_key) && id === sd.store._state.first_id) {
-        isFunction(callback) && callback();
-        return false;
-      }
+    loginBody({
+      id: id,
+      callback: callback,
+      name: IDENTITY_KEY.LOGIN
+    });
+    isFunction(callback) && callback();
+  }
 
-      var isNewLoginId = sd.store._state.history_login_id.name !== sd.para.login_id_key || id !== sd.store._state.history_login_id.value;
-      if (isNewLoginId) {
-        sd.store._state.identities[sd.para.login_id_key] = id;
-
-        var firstId = store.getFirstId();
-        var distinctId = store.getDistinctId();
-
-        if (!firstId) {
-          store.set('first_id', distinctId);
-        }
-
-        sendSignup(id, '$SignUp', {}, callback);
-
-        sd.store.identities.set('login', id);
-        sd.store.set('history_login_id', {
-          name: sd.para.login_id_key,
-          value: id
-        });
-      }
-    } else {
-      isFunction(callback) && callback();
+  function loginWithKey(name, id) {
+    if (typeof id === 'number') {
+      id = String(id);
     }
+
+    if (typeof name === 'number') {
+      name = String(name);
+    }
+
+    if (!saEvent.check({
+        loginIdKey: name
+      })) {
+      return false;
+    }
+
+    if (IDENTITY_KEY.LOGIN === name) {
+      login(id);
+      return false;
+    }
+
+    loginBody({
+      id: id,
+      callback: null,
+      name: name
+    });
   }
 
   function logout(isChangeId) {
@@ -5960,7 +6055,10 @@
         store.set('distinct_id', firstId);
       }
     }
-    sd.store.identities.set('logout');
+    resetIdentities({
+      $identity_cookie_id: sd.store._state.identities.$identity_cookie_id
+    });
+
     sd.store.set('history_login_id', {
       name: '',
       value: ''
@@ -5987,9 +6085,10 @@
       $referrer: pageInfo.pageProp.referrer || '',
       $referrer_host: pageInfo.pageProp.referrer ? getHostname(pageInfo.pageProp.referrer) : '',
       $url: getURL(),
-      $url_path: location.pathname,
+      $url_path: getURLPath(),
       $title: document.title || '',
-      _distinct_id: store.getDistinctId()
+      _distinct_id: store.getDistinctId(),
+      identities: JSON.parse(JSON.stringify(store._state.identities))
     };
     var result = extend({}, pageInfo.properties(), sd.store.getProps(), getUtm(), obj);
     if (sd.para.preset_properties.latest_referrer && sd.para.preset_properties.latest_referrer_host) {
@@ -6052,6 +6151,7 @@
     registerSession: registerSession,
     registerSessionOnce: registerSessionOnce,
     login: login,
+    loginWithKey: loginWithKey,
     logout: logout,
     getPresetProperties: getPresetProperties,
     iOSWebClickPolyfill: iOSWebClickPolyfill,
@@ -8087,7 +8187,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.22.2'
+              sdkversion: '1.22.3'
             }
           },
           '*'
