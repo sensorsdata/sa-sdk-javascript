@@ -762,6 +762,202 @@
     }
   })();
 
+  function isFunction(arg) {
+    if (!arg) {
+      return false;
+    }
+    var type = Object.prototype.toString.call(arg);
+    return type == '[object Function]' || type == '[object AsyncFunction]';
+  }
+
+  function now() {
+    if (Date.now && isFunction(Date.now)) {
+      return Date.now();
+    }
+    return new Date().getTime();
+  }
+
+  var logFn;
+
+  var logger = {
+    setup: function(logger) {
+      logFn = logger;
+    },
+    log: function() {
+      (logFn || (console && console.log) || function() {}).apply(null, arguments);
+    }
+  };
+
+  var _localStorage = {
+    get: function(key) {
+      return window.localStorage.getItem(key);
+    },
+    parse: function(key) {
+      var storedValue;
+      try {
+        storedValue = JSON.parse(_localStorage.get(key)) || null;
+      } catch (err) {
+        logger.log(err);
+      }
+      return storedValue;
+    },
+    set: function(key, value) {
+      try {
+        window.localStorage.setItem(key, value);
+      } catch (err) {
+        logger.log(err);
+      }
+    },
+    remove: function(key) {
+      window.localStorage.removeItem(key);
+    },
+    isSupport: function() {
+      var supported = true;
+      try {
+        var supportName = '__local_store_support__';
+        var val = 'testIsSupportStorage';
+        _localStorage.set(supportName, val);
+        if (_localStorage.get(supportName) !== val) {
+          supported = false;
+        }
+        _localStorage.remove(supportName);
+      } catch (err) {
+        supported = false;
+      }
+      return supported;
+    }
+  };
+
+  function isObject(arg) {
+    if (arg == null) {
+      return false;
+    } else {
+      return Object.prototype.toString.call(arg) == '[object Object]';
+    }
+  }
+
+  var getRandomBasic = (function() {
+    var today = new Date();
+    var seed = today.getTime();
+
+    function rnd() {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280.0;
+    }
+    return function rand(number) {
+      return Math.ceil(rnd() * number);
+    };
+  })();
+
+  function getRandom() {
+    if (typeof Uint32Array === 'function') {
+      var cry = '';
+      if (typeof crypto !== 'undefined') {
+        cry = crypto;
+      } else if (typeof msCrypto !== 'undefined') {
+        cry = msCrypto;
+      }
+      if (isObject(cry) && cry.getRandomValues) {
+        var typedArray = new Uint32Array(1);
+        var randomNumber = cry.getRandomValues(typedArray)[0];
+        var integerLimit = Math.pow(2, 32);
+        return randomNumber / integerLimit;
+      }
+    }
+    return getRandomBasic(10000000000000000000) / 10000000000000000000;
+  }
+
+  function safeJSONParse(str) {
+    var val = null;
+    try {
+      val = JSON.parse(str);
+    } catch (e) {}
+    return val;
+  }
+
+  function ConcurrentStorage(lockGetPrefix, lockSetPrefix) {
+    this.lockGetPrefix = lockGetPrefix || 'lock-get-prefix';
+    this.lockSetPrefix = lockSetPrefix || 'lock-set-prefix';
+  }
+
+  ConcurrentStorage.prototype.get = function(key, lockTimeout, checkTime, callback) {
+    if (!key) throw new Error('key is must');
+    lockTimeout = lockTimeout || 10000;
+    checkTime = checkTime || 1000;
+    callback = callback || function() {};
+    var lockKey = this.lockGetPrefix + key;
+    var lock = _localStorage.get(lockKey);
+    var randomNum = String(getRandom());
+    if (lock) {
+      lock = safeJSONParse(lock) || {
+        randomNum: 0,
+        expireTime: 0
+      };
+      if (lock.expireTime > now()) {
+        return callback(null);
+      }
+    }
+    _localStorage.set(lockKey, JSON.stringify({
+      randomNum: randomNum,
+      expireTime: now() + lockTimeout
+    }));
+    setTimeout(function() {
+      lock = safeJSONParse(_localStorage.get(lockKey)) || {
+        randomNum: 0,
+        expireTime: 0
+      };
+      if (lock && lock.randomNum === randomNum) {
+        callback(_localStorage.get(key));
+        _localStorage.remove(key);
+        _localStorage.remove(lockKey);
+      } else {
+        callback(null);
+      }
+    }, checkTime);
+  };
+
+  ConcurrentStorage.prototype.set = function(key, val, lockTimeout, checkTime, callback) {
+    if (!key || !val) throw new Error('key and val is must');
+    lockTimeout = lockTimeout || 10000;
+    checkTime = checkTime || 1000;
+    callback = callback || function() {};
+    var lockKey = this.lockSetPrefix + key;
+    var lock = _localStorage.get(lockKey);
+    var randomNum = String(getRandom());
+    if (lock) {
+      lock = safeJSONParse(lock) || {
+        randomNum: 0,
+        expireTime: 0
+      };
+      if (lock.expireTime > now()) {
+        return callback({
+          status: 'fail',
+          reason: 'This key is locked'
+        });
+      }
+    }
+    _localStorage.set(lockKey, JSON.stringify({
+      randomNum: randomNum,
+      expireTime: now() + lockTimeout
+    }));
+    setTimeout(function() {
+      lock = safeJSONParse(_localStorage.get(lockKey)) || {
+        randomNum: 0,
+        expireTime: 0
+      };
+      if (lock.randomNum === randomNum) {
+        _localStorage.set(key, val) && callback({
+          status: 'success'
+        });
+      } else {
+        callback({
+          status: 'fail',
+          reason: 'This key is locked'
+        });
+      }
+    }, checkTime);
+  };
+
   function isValidListener(listener) {
     if (typeof listener === 'function') {
       return true;
@@ -925,17 +1121,6 @@
     return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
   }
 
-  var logFn;
-
-  var logger = {
-    setup: function(logger) {
-      logFn = logger;
-    },
-    log: function() {
-      (logFn || (console && console.log) || function() {}).apply(null, arguments);
-    }
-  };
-
 
   function urlParse(url) {
     var URLParser = function(url) {
@@ -1085,45 +1270,6 @@
     return result;
   }
 
-  function isObject(arg) {
-    if (arg == null) {
-      return false;
-    } else {
-      return Object.prototype.toString.call(arg) == '[object Object]';
-    }
-  }
-
-  var getRandomBasic = (function() {
-    var today = new Date();
-    var seed = today.getTime();
-
-    function rnd() {
-      seed = (seed * 9301 + 49297) % 233280;
-      return seed / 233280.0;
-    }
-    return function rand(number) {
-      return Math.ceil(rnd() * number);
-    };
-  })();
-
-  function getRandom() {
-    if (typeof Uint32Array === 'function') {
-      var cry = '';
-      if (typeof crypto !== 'undefined') {
-        cry = crypto;
-      } else if (typeof msCrypto !== 'undefined') {
-        cry = msCrypto;
-      }
-      if (isObject(cry) && cry.getRandomValues) {
-        var typedArray = new Uint32Array(1);
-        var randomNumber = cry.getRandomValues(typedArray)[0];
-        var integerLimit = Math.pow(2, 32);
-        return randomNumber / integerLimit;
-      }
-    }
-    return getRandomBasic(10000000000000000000) / 10000000000000000000;
-  }
-
 
   var UUID = (function() {
     var T = function() {
@@ -1193,14 +1339,6 @@
 
   function isUndefined(arg) {
     return arg === void 0;
-  }
-
-  function isFunction(arg) {
-    if (!arg) {
-      return false;
-    }
-    var type = Object.prototype.toString.call(arg);
-    return type == '[object Function]' || type == '[object AsyncFunction]';
   }
 
   function isArray(arg) {
@@ -1579,7 +1717,7 @@
 
     function abort() {
       try {
-        if (isObject(g) && g.abort) {
+        if (g && typeof g === 'object' && g.abort) {
           g.abort();
         }
       } catch (error) {
@@ -2530,49 +2668,6 @@
     para.appendCall(g);
   }
 
-  var _localStorage = {
-    get: function(key) {
-      return window.localStorage.getItem(key);
-    },
-    parse: function(key) {
-      var storedValue;
-      try {
-        storedValue = JSON.parse(_localStorage.get(key)) || null;
-      } catch (err) {
-        logger.log(err);
-      }
-      return storedValue;
-    },
-    set: function(key, value) {
-      window.localStorage.setItem(key, value);
-    },
-    remove: function(key) {
-      window.localStorage.removeItem(key);
-    },
-    isSupport: function() {
-      var supported = true;
-      try {
-        var supportName = '__local_store_support__';
-        var val = 'testIsSupportStorage';
-        _localStorage.set(supportName, val);
-        if (_localStorage.get(supportName) !== val) {
-          supported = false;
-        }
-        _localStorage.remove(supportName);
-      } catch (err) {
-        supported = false;
-      }
-      return supported;
-    }
-  };
-
-  function now() {
-    if (Date.now && isFunction(Date.now)) {
-      return Date.now();
-    }
-    return new Date().getTime();
-  }
-
   function removeScriptProtocol(str) {
     if (typeof str !== 'string') return '';
     var _regex = /^\s*javascript/i;
@@ -2606,14 +2701,6 @@
     str = String(str);
 
     return rot13obfs(str, n - key);
-  }
-
-  function safeJSONParse(str) {
-    var val = null;
-    try {
-      val = JSON.parse(str);
-    } catch (e) {}
-    return val;
   }
 
   function searchObjDate(o) {
@@ -2792,6 +2879,7 @@
 
   var W = {
     __proto__: null,
+    ConcurrentStorage: ConcurrentStorage,
     EventEmitter: EventEmitter,
     URL: _URL,
     UUID: UUID,
@@ -3058,7 +3146,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.22.3';
+  var sdkversion_placeholder = '1.22.4';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -6534,7 +6622,7 @@
 
     sd.events.tempAdd('send', originData);
 
-    if (!sd.para.app_js_bridge && sd.para.batch_send && localStorage.length < 200) {
+    if (!sd.para.app_js_bridge && sd.para.batch_send && localStorage.length < 100) {
       sd.log(originData);
       sd.batchSend.add(requestData.data);
       return false;

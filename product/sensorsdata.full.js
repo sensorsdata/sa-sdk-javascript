@@ -766,6 +766,202 @@
     }
   })();
 
+  function isFunction(arg) {
+    if (!arg) {
+      return false;
+    }
+    var type = Object.prototype.toString.call(arg);
+    return type == '[object Function]' || type == '[object AsyncFunction]';
+  }
+
+  function now() {
+    if (Date.now && isFunction(Date.now)) {
+      return Date.now();
+    }
+    return new Date().getTime();
+  }
+
+  var logFn;
+
+  var logger = {
+    setup: function(logger) {
+      logFn = logger;
+    },
+    log: function() {
+      (logFn || (console && console.log) || function() {}).apply(null, arguments);
+    }
+  };
+
+  var _localStorage = {
+    get: function(key) {
+      return window.localStorage.getItem(key);
+    },
+    parse: function(key) {
+      var storedValue;
+      try {
+        storedValue = JSON.parse(_localStorage.get(key)) || null;
+      } catch (err) {
+        logger.log(err);
+      }
+      return storedValue;
+    },
+    set: function(key, value) {
+      try {
+        window.localStorage.setItem(key, value);
+      } catch (err) {
+        logger.log(err);
+      }
+    },
+    remove: function(key) {
+      window.localStorage.removeItem(key);
+    },
+    isSupport: function() {
+      var supported = true;
+      try {
+        var supportName = '__local_store_support__';
+        var val = 'testIsSupportStorage';
+        _localStorage.set(supportName, val);
+        if (_localStorage.get(supportName) !== val) {
+          supported = false;
+        }
+        _localStorage.remove(supportName);
+      } catch (err) {
+        supported = false;
+      }
+      return supported;
+    }
+  };
+
+  function isObject(arg) {
+    if (arg == null) {
+      return false;
+    } else {
+      return Object.prototype.toString.call(arg) == '[object Object]';
+    }
+  }
+
+  var getRandomBasic = (function() {
+    var today = new Date();
+    var seed = today.getTime();
+
+    function rnd() {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280.0;
+    }
+    return function rand(number) {
+      return Math.ceil(rnd() * number);
+    };
+  })();
+
+  function getRandom() {
+    if (typeof Uint32Array === 'function') {
+      var cry = '';
+      if (typeof crypto !== 'undefined') {
+        cry = crypto;
+      } else if (typeof msCrypto !== 'undefined') {
+        cry = msCrypto;
+      }
+      if (isObject(cry) && cry.getRandomValues) {
+        var typedArray = new Uint32Array(1);
+        var randomNumber = cry.getRandomValues(typedArray)[0];
+        var integerLimit = Math.pow(2, 32);
+        return randomNumber / integerLimit;
+      }
+    }
+    return getRandomBasic(10000000000000000000) / 10000000000000000000;
+  }
+
+  function safeJSONParse(str) {
+    var val = null;
+    try {
+      val = JSON.parse(str);
+    } catch (e) {}
+    return val;
+  }
+
+  function ConcurrentStorage(lockGetPrefix, lockSetPrefix) {
+    this.lockGetPrefix = lockGetPrefix || 'lock-get-prefix';
+    this.lockSetPrefix = lockSetPrefix || 'lock-set-prefix';
+  }
+
+  ConcurrentStorage.prototype.get = function(key, lockTimeout, checkTime, callback) {
+    if (!key) throw new Error('key is must');
+    lockTimeout = lockTimeout || 10000;
+    checkTime = checkTime || 1000;
+    callback = callback || function() {};
+    var lockKey = this.lockGetPrefix + key;
+    var lock = _localStorage.get(lockKey);
+    var randomNum = String(getRandom());
+    if (lock) {
+      lock = safeJSONParse(lock) || {
+        randomNum: 0,
+        expireTime: 0
+      };
+      if (lock.expireTime > now()) {
+        return callback(null);
+      }
+    }
+    _localStorage.set(lockKey, JSON.stringify({
+      randomNum: randomNum,
+      expireTime: now() + lockTimeout
+    }));
+    setTimeout(function() {
+      lock = safeJSONParse(_localStorage.get(lockKey)) || {
+        randomNum: 0,
+        expireTime: 0
+      };
+      if (lock && lock.randomNum === randomNum) {
+        callback(_localStorage.get(key));
+        _localStorage.remove(key);
+        _localStorage.remove(lockKey);
+      } else {
+        callback(null);
+      }
+    }, checkTime);
+  };
+
+  ConcurrentStorage.prototype.set = function(key, val, lockTimeout, checkTime, callback) {
+    if (!key || !val) throw new Error('key and val is must');
+    lockTimeout = lockTimeout || 10000;
+    checkTime = checkTime || 1000;
+    callback = callback || function() {};
+    var lockKey = this.lockSetPrefix + key;
+    var lock = _localStorage.get(lockKey);
+    var randomNum = String(getRandom());
+    if (lock) {
+      lock = safeJSONParse(lock) || {
+        randomNum: 0,
+        expireTime: 0
+      };
+      if (lock.expireTime > now()) {
+        return callback({
+          status: 'fail',
+          reason: 'This key is locked'
+        });
+      }
+    }
+    _localStorage.set(lockKey, JSON.stringify({
+      randomNum: randomNum,
+      expireTime: now() + lockTimeout
+    }));
+    setTimeout(function() {
+      lock = safeJSONParse(_localStorage.get(lockKey)) || {
+        randomNum: 0,
+        expireTime: 0
+      };
+      if (lock.randomNum === randomNum) {
+        _localStorage.set(key, val) && callback({
+          status: 'success'
+        });
+      } else {
+        callback({
+          status: 'fail',
+          reason: 'This key is locked'
+        });
+      }
+    }, checkTime);
+  };
+
   function isValidListener(listener) {
     if (typeof listener === 'function') {
       return true;
@@ -929,17 +1125,6 @@
     return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
   }
 
-  var logFn;
-
-  var logger = {
-    setup: function(logger) {
-      logFn = logger;
-    },
-    log: function() {
-      (logFn || (console && console.log) || function() {}).apply(null, arguments);
-    }
-  };
-
 
   function urlParse(url) {
     var URLParser = function(url) {
@@ -1089,45 +1274,6 @@
     return result;
   }
 
-  function isObject(arg) {
-    if (arg == null) {
-      return false;
-    } else {
-      return Object.prototype.toString.call(arg) == '[object Object]';
-    }
-  }
-
-  var getRandomBasic = (function() {
-    var today = new Date();
-    var seed = today.getTime();
-
-    function rnd() {
-      seed = (seed * 9301 + 49297) % 233280;
-      return seed / 233280.0;
-    }
-    return function rand(number) {
-      return Math.ceil(rnd() * number);
-    };
-  })();
-
-  function getRandom() {
-    if (typeof Uint32Array === 'function') {
-      var cry = '';
-      if (typeof crypto !== 'undefined') {
-        cry = crypto;
-      } else if (typeof msCrypto !== 'undefined') {
-        cry = msCrypto;
-      }
-      if (isObject(cry) && cry.getRandomValues) {
-        var typedArray = new Uint32Array(1);
-        var randomNumber = cry.getRandomValues(typedArray)[0];
-        var integerLimit = Math.pow(2, 32);
-        return randomNumber / integerLimit;
-      }
-    }
-    return getRandomBasic(10000000000000000000) / 10000000000000000000;
-  }
-
 
   var UUID = (function() {
     var T = function() {
@@ -1197,14 +1343,6 @@
 
   function isUndefined(arg) {
     return arg === void 0;
-  }
-
-  function isFunction(arg) {
-    if (!arg) {
-      return false;
-    }
-    var type = Object.prototype.toString.call(arg);
-    return type == '[object Function]' || type == '[object AsyncFunction]';
   }
 
   function isArray(arg) {
@@ -1583,7 +1721,7 @@
 
     function abort() {
       try {
-        if (isObject(g) && g.abort) {
+        if (g && typeof g === 'object' && g.abort) {
           g.abort();
         }
       } catch (error) {
@@ -2534,49 +2672,6 @@
     para.appendCall(g);
   }
 
-  var _localStorage = {
-    get: function(key) {
-      return window.localStorage.getItem(key);
-    },
-    parse: function(key) {
-      var storedValue;
-      try {
-        storedValue = JSON.parse(_localStorage.get(key)) || null;
-      } catch (err) {
-        logger.log(err);
-      }
-      return storedValue;
-    },
-    set: function(key, value) {
-      window.localStorage.setItem(key, value);
-    },
-    remove: function(key) {
-      window.localStorage.removeItem(key);
-    },
-    isSupport: function() {
-      var supported = true;
-      try {
-        var supportName = '__local_store_support__';
-        var val = 'testIsSupportStorage';
-        _localStorage.set(supportName, val);
-        if (_localStorage.get(supportName) !== val) {
-          supported = false;
-        }
-        _localStorage.remove(supportName);
-      } catch (err) {
-        supported = false;
-      }
-      return supported;
-    }
-  };
-
-  function now() {
-    if (Date.now && isFunction(Date.now)) {
-      return Date.now();
-    }
-    return new Date().getTime();
-  }
-
   function removeScriptProtocol(str) {
     if (typeof str !== 'string') return '';
     var _regex = /^\s*javascript/i;
@@ -2610,14 +2705,6 @@
     str = String(str);
 
     return rot13obfs(str, n - key);
-  }
-
-  function safeJSONParse(str) {
-    var val = null;
-    try {
-      val = JSON.parse(str);
-    } catch (e) {}
-    return val;
   }
 
   function searchObjDate(o) {
@@ -2796,6 +2883,7 @@
 
   var W = {
     __proto__: null,
+    ConcurrentStorage: ConcurrentStorage,
     EventEmitter: EventEmitter,
     URL: _URL,
     UUID: UUID,
@@ -3062,7 +3150,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.22.3';
+  var sdkversion_placeholder = '1.22.4';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -6538,7 +6626,7 @@
 
     sd.events.tempAdd('send', originData);
 
-    if (!sd.para.app_js_bridge && sd.para.batch_send && localStorage.length < 200) {
+    if (!sd.para.app_js_bridge && sd.para.batch_send && localStorage.length < 100) {
       sd.log(originData);
       sd.batchSend.add(requestData.data);
       return false;
@@ -6587,158 +6675,177 @@
     instance.start();
   };
 
+  var dataStoragePrefix = 'sawebjssdk-';
+  var tabStoragePrefix = 'tab-sawebjssdk-';
+
   function BatchSend() {
-    this.sendingData = 0;
-    this.sendingItemKeys = [];
+    this.sendTimeStamp = 0;
+    this.timer = null;
+    this.serverUrl = '';
+    this.hasTabStorage = false;
+    this.recycle();
   }
 
   BatchSend.prototype = {
-    add: function(data) {
-      if (isObject(data)) {
-        this.writeStore(data);
-        if (data.type === 'track_signup' || data.event === '$pageview') {
-          this.sendStrategy();
+    batchInterval: function() {
+      if (this.serverUrl === '') this.getServerUrl();
+      if (!this.hasTabStorage) {
+        this.generateTabStorage();
+        this.hasTabStorage = true;
+      }
+      var self = this;
+      self.timer = setTimeout(function() {
+        self.updateExpireTime();
+        self.recycle();
+        self.send();
+        clearTimeout(self.timer);
+        self.batchInterval();
+      }, sd.para.batch_send.send_interval);
+    },
+
+    getServerUrl: function() {
+      if ((isString(sd.para.server_url) && sd.para.server_url !== '') || (isArray(sd.para.server_url) && sd.para.server_url.length)) {
+        this.serverUrl = isArray(sd.para.server_url) ? sd.para.server_url[0] : sd.para.server_url;
+      } else {
+        return sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
+      }
+    },
+
+    send: function() {
+      if (this.sendTimeStamp && now() - this.sendTimeStamp < sd.para.batch_send.datasend_timeout) return;
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        this.sendTimeStamp = now();
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+        if (tabStorage.data.length) {
+          var data = [];
+          for (var i = 0; i < tabStorage.data.length; i++) {
+            data.push(sd.store.readObjectVal(tabStorage.data[i]));
+          }
+          this.request(data, tabStorage.data);
         }
       }
     },
-    clearPendingStatus: function() {
-      if (this.sendingItemKeys.length) {
-        this.removePendingItems(this.sendingItemKeys);
+
+    updateExpireTime: function() {
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+        tabStorage.expireTime = now() + sd.para.batch_send.send_interval * 2;
+        tabStorage.serverUrl = this.serverUrl;
+        _localStorage.set(this.tabKey, JSON.stringify(tabStorage));
       }
     },
-    remove: function(keys) {
-      if (this.sendingData > 0) {
-        --this.sendingData;
-      }
-      if (isArray(keys) && keys.length > 0) {
-        each(keys, function(key) {
-          _localStorage.remove(key);
-        });
-      }
-    },
-    send: function(data) {
-      var me = this;
-      var server_url;
-      if ((isString(sd.para.server_url) && sd.para.server_url !== '') || (isArray(sd.para.server_url) && sd.para.server_url.length)) {
-        server_url = isArray(sd.para.server_url) ? sd.para.server_url[0] : sd.para.server_url;
-      } else {
-        sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
-        return;
-      }
-      ajax$1({
-        url: server_url,
+
+    request: function(data, dataKeys) {
+      var self = this;
+      ajax({
+        url: this.serverUrl,
         type: 'POST',
-        data: 'data_list=' + encodeURIComponent(base64Encode(JSON.stringify(data.vals))),
+        data: 'data_list=' + encodeURIComponent(base64Encode(JSON.stringify(data))),
         credentials: false,
         timeout: sd.para.batch_send.datasend_timeout,
         cors: true,
         success: function() {
-          me.remove(data.keys);
-          me.removePendingItems(data.keys);
+          self.remove(dataKeys);
+          self.sendTimeStamp = 0;
         },
         error: function() {
-          if (me.sendingData > 0) {
-            --me.sendingData;
-          }
-          me.removePendingItems(data.keys);
+          self.sendTimeStamp = 0;
         }
       });
     },
-    appendPendingItems: function(newKeys) {
-      if (isArray(newKeys) === false) {
-        return;
-      }
-      this.sendingItemKeys = unique(this.sendingItemKeys.concat(newKeys));
-      try {
-        var existingItems = this.getPendingItems();
-        var newItems = unique(existingItems.concat(newKeys));
-        sd.store.saveObjectVal('sawebjssdk-sendingitems', newItems);
-      } catch (e) {}
-    },
-    removePendingItems: function(keys) {
-      if (isArray(keys) === false) {
-        return;
-      }
-      if (this.sendingItemKeys.length) {
-        this.sendingItemKeys = filter(this.sendingItemKeys, function(item) {
-          return indexOf(keys, item) === -1;
-        });
-      }
-      try {
-        var existingItems = this.getPendingItems();
-        var newItems = filter(existingItems, function(item) {
-          return indexOf(keys, item) === -1;
-        });
-        sd.store.saveObjectVal('sawebjssdk-sendingitems', newItems);
-      } catch (e) {}
-    },
-    getPendingItems: function() {
-      return sd.store.readObjectVal('sawebjssdk-sendingitems') || [];
-    },
-    sendPrepare: function(data) {
-      this.appendPendingItems(data.keys);
-      var arr = data.vals;
-      var arrLen = arr.length;
-      if (arrLen > 0) {
-        this.send({
-          keys: data.keys,
-          vals: arr
-        });
-      }
-    },
-    sendStrategy: function() {
-      if (document.hasFocus() === false) {
-        return false;
-      }
-      var data = this.readStore();
-      if (data.keys.length > 0 && this.sendingData === 0) {
-        this.sendingData = 1;
-        this.sendPrepare(data);
-      }
-    },
-    batchInterval: function() {
-      var me = this;
-      setInterval(function() {
-        me.sendStrategy();
-      }, sd.para.batch_send.send_interval);
-    },
-    readStore: function() {
-      var keys = [];
-      var vals = [];
-      var val = null;
-      var now = new Date().getTime();
-      var len = localStorage.length;
-      var pendingItems = this.getPendingItems();
-      for (var i = 0; i < len; i++) {
-        var itemName = localStorage.key(i);
-        if (itemName.indexOf('sawebjssdk-') === 0 && /^sawebjssdk\-\d+$/.test(itemName)) {
-          if (pendingItems.length && indexOf(pendingItems, itemName) > -1) {
-            continue;
+
+    remove: function(dataKeys) {
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        var tabStorageData = (safeJSONParse(tabStorage) || this.generateTabStorageVal()).data;
+        for (var i = 0; i < dataKeys.length; i++) {
+          var idx = indexOf(tabStorageData, dataKeys[i]);
+          if (idx > -1) {
+            tabStorageData.splice(idx, 1);
           }
-          val = sd.store.readObjectVal(itemName);
-          if (val) {
-            if (val && isObject(val)) {
-              val._flush_time = now;
-              keys.push(itemName);
-              vals.push(val);
-            } else {
-              localStorage.removeItem(itemName);
-              sd.log('localStorage-数据parse异常' + val);
-            }
-          } else {
-            localStorage.removeItem(itemName);
-            sd.log('localStorage-数据取值异常' + val);
+          _localStorage.remove(dataKeys[i]);
+        }
+        _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal(tabStorageData)));
+      }
+    },
+
+    add: function(data) {
+      var dataKey = dataStoragePrefix + String(getRandom());
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage === null) {
+        this.tabKey = tabStoragePrefix + String(getRandom());
+        tabStorage = this.generateTabStorageVal();
+      } else {
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+      }
+      tabStorage.data.push(dataKey);
+      tabStorage.expireTime = now() + sd.para.batch_send.send_interval * 2;
+      _localStorage.set(this.tabKey, JSON.stringify(tabStorage));
+      sd.store.saveObjectVal(dataKey, data);
+      if (data.type === 'track_signup' || data.event === '$pageview') {
+        this.sendImmediately();
+      }
+    },
+
+    generateTabStorage: function() {
+      this.tabKey = tabStoragePrefix + String(getRandom());
+      _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal()));
+    },
+
+    generateTabStorageVal: function(data) {
+      data = data || [];
+      return {
+        data: data,
+        expireTime: now() + sd.para.batch_send.send_interval * 2,
+        serverUrl: this.serverUrl
+      };
+    },
+
+    sendImmediately: function() {
+      this.send();
+    },
+
+    recycle: function() {
+      var notSendMap = {},
+        lockTimeout = 10000,
+        lockPrefix = 'sajssdk-lock-get-';
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i),
+          self = this;
+        if (key.indexOf(tabStoragePrefix) === 0) {
+          var tabStorage = safeJSONParse(_localStorage.get(key)) || this.generateTabStorageVal();
+          for (var j = 0; j < tabStorage.data.length; j++) {
+            notSendMap[tabStorage.data[j]] = true;
+          }
+          if (now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
+            var concurrentStorage = new ConcurrentStorage(lockPrefix);
+            concurrentStorage.get(key, lockTimeout, 1000, function(data) {
+              if (data) {
+                if (_localStorage.get(self.tabKey) === null) {
+                  self.generateTabStorage();
+                }
+                var recycleData = safeJSONParse(data) || self.generateTabStorageVal();
+                _localStorage.set(self.tabKey, JSON.stringify(self.generateTabStorageVal((safeJSONParse(_localStorage.get(self.tabKey)) || this.generateTabStorageVal()).data.concat(recycleData.data))));
+              }
+            });
+          }
+        } else if (key.indexOf(lockPrefix) === 0) {
+          var lock = safeJSONParse(_localStorage.get(key)) || {
+            expireTime: 0
+          };
+          if (now() - lock.expireTime > lockTimeout) {
+            _localStorage.remove(key);
           }
         }
       }
-      return {
-        keys: keys,
-        vals: vals
-      };
-    },
-    writeStore: function(data) {
-      var uuid = String(getRandom()).slice(2, 5) + String(getRandom()).slice(2, 5) + String(new Date().getTime()).slice(3);
-      sd.store.saveObjectVal('sawebjssdk-' + uuid, data);
+      for (var n = 0; n < localStorage.length; n++) {
+        var key1 = localStorage.key(n);
+        if (key1.indexOf(dataStoragePrefix) === 0 && !notSendMap[key1]) {
+          _localStorage.remove(key1);
+        }
+      }
     }
   };
 
@@ -8189,7 +8296,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.22.3'
+              sdkversion: '1.22.4'
             }
           },
           '*'
@@ -8338,9 +8445,6 @@
     listenSinglePage();
 
     if (sd.para.batch_send) {
-      addEvent$1(window, 'onpagehide' in window ? 'pagehide' : 'unload', function() {
-        sd.batchSend.clearPendingStatus();
-      });
       sd.batchSend.batchInterval();
     }
     sd.store.init();

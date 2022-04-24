@@ -2447,6 +2447,15 @@ sensorsDataAnalytic201505.modules['AesEncryption'] = (function () {
     return CryptoJS.AES;
   });
 
+  /** 检测传入参数是否是函数
+   * @category Util
+   * @param {*} arg 传入参数
+   * @returns 是否是函数
+   * @function isFunction
+   * @example 
+   * isFunction (function(){}) //=> true
+   */
+
   /** 检测传入参数是否是对象类型
    * @category Util
    * @param {*} arg 传入参数
