@@ -3146,7 +3146,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.22.4';
+  var sdkversion_placeholder = '1.22.5';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -6622,7 +6622,7 @@
 
     sd.events.tempAdd('send', originData);
 
-    if (!sd.para.app_js_bridge && sd.para.batch_send && localStorage.length < 100) {
+    if (!sd.para.app_js_bridge && sd.para.batch_send && _localStorage.isSupport() && localStorage.length < 100) {
       sd.log(originData);
       sd.batchSend.add(requestData.data);
       return false;
