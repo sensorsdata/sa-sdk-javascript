@@ -9089,6 +9089,7 @@
           }
         } else if (this.is_fix_state === 'notfix') {
           var width = heatmap.getBrowserWidth();
+          var height = heatmap.getBrowserHeight();
 
           var target = e.target;
           var offset = _.ry(target).offset();
@@ -9101,6 +9102,15 @@
             if (offset.left < 220) {
               x = e.pageX;
             }
+          }
+
+          var boxHeight = 267;
+          var target_top = target.getBoundingClientRect().top;
+          if (target_top < 0) {
+            y = e.pageY;
+          }
+          if (height && target_top + boxHeight > height) {
+            y = offset.top + size.height - boxHeight;
           }
 
           div.style.position = 'absolute';
@@ -9125,7 +9135,7 @@
         var isShow = true;
         var div = document.createElement('div');
         document.body.appendChild(div);
-        div.setAttribute('style', 'border-radius:3px;display:none;border:1px solid #000;position: fixed; right:0; top:0; background: #333;line-height:24px;font-size:13px;width:220px;color: #fff;font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;box-shadow: 0 2px 4px rgba(0,0,0,0.24);z-index:999999;');
+        div.setAttribute('style', 'border-radius:3px;display:none;border:1px solid #000;position: fixed; right:0; top:0; background: #333;line-height:24px;font-size:13px;width:220px;height:265px;color: #fff;font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;box-shadow: 0 2px 4px rgba(0,0,0,0.24);z-index:999999;');
 
         div.innerHTML = '<div id="sa_heat_float_right_box_content" style="clear:both;"></div>';
 
@@ -9155,8 +9165,17 @@
         var timeEle = 600;
 
         function showBoxDetailContent(e) {
-          var target = e.currentTarget;
+          var target = e.target;
+          var currentTarget = e.currentTarget;
           var data = $(target).data('clickdata');
+
+          while (!data && target.parentNode) {
+            target = target.parentNode;
+            data = $(target).data('clickdata');
+            if (target === currentTarget) {
+              break;
+            }
+          }
           if (!data) {
             return false;
           }
@@ -9192,10 +9211,12 @@
           me.showEffectBox(e, div, isShow);
           me.setContainer(div);
         }
+        var showBoxDetailTimer = null;
 
         function showBoxDetail(e) {
           var target = e.target;
-          setTimeout(function() {
+          showBoxDetailTimer && clearTimeout(showBoxDetailTimer);
+          showBoxDetailTimer = setTimeout(function() {
             if (target === current_over) {
               showBoxDetailContent(e);
             }
@@ -9436,7 +9457,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.22.5';
+      sd.heatmap_version = '1.22.6';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {
