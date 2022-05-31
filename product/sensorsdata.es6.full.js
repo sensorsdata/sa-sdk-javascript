@@ -3142,7 +3142,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.22.7';
+var sdkversion_placeholder = '1.22.8';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -6084,19 +6084,21 @@ function loginBody(obj) {
     };
     tempObj[name] = id;
     resetIdentities(tempObj);
+    return true;
   }
+  return true;
 }
 
 function login(id, callback) {
   if (typeof id === 'number') {
     id = String(id);
   }
-  loginBody({
+  var ret = loginBody({
     id: id,
     callback: callback,
     name: IDENTITY_KEY.LOGIN
   });
-  isFunction(callback) && callback();
+  !ret && isFunction(callback) && callback();
 }
 
 function loginWithKey(name, id) {
@@ -8287,7 +8289,7 @@ var vtrackMode = {
           source: 'sa-web-sdk',
           type: 'v-is-vtrack',
           data: {
-            sdkversion: '1.22.7'
+            sdkversion: '1.22.8'
           }
         },
         '*'
