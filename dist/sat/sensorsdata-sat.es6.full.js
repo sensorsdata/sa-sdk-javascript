@@ -8924,6 +8924,1295 @@ if (is_compliance_enabled) {
 var _sd = sd;
 try {
   sd.modules = {};
+  sd.modules['Amp'] = (function() {
+    'use strict';
+
+    var amp = {
+      sd: null,
+      init: function(sd) {
+        if (this.sd) {
+          return false;
+        }
+        this.sd = sd;
+        if (!(this.sd && this.sd._)) {
+          return false;
+        }
+        var amp_id = this.sd._.cookie.get('sensors_amp_id');
+        var distinct_id = this.sd.store._state.distinct_id;
+        if (amp_id && amp_id.length > 0) {
+          var isAmpUuid = amp_id.slice(0, 4) === 'amp-' ? true : false;
+          if (amp_id !== distinct_id) {
+            if (!isAmpUuid) {
+              return false;
+            }
+            if (this.sd.store._state.first_id) {
+              this.sd.identify(amp_id, true);
+              this.sd.saEvent.send({
+                  original_id: amp_id,
+                  distinct_id: distinct_id,
+                  type: 'track_signup',
+                  event: '$SignUp',
+                  properties: {}
+                },
+                null
+              );
+              this.setAmpId(distinct_id);
+            } else {
+              this.sd.identify(amp_id, true);
+            }
+          }
+        } else {
+          this.setAmpId(distinct_id);
+        }
+        this.addListener();
+      },
+      addListener: function() {
+        var that = this;
+        this.sd.events.on('changeDistinctId', function(id) {
+          that.setAmpId(id);
+        });
+        this.sd.events.isReady();
+      },
+      setAmpId: function(id) {
+        this.sd._.cookie.set('sensors_amp_id', id);
+      }
+    };
+
+    if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+      window.SensorsDataWebJSSDKPlugin.Amp = window.SensorsDataWebJSSDKPlugin.Amp || amp;
+    } else {
+      window.SensorsDataWebJSSDKPlugin = {
+        Amp: amp
+      };
+    }
+
+    return amp;
+
+  }());
+
+  sd.modules['ChannelUtm'] = (function() {
+    'use strict';
+
+    var utmKeys = ['channel_utm_source', 'channel_utm_content', 'channel_utm_term', 'channel_utm_medium', 'channel_utm_campaign'];
+    var sd;
+    var ChannelUtm = {
+      init: function(sa) {
+        if (!sa || sd) {
+          return;
+        }
+        sd = sa;
+        sd.on &&
+          sd.on('sdkAfterInitPara', function() {
+            sd._.each(utmKeys, function(val) {
+              sd.source_channel_standard = sd.source_channel_standard + ' ' + val;
+              sd.para.source_type.utm.push(val);
+            });
+
+            sd.registerInterceptor('businessStage', {
+              getUtmData: {
+                entry: function(data) {
+                  var hasUtm = false;
+                  var utm = data || {};
+                  sd._.each(utmKeys, function(utmKey) {
+                    var utmVal = sd._.getQueryParam(location.href, utmKey);
+                    if (utmVal.length) {
+                      hasUtm = true;
+                      utm[utmKey.slice(8)] = utmVal;
+                    }
+                  });
+                  hasUtm && sd.register({
+                    link_v: '1'
+                  });
+                  return utm;
+                }
+              }
+            });
+          });
+      }
+    };
+
+    if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+      window.SensorsDataWebJSSDKPlugin.ChannelUtm = window.SensorsDataWebJSSDKPlugin.ChannelUtm || ChannelUtm;
+    } else {
+      window.SensorsDataWebJSSDKPlugin = {
+        ChannelUtm: ChannelUtm
+      };
+    }
+
+    return ChannelUtm;
+
+  }());
+
+  sd.modules['Channel'] = (function() {
+    'use strict';
+
+    var _;
+    var sd;
+    var store;
+    var Channel = {
+      event_list: [],
+      latest_event_initial_time: null,
+      max_save_time: 1000 * 60 * 60 * 24 * 30,
+      init: function(sa) {
+        if (sd || !sa) {
+          return false;
+        }
+        sd = sa;
+        var that = this;
+        if (sd.on) {
+          sd.on('sdkAfterInitPara', initChannelPlugin);
+        } else {
+          initChannelPlugin();
+        }
+
+        function initChannelPlugin() {
+          _ = sd._;
+          store = sd.store;
+          if (!_.localStorage.isSupport()) {
+            return false;
+          }
+          sd.para.max_string_length = 1024;
+          that.eventList.init();
+          that.addLatestChannelUrl();
+          that.addIsChannelCallbackEvent();
+        }
+      },
+
+      addIsChannelCallbackEvent: function() {
+        sd.registerPage({
+          $is_channel_callback_event: function(data) {
+            if (data.event) {
+              if (!(data.event === '$WebClick' || data.event === '$pageview' || data.event === '$WebStay' || data.event === '$SignUp')) {
+                if (Channel.eventList.hasEvent(data.event)) {
+                  return false;
+                } else {
+                  Channel.eventList.add(data.event);
+                  return true;
+                }
+              }
+            }
+          }
+        });
+      },
+      addLatestChannelUrl: function() {
+        var url_domain = this.getUrlDomain();
+        var cookie_prop = this.cookie.getChannel();
+        if (url_domain === 'url解析失败') {
+          this.registerAndSave({
+            _sa_channel_landing_url: '',
+            _sa_channel_landing_url_error: 'url的domain解析失败'
+          });
+        } else if (_.isReferralTraffic(document.referrer)) {
+          var channel_sign = _.getQueryParam(location.href, 'sat_cf');
+          if (_.isString(channel_sign) && channel_sign.length > 0) {
+            this.registerAndSave({
+              _sa_channel_landing_url: location.href
+            });
+            Channel.channelLinkHandler();
+          } else {
+            this.registerAndSave({
+              _sa_channel_landing_url: ''
+            });
+          }
+        } else {
+          if (!cookie_prop) {
+            sd.registerPage({
+              _sa_channel_landing_url: '',
+              _sa_channel_landing_url_error: '取值异常'
+            });
+          } else {
+            sd.registerPage(cookie_prop);
+          }
+        }
+      },
+      registerAndSave: function(prop) {
+        sd.registerPage(prop);
+        this.cookie.saveChannel(prop);
+      },
+      cookie: {
+        getChannel: function() {
+          var value = _.decryptIfNeeded(_.cookie.get('sensorsdata2015jssdkchannel'));
+
+          value = _.safeJSONParse(value);
+
+          return _.isObject(value) && value.prop ? value.prop : false;
+        },
+        saveChannel: function(obj) {
+          var data = {
+            prop: obj
+          };
+          var stateStr = JSON.stringify(data);
+          if (sd.para.encrypt_cookie) {
+            stateStr = _.encrypt(stateStr);
+          }
+          _.cookie.set('sensorsdata2015jssdkchannel', stateStr);
+        }
+      },
+      channelLinkHandler: function() {
+        this.eventList.reset();
+        sd.track('$ChannelLinkReaching');
+      },
+      getUrlDomain: function() {
+        var url_domain = _.info.pageProp.url_domain;
+        if (url_domain === '') {
+          url_domain = 'url解析失败';
+        }
+        return url_domain;
+      },
+      eventList: {
+        init: function() {
+          var data = this.get();
+          var now_time = new Date().getTime();
+          if (data && _.isNumber(data.latest_event_initial_time) && _.isArray(data.eventList)) {
+            var duration = now_time - data.latest_event_initial_time;
+            if (duration > 0 && duration < Channel.max_save_time) {
+              Channel.event_list = data.eventList;
+              Channel.latest_event_initial_time = data.latest_event_initial_time;
+            } else {
+              this.reset();
+            }
+          } else {
+            this.reset();
+          }
+        },
+        get: function() {
+          var data = {};
+          try {
+            data = store.readObjectVal('sawebjssdkchannel');
+          } catch (error) {
+            sd.log(error);
+          }
+          return data;
+        },
+        add: function(name) {
+          Channel.event_list.push(name);
+          this.save();
+        },
+        save: function() {
+          var obj = {
+            latest_event_initial_time: Channel.latest_event_initial_time,
+            eventList: Channel.event_list
+          };
+          store.saveObjectVal('sawebjssdkchannel', obj);
+        },
+        reset: function() {
+          Channel.event_list = [];
+          Channel.latest_event_initial_time = new Date().getTime();
+          this.save();
+        },
+        hasEvent: function(name) {
+          var result = false;
+          _.each(Channel.event_list, function(item) {
+            if (item === name) {
+              result = true;
+            }
+          });
+          return result;
+        }
+      }
+    };
+
+    if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+      window.SensorsDataWebJSSDKPlugin.SensorsChannel = window.SensorsDataWebJSSDKPlugin.SensorsChannel || Channel;
+    } else {
+      window.SensorsDataWebJSSDKPlugin = {
+        SensorsChannel: Channel
+      };
+    }
+
+    return Channel;
+
+  }());
+
+  sd.modules['Deeplink'] = (function() {
+    'use strict';
+
+    var hidden;
+    var isWechat = /micromessenger\/([\d.]+)/i.test(navigator.userAgent || '');
+    var getSupportedProperty = function getSupportedProperty() {
+      var result = {};
+
+      if (typeof document.hidden !== 'undefined') {
+        result.hidden = 'hidden';
+        result.visibilityChange = 'visibilitychange';
+      } else if (typeof document.msHidden !== 'undefined') {
+        result.hidden = 'msHidden';
+        result.visibilityChange = 'msvisibilitychange';
+      } else if (typeof document.webkitHidden !== 'undefined') {
+        result.hidden = 'webkitHidden';
+        result.visibilityChange = 'webkitvisibilitychange';
+      }
+
+      return result;
+    };
+
+    function isPageHidden() {
+      if (typeof hidden === 'undefined') return false;
+      return document[hidden];
+    }
+
+    hidden = getSupportedProperty().hidden;
+    var OSs = {
+      android: /Android/i,
+      iOS: /iPhone|iPad|iPod/i
+    };
+
+    var getOS = function getOS() {
+      for (var key in OSs) {
+        if (navigator.userAgent.match(OSs[key])) {
+          return key;
+        }
+      }
+
+      return '';
+    };
+
+
+    var currentOS = getOS();
+
+    var isSupportedOS = function isSupportedOS() {
+      return OSs.hasOwnProperty(currentOS);
+    };
+    var isObject = function isObject(obj) {
+      if (obj == null) {
+        return false;
+      } else {
+        return Object.prototype.toString.call(obj) == '[object Object]';
+      }
+    };
+    var parseShortURL = function parseShortURL(url) {
+      var urlRegexp = /\/sd\/(\w+)\/(\w+)$/;
+      return url.match(urlRegexp);
+    };
+    var parseAPIURL = function parseAPIURL(sd) {
+      var urlParts = sd._.URL(sd.para.server_url);
+
+      return {
+        origin: urlParts.origin,
+        project: urlParts.searchParams.get('project') || 'default'
+      };
+    };
+    var handleAndroidLinks = function handleAndroidLinks(dp,
+      scheme, downloadURL) {
+      dp.log('尝试唤起 android app');
+
+      var dest = scheme;
+
+      dp.log('唤起APP的地址：' + dest);
+      window.location = dest;
+      dp.timer = setTimeout(function() {
+        var pageHidden = isPageHidden();
+        dp.log('hide:' + hidden + ':' + document[hidden]);
+
+        if (pageHidden) {
+          dp.log('The page is hidden, stop navigating to download page');
+          return false;
+        }
+
+        dp.log('App可能未安装，跳转到下载地址');
+
+        window.location = downloadURL;
+      }, dp.timeout);
+    };
+    var handleIOSLinks = function handleIOSLinks(dp, deepLink, downloadURL) {
+      dp.log('尝试唤起 iOS app:' + deepLink);
+      window.location.href = deepLink;
+
+      dp.timer = setTimeout(function() {
+        var pageHidden = isPageHidden();
+
+        if (pageHidden) {
+          dp.log('The page is hidden, stop navigating to download page');
+          return false;
+        }
+
+        dp.log('App可能未安装，跳转到下载地址');
+
+        window.location.href = downloadURL;
+      }, dp.timeout);
+      dp.log('new timer:' + dp.timer);
+    };
+
+    var SADeepLink = {
+      key: null,
+      timer: null,
+      sd: null,
+      data: null,
+      timeout: 2500,
+      apiURL: '{origin}/sdk/deeplink/param?key={key}&system_type=JS&project={project}',
+      init: function init() {
+        if (this.sd) {
+          this.log('deeplink已经初始化');
+          return false;
+        }
+
+        if (isObject(sensorsDataAnalytic201505)) {
+          this.sd = sensorsDataAnalytic201505;
+        }
+
+        this.log('init()');
+
+        if (this.sd === null) {
+          this.log('神策JS SDK未成功引入');
+          return false;
+        }
+
+
+        var options = {};
+
+        if (arguments.length > 0) {
+          if (arguments.length === 1 && isObject(arguments[0])) {
+            options = arguments[0];
+          } else if (arguments.length >= 2 && isObject(arguments[1])) {
+            options = arguments[1];
+          }
+        }
+
+
+        if (!isSupportedOS()) {
+          this.log('不支持当前系统，目前只支持Android和iOS');
+          return false;
+        }
+
+        if (isObject(options) && this.sd._.isNumber(options.timeout)) {
+          if (options.timeout >= 2500) {
+            this.timeout = options.timeout;
+          }
+        }
+
+        if (!this.sd.para.server_url) {
+          this.log('神策JS SDK配置项server_url未正确配置');
+          return false;
+        }
+
+        var serverInfo = parseAPIURL(this.sd);
+
+        this.apiURL = this.apiURL.replace('{origin}', serverInfo.origin).replace('{project}', serverInfo.project);
+
+        var deeplinkParam = this.sd._.getQueryParam(window.location.href, 'deeplink');
+
+        if (!deeplinkParam) {
+          this.log('当前页面缺少deeplink参数');
+          return false;
+        }
+
+
+        deeplinkParam = window.decodeURIComponent(deeplinkParam);
+
+        var shortURLParams = parseShortURL(deeplinkParam);
+
+        if (!shortURLParams) {
+          this.log('当前页面的deeplink参数无效');
+          return false;
+        }
+
+        this.key = shortURLParams[2];
+        this.apiURL = this.apiURL.replace('{key}', window.encodeURIComponent(shortURLParams[2]));
+
+        this.sd._.ajax({
+          url: this.apiURL,
+          type: 'GET',
+          cors: true,
+          credentials: false,
+          success: function(data) {
+            if (data.errorMsg) {
+              SADeepLink.log('API报错：' + data.errorMsg);
+              return false;
+            }
+
+            SADeepLink.data = data;
+            SADeepLink.log('API查询成功，数据：' + JSON.stringify(data, null, '  '));
+
+            if (this.data.app_key) {
+              if (this.data.android_info && this.data.android_info.url_schemes) {
+                this.data.android_info.url_schemes += '://sensorsdata/sd/' + this.data.app_key + '/' + this.key;
+              }
+
+              if (this.data.ios_info && this.data.ios_info.url_schemes) {
+                this.data.ios_info.url_schemes += '://sensorsdata/sd/' + this.data.app_key + '/' + this.key;
+              }
+            }
+          }.bind(this),
+          error: function error() {
+            SADeepLink.log('API查询出错');
+          }
+        });
+
+        this.addListeners();
+      },
+      openDeepLink: function openDeepLink() {
+        this.log('openDeeplink()');
+
+        if (!this.data) {
+          this.log('没有Deep link数据!');
+          return false;
+        }
+
+        if (currentOS === 'iOS') {
+          this.log('当前系统是iOS');
+          var appURL = this.sd && this.sd._ && this.sd._.getIOSVersion() >= 9 && this.data.ios_info.ios_wake_url ? this.data.ios_info.ios_wake_url : this.data.ios_info.url_schemes;
+
+          this.log('唤起APP的地址：' + appURL);
+
+          handleIOSLinks(this, appURL, this.data.ios_info.download_url);
+        } else {
+          this.log('当前系统是 android');
+
+          handleAndroidLinks(this, this.data.android_info.url_schemes, this.data.android_info.download_url);
+        }
+      },
+      log: function log(message) {
+        if (this.sd) {
+          this.sd.log(message);
+        }
+      },
+      addListeners: function addListeners() {
+        var visibilityName = getSupportedProperty().visibilityChange;
+
+        if (visibilityName) {
+          document.addEventListener(visibilityName, function() {
+            clearTimeout(this.timer);
+            this.log('visibilitychange, clear timeout:' + this.timer);
+          }.bind(this), false);
+        }
+
+        window.addEventListener('pagehide', function() {
+          this.log('page hide, clear timeout:' + this.timer);
+          clearTimeout(this.timer);
+        }.bind(this), false);
+      }
+    };
+
+    if (!isObject(window.SensorsDataWebJSSDKPlugin)) {
+      window.SensorsDataWebJSSDKPlugin = {
+        Deeplink: SADeepLink,
+        deeplink: SADeepLink
+      };
+    } else {
+      window.SensorsDataWebJSSDKPlugin.Deeplink = window.SensorsDataWebJSSDKPlugin.Deeplink || SADeepLink;
+      window.SensorsDataWebJSSDKPlugin.deeplink = window.SensorsDataWebJSSDKPlugin.deeplink || SADeepLink;
+    }
+
+    return SADeepLink;
+
+  }());
+
+  sd.modules['Pageleave'] = (function() {
+    'use strict';
+
+    var page_hidden_status_refresh_time = 5000;
+
+    function PageLeave() {
+      this.sd = null;
+      this.start_time = +new Date();
+      this.page_show_status = true;
+      this.page_hidden_status = false;
+      this._ = {};
+      this.timer = null;
+      this.current_page_url = document.referrer;
+      this.url = location.href;
+      this.option = {};
+      this.heartbeat_interval_time = 5000;
+      this.heartbeat_interval_timer = null;
+      this.page_id = null;
+      this.storage_name = 'sawebjssdkpageleave';
+    }
+    PageLeave.prototype.init = function(sd, option) {
+      if (sd) {
+        this.sd = sd;
+        this._ = this.sd._;
+        var _this = this;
+        if (option) {
+          this.option = option;
+
+          var heartbeat_interval_time = option.heartbeat_interval_time;
+          if (heartbeat_interval_time && (this._.isNumber(heartbeat_interval_time) || this._.isNumber(heartbeat_interval_time * 1)) && heartbeat_interval_time * 1 > 0) {
+            this.heartbeat_interval_time = heartbeat_interval_time * 1000;
+          }
+        }
+
+        this.page_id = Number(String(this._.getRandom()).slice(2, 5) + String(this._.getRandom()).slice(2, 4) + String(new Date().getTime()).slice(-4));
+        _this.addEventListener();
+        if (document.hidden === true) {
+          this.page_show_status = false;
+        } else {
+          _this.addHeartBeatInterval();
+        }
+        this.log('PageLeave初始化完毕');
+      } else {
+        this.log('神策JS SDK未成功引入');
+      }
+    };
+    PageLeave.prototype.log = function(message) {
+      if (this.sd) {
+        this.sd.log(message);
+      }
+    };
+    PageLeave.prototype.refreshPageEndTimer = function() {
+      var _this = this;
+      if (this.timer) {
+        clearTimeout(this.timer);
+        this.timer = null;
+      }
+      this.timer = setTimeout(function() {
+        _this.page_hidden_status = false;
+      }, page_hidden_status_refresh_time);
+    };
+    PageLeave.prototype.hiddenStatusHandler = function() {
+      clearTimeout(this.timer);
+      this.timer = null;
+      this.page_hidden_status = false;
+    };
+    PageLeave.prototype.pageStartHandler = function() {
+      this.start_time = +new Date();
+
+      if (!document.hidden === true) {
+        this.page_show_status = true;
+      } else {
+        this.page_show_status = false;
+      }
+      this.url = location.href;
+    };
+    PageLeave.prototype.pageEndHandler = function() {
+      if (this.page_hidden_status === true) return;
+
+      var data = this.getPageLeaveProperties();
+      if (this.page_show_status === false) {
+        delete data.event_duration;
+      }
+      this.page_show_status = false;
+      this.page_hidden_status = true;
+      if (this.isCollectUrl(this.url)) {
+        this.sd.track('$WebPageLeave', data);
+      }
+
+      this.refreshPageEndTimer();
+      this.delHeartBeatData();
+    };
+    PageLeave.prototype.addEventListener = function() {
+      this.addPageStartListener();
+      this.addPageSwitchListener();
+      this.addSinglePageListener();
+      this.addPageEndListener();
+    };
+    PageLeave.prototype.addPageStartListener = function() {
+      var _this = this;
+      if ('onpageshow' in window) {
+        this._.addEvent(window, 'pageshow', function() {
+          _this.pageStartHandler();
+          _this.hiddenStatusHandler();
+        });
+      }
+    };
+
+    PageLeave.prototype.isCollectUrl = function(url) {
+      if (typeof this.option.isCollectUrl === 'function') {
+        if (typeof url === 'string' && url !== '') {
+          return this.option.isCollectUrl(url);
+        } else {
+          return true;
+        }
+      } else {
+        return true;
+      }
+    };
+
+    PageLeave.prototype.addSinglePageListener = function() {
+      var _this = this;
+      this.sd.ee &&
+        this.sd.ee.spa.prepend('switch', function(last_url) {
+          if (last_url !== location.href) {
+            _this.url = last_url;
+            _this.pageEndHandler();
+            _this.stopHeartBeatInterval();
+            _this.current_page_url = _this.url;
+            _this.pageStartHandler();
+            _this.hiddenStatusHandler();
+            _this.startHeartBeatInterval();
+          }
+        });
+    };
+    PageLeave.prototype.addPageEndListener = function() {
+      var _this = this;
+      this._.each(['pagehide', 'beforeunload', 'unload'], function(key) {
+        if ('on' + key in window) {
+          _this._.addEvent(window, key, function() {
+            _this.pageEndHandler();
+
+            _this.stopHeartBeatInterval();
+          });
+        }
+      });
+    };
+    PageLeave.prototype.addPageSwitchListener = function() {
+      var _this = this;
+      this._.listenPageState({
+        visible: function() {
+          _this.pageStartHandler();
+          _this.hiddenStatusHandler();
+          _this.startHeartBeatInterval();
+        },
+        hidden: function() {
+          _this.url = location.href;
+          _this.pageEndHandler();
+          _this.stopHeartBeatInterval();
+        }
+      });
+    };
+    PageLeave.prototype.addHeartBeatInterval = function() {
+      if (!this._.localStorage.isSupport()) {
+        return;
+      }
+      this.startHeartBeatInterval();
+    };
+    PageLeave.prototype.startHeartBeatInterval = function() {
+      var _this = this;
+      if (this.heartbeat_interval_timer) {
+        this.stopHeartBeatInterval();
+      }
+      var COLLECT_URL_STATUS = true;
+      if (!this.isCollectUrl(this.url)) {
+        COLLECT_URL_STATUS = false;
+      }
+      this.heartbeat_interval_timer = setInterval(function() {
+        COLLECT_URL_STATUS && _this.saveHeartBeatData();
+      }, this.heartbeat_interval_time);
+      COLLECT_URL_STATUS && this.saveHeartBeatData('is_first_heartbeat');
+      this.reissueHeartBeatData();
+    };
+    PageLeave.prototype.stopHeartBeatInterval = function() {
+      clearInterval(this.heartbeat_interval_timer);
+      this.heartbeat_interval_timer = null;
+    };
+    PageLeave.prototype.saveHeartBeatData = function(type) {
+      var pageleave_properties = this.getPageLeaveProperties();
+      var device_time = new Date();
+      pageleave_properties.$time = device_time;
+      if (type === 'is_first_heartbeat') {
+        pageleave_properties.event_duration = 3.14;
+      }
+
+      var data = this.sd.kit.buildData({
+        type: 'track',
+        event: '$WebPageLeave',
+        properties: pageleave_properties
+      });
+
+      try {
+        if (this.sd.bridge.bridge_info.verify_success === 'success') {
+          data.properties.$time = device_time * 1;
+        }
+      } catch (err) {
+        this.log(err.message);
+      }
+
+      data.heartbeat_interval_time = this.heartbeat_interval_time;
+      this.sd.store.saveObjectVal(this.storage_name + '-' + this.page_id, data);
+    };
+    PageLeave.prototype.delHeartBeatData = function(storage_key) {
+      this._.localStorage.remove(storage_key || this.storage_name + '-' + this.page_id);
+    };
+    PageLeave.prototype.reissueHeartBeatData = function() {
+      var storage_length = window.localStorage.length;
+
+      for (var i = storage_length - 1; i >= 0; i--) {
+        var item_key = window.localStorage.key(i);
+        if (item_key && item_key !== this.storage_name + '-' + this.page_id && item_key.indexOf(this.storage_name + '-') === 0) {
+          var item_value = this.sd.store.readObjectVal(item_key);
+          if (this._.isObject(item_value) && new Date() * 1 - item_value.time > item_value.heartbeat_interval_time + 5000) {
+            delete item_value.heartbeat_interval_time;
+            this.sd.kit.sendData(item_value);
+            this.delHeartBeatData(item_key);
+          }
+        }
+      }
+    };
+    PageLeave.prototype.getPageLeaveProperties = function() {
+      var duration = (+new Date() - this.start_time) / 1000;
+      if (isNaN(duration) || duration < 0) {
+        duration = 0;
+      }
+      duration = Number(duration.toFixed(3));
+
+      var referrer = this._.getReferrer(this.current_page_url);
+      var viewport_position = (document.documentElement && document.documentElement.scrollTop) || window.pageYOffset || (document.body && document.body.scrollTop) || 0;
+      viewport_position = Math.round(viewport_position) || 0;
+      var data = {
+        $title: document.title,
+        $url: this._.getURL(this.url),
+        $url_path: this._.getURLPath(),
+        $referrer_host: referrer ? this._.getHostname(referrer) : '',
+        $referrer: referrer,
+        $viewport_position: viewport_position
+      };
+      if (duration !== 0) {
+        data.event_duration = duration;
+      }
+      data = this._.extend(data, this.option.custom_props);
+      return data;
+    };
+    var pageLeave = new PageLeave();
+    if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+      window.SensorsDataWebJSSDKPlugin.PageLeave = window.SensorsDataWebJSSDKPlugin.PageLeave || pageLeave;
+    } else {
+      window.SensorsDataWebJSSDKPlugin = {
+        PageLeave: pageLeave
+      };
+    }
+
+    return pageLeave;
+
+  }());
+
+  sd.modules['Pageload'] = (function() {
+    'use strict';
+
+    var PageLoad = {
+      init: function(sd) {
+        function getPageSize(p, prop) {
+          if (p.getEntries && typeof p.getEntries === 'function') {
+            var entries = p.getEntries();
+
+            var totalSize = null;
+            for (var i = 0; i < entries.length; i++) {
+              if ('transferSize' in entries[i]) {
+                totalSize += entries[i].transferSize;
+              }
+            }
+
+            if (sd._.isNumber(totalSize) && totalSize >= 0 && totalSize < 10737418240) {
+              prop.$page_resource_size = Number((totalSize / 1024).toFixed(3));
+            }
+          }
+        }
+
+        function fn() {
+          var p = window.performance || window.webkitPerformance || window.msPerformance || window.mozPerformance;
+          var duration = 0;
+          var prop = {
+            $url: sd._.getURL(),
+            $title: document.title,
+            $url_path: sd._.getURLPath(),
+            $referrer: sd._.getReferrer(null, true)
+          };
+
+          if (!p || !p.timing) {
+            sd.log('浏览器未支持 performance API.');
+          } else {
+            var t = p.timing;
+            if (t.fetchStart === 0 || t.domContentLoadedEventEnd === 0) {
+              sd.log('performance 数据获取异常');
+            } else {
+              duration = t.domContentLoadedEventEnd - t.fetchStart;
+            }
+            getPageSize(p, prop);
+          }
+          if (duration > 0) {
+            prop.event_duration = Number((duration / 1000).toFixed(3));
+          }
+          sd.track('$WebPageLoad', prop);
+
+          if (window.removeEventListener) {
+            window.removeEventListener('load', fn);
+          } else if (window.detachEvent) {
+            window.detachEvent('onload', fn);
+          }
+        }
+
+        if (document.readyState == 'complete') {
+          fn();
+        } else if (window.addEventListener) {
+          window.addEventListener('load', fn);
+        } else if (window.attachEvent) {
+          window.attachEvent('onload', fn);
+        }
+      }
+    };
+
+    if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+      window.SensorsDataWebJSSDKPlugin.PageLoad = window.SensorsDataWebJSSDKPlugin.PageLoad || PageLoad;
+    } else {
+      window.SensorsDataWebJSSDKPlugin = {
+        PageLoad: PageLoad
+      };
+    }
+
+    return PageLoad;
+
+  }());
+
+  sd.modules['RegisterProperties'] = (function() {
+    'use strict';
+
+    function addProperties(data, instance) {
+      if (data.type !== 'track') return data;
+      var sd = instance.sd;
+      var _ = sd._;
+      var check = sd.saEvent.check;
+
+      var copyData = _.extend2Lev({
+        properties: {}
+      }, data);
+      var currentProps = instance.currentProps;
+      var properties = copyData.properties;
+      var event = copyData.event;
+      var props = {};
+
+      _.each(currentProps, function(prop) {
+        if (_.isObject(prop)) {
+          if (prop.events.indexOf(event) > -1) {
+            if (check({
+                properties: prop.properties
+              })) {
+              props = _.extend(props, prop.properties);
+            }
+          }
+        } else if (_.isFunction(prop)) {
+          var callbackProp = prop({
+            event: event,
+            properties: properties,
+            data: copyData
+          });
+          if (_.isObject(callbackProp) && !_.isEmptyObject(callbackProp) && check({
+              properties: callbackProp
+            })) {
+            props = _.extend(props, callbackProp);
+          }
+        }
+      });
+      data.properties = _.extend(properties, props);
+      return data;
+    }
+
+    function DataStageImpl(registerInstance) {
+      var _this = this;
+      this.sd = registerInstance.sd;
+      this.currentProps = registerInstance.customRegister;
+      this.interceptor = {
+        addCustomProps: {
+          priority: 0,
+          entry: function(data) {
+            addProperties(data, _this);
+            return data;
+          }
+        }
+      };
+    }
+    DataStageImpl.prototype.init = function() {};
+
+    function registerPropertiesFeature(registerInstance) {
+      this.dataStage = new DataStageImpl(registerInstance);
+    }
+
+    function RegisterProperties() {
+      this.sd = null;
+      this.log = (window.console && window.console.log) || function() {};
+      this.customRegister = [];
+    }
+    RegisterProperties.prototype.init = function(sd) {
+      if (sd) {
+        this.sd = sd;
+        this._ = sd._;
+        this.log = sd.log;
+        sd.registerFeature(new registerPropertiesFeature(this));
+      } else {
+        this.log('神策JS SDK未成功引入');
+      }
+    };
+
+    RegisterProperties.prototype.register = function(customProps) {
+      if (!this.sd) {
+        this.log('神策JS SDK未成功引入');
+        return;
+      }
+      if (this._.isObject(customProps) && this._.isArray(customProps.events) && customProps.events.length > 0 && this._.isObject(customProps.properties) && !this._.isEmptyObject(customProps.properties)) {
+        this.customRegister.push(customProps);
+      } else {
+        this.log('RegisterProperties: register 参数错误');
+      }
+    };
+
+    RegisterProperties.prototype.hookRegister = function(customFun) {
+      if (!this.sd) {
+        this.log('神策JS SDK未成功引入');
+        return;
+      }
+      if (this._.isFunction(customFun)) {
+        this.customRegister.push(customFun);
+      } else {
+        this.log('RegisterProperties: hookRegister 参数错误');
+      }
+    };
+
+    var instance = new RegisterProperties();
+    instance.__constructor__ = RegisterProperties;
+    if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+      window.SensorsDataWebJSSDKPlugin.RegisterProperties = window.SensorsDataWebJSSDKPlugin.RegisterProperties || instance;
+    } else {
+      window.SensorsDataWebJSSDKPlugin = {
+        RegisterProperties: instance
+      };
+    }
+
+    return instance;
+
+  }());
+
+  sd.modules['RegisterPropertyPageHeight'] = (function() {
+    'use strict';
+
+    var _sd,
+      _oldBuildData,
+      _log = (window.console && window.console.log) || function() {};
+
+    function buildData(p) {
+      try {
+        if (p.event !== '$pageview' && (!p.type || p.type.slice(0, 7) !== 'profile')) {
+          var viewportHeightValue = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0;
+          var scrollHeightValue = document.documentElement.scrollHeight || 0;
+          var prop = {
+            $page_height: Math.max(viewportHeightValue, scrollHeightValue) || 0
+          };
+          p.properties = _sd._.extend(p.properties || {}, prop);
+        }
+      } catch (e) {
+        _log('页面高度获取异常。');
+      }
+      return _oldBuildData.call(_sd.kit, p);
+    }
+
+    var RegisterPropertyPageHeight = {
+      init: function(sd) {
+        _sd = sd;
+        _log = (_sd && _sd.log) || _log;
+
+        if (!sd || !sd.kit || !sd.kit.buildData) {
+          _log('RegisterPropertyPageHeight 插件初始化失败,当前主sdk不支持 RegisterPropertyPageHeight 插件，请升级主sdk');
+          return;
+        }
+        _oldBuildData = _sd.kit.buildData;
+        _sd.kit.buildData = buildData;
+        _log('RegisterPropertyPageHeight 插件初始化完成');
+      }
+    };
+
+    if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+      window.SensorsDataWebJSSDKPlugin.RegisterPropertyPageHeight = window.SensorsDataWebJSSDKPlugin.RegisterPropertyPageHeight || RegisterPropertyPageHeight;
+    } else {
+      window.SensorsDataWebJSSDKPlugin = {
+        RegisterPropertyPageHeight: RegisterPropertyPageHeight
+      };
+    }
+
+    return RegisterPropertyPageHeight;
+
+  }());
+
+  (function() {
+    'use strict';
+
+    var siteLinker = {};
+
+    siteLinker.getPart = function(part) {
+      var temp = false;
+      var len = this.option.length;
+      if (len) {
+        for (var i = 0; i < len; i++) {
+          if (part.indexOf(this.option[i]['part_url']) > -1) {
+            return true;
+          }
+        }
+      }
+      return temp;
+    };
+
+    siteLinker.getPartHash = function(part) {
+      var len = this.option.length;
+      var temp = false;
+      if (len) {
+        for (var i = 0; i < len; i++) {
+          if (part.indexOf(this.option[i]['part_url']) > -1) {
+            return this.option[i]['after_hash'];
+          }
+        }
+      }
+      return !!temp;
+    };
+
+    siteLinker.getCurrenId = function() {
+      var distinct_id = this.store.getDistinctId() || '',
+        first_id = this.store.getFirstId() || '';
+      if (this._.urlSafeBase64 && this._.urlSafeBase64.encode) {
+        distinct_id = distinct_id ? this._.urlSafeBase64.trim(this._.urlSafeBase64.encode(this._.base64Encode(distinct_id))) : '';
+      } else if (this._.rot13obfs) {
+        distinct_id = distinct_id ? this._.rot13obfs(distinct_id) : '';
+      }
+      var urlId = first_id ? 'f' + distinct_id : 'd' + distinct_id;
+      return encodeURIComponent(urlId);
+    };
+
+    siteLinker.rewriteUrl = function(url, target) {
+      var reg = /([^?#]+)(\?[^#]*)?(#.*)?/;
+      var arr = reg.exec(url),
+        nurl = '';
+      if (!arr) {
+        return;
+      }
+      var host = arr[1] || '',
+        search = arr[2] || '',
+        hash = arr[3] || '';
+      var idIndex;
+      if (this.getPartHash(url)) {
+        idIndex = hash.indexOf('_sasdk');
+        var queryIndex = hash.indexOf('?');
+        if (queryIndex > -1) {
+          if (idIndex > -1) {
+            nurl = host + search + '#' + hash.substring(1, idIndex) + '_sasdk=' + this.getCurrenId();
+          } else {
+            nurl = host + search + '#' + hash.substring(1) + '&_sasdk=' + this.getCurrenId();
+          }
+        } else {
+          nurl = host + search + '#' + hash.substring(1) + '?_sasdk=' + this.getCurrenId();
+        }
+      } else {
+        idIndex = search.indexOf('_sasdk');
+        var hasQuery = /^\?(\w)+/.test(search);
+        if (hasQuery) {
+          if (idIndex > -1) {
+            nurl = host + '?' + search.substring(1, idIndex) + '_sasdk=' + this.getCurrenId() + hash;
+          } else {
+            nurl = host + '?' + search.substring(1) + '&_sasdk=' + this.getCurrenId() + hash;
+          }
+        } else {
+          nurl = host + '?' + search.substring(1) + '_sasdk=' + this.getCurrenId() + hash;
+        }
+      }
+
+      if (target) {
+        target.href = nurl;
+      }
+      return nurl;
+    };
+
+    siteLinker.getUrlId = function() {
+      var sa_id = location.href.match(/_sasdk=([aufd][^\?\#\&\=]+)/);
+      if (this._.isArray(sa_id) && sa_id[1]) {
+        var uid = decodeURIComponent(sa_id[1]);
+        if (uid && (uid.substring(0, 1) === 'f' || uid.substring(0, 1) === 'd')) {
+          if (this._.urlSafeBase64 && this._.urlSafeBase64.isUrlSafeBase64 && this._.urlSafeBase64.isUrlSafeBase64(uid)) {
+            uid = uid.substring(0, 1) + this._.base64Decode(this._.urlSafeBase64.decode(uid.substring(1)));
+          } else if (this._.rot13defs) {
+            uid = uid.substring(0, 1) + this._.rot13defs(uid.substring(1));
+          }
+        }
+        return uid;
+      } else {
+        return '';
+      }
+    };
+
+    siteLinker.setRefferId = function() {
+      var distinct_id = this.store.getDistinctId();
+      var urlId = this.getUrlId();
+      if (urlId === '') {
+        return false;
+      }
+      var isAnonymousId = urlId.substring(0, 1) === 'a' || urlId.substring(0, 1) === 'd';
+      urlId = urlId.substring(1);
+
+      if (urlId === distinct_id) {
+        return false;
+      }
+      if (urlId && isAnonymousId && this.store.getFirstId()) {
+        this.sd.identify(urlId, true);
+        this.sd.saEvent.send({
+            original_id: urlId,
+            distinct_id: distinct_id,
+            type: 'track_signup',
+            event: '$SignUp',
+            properties: {}
+          },
+          null
+        );
+      }
+      if (urlId && isAnonymousId && !this.store.getFirstId()) {
+        this.sd.identify(urlId, true);
+      }
+      if (urlId && !isAnonymousId && !this.store.getFirstId()) {
+        this.sd.login(urlId);
+      }
+    };
+
+    siteLinker.addListen = function() {
+      var that = this;
+      var clickFn = function(event) {
+        var target = event.target;
+        var nodeName = target.tagName.toLowerCase();
+        var parent_target = target.parentNode;
+        var sasdk_url;
+        var sasdk_target;
+        if ((nodeName === 'a' && target.href) || (parent_target && parent_target.tagName && parent_target.tagName.toLowerCase() === 'a' && parent_target.href)) {
+          if (nodeName === 'a' && target.href) {
+            sasdk_url = target.href;
+            sasdk_target = target;
+          } else {
+            sasdk_url = parent_target.href;
+            sasdk_target = parent_target;
+          }
+          var location = that._.URL(sasdk_url);
+          var protocol = location.protocol;
+          if (protocol === 'http:' || protocol === 'https:') {
+            if (that.getPart(sasdk_url)) {
+              that.rewriteUrl(sasdk_url, sasdk_target);
+            }
+          }
+        }
+      };
+      that._.addEvent(document, 'mousedown', clickFn);
+      if (!!window.PointerEvent && 'maxTouchPoints' in window.navigator && window.navigator.maxTouchPoints >= 0) {
+        that._.addEvent(document, 'pointerdown', clickFn);
+      }
+    };
+
+    siteLinker.init = function(sd, option) {
+      this.sd = sd;
+      this._ = sd._;
+      this.store = sd.store;
+      this.para = sd.para;
+      if (this._.isObject(option) && this._.isArray(option.linker) && option.linker.length > 0) {
+        this.setRefferId();
+        this.addListen();
+      } else {
+        sd.log('请配置打通域名参数！');
+        return;
+      }
+      this.option = option.linker;
+      this.option = resolveOption(this.option);
+
+      function resolveOption(option) {
+        var len = option.length,
+          arr = [];
+        for (var i = 0; i < len; i++) {
+          if (/[A-Za-z0-9]+\./.test(option[i].part_url) && Object.prototype.toString.call(option[i].after_hash) == '[object Boolean]') {
+            arr.push(option[i]);
+          } else {
+            sd.log('linker 配置的第 ' + (i + 1) + ' 项格式不正确，请检查参数格式！');
+          }
+        }
+        return arr;
+      }
+    };
+
+    if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+      window.SensorsDataWebJSSDKPlugin.SiteLinker = window.SensorsDataWebJSSDKPlugin.SiteLinker || siteLinker;
+    } else {
+      window.SensorsDataWebJSSDKPlugin = {
+        SiteLinker: siteLinker
+      };
+    }
+
+  }());
+
   sd.modules['Utm'] = (function() {
     'use strict';
 
@@ -8979,6 +10268,7 @@ try {
 
   }());
 
+
   sd.use('Utm');
   if (typeof window['sensorsDataAnalytic201505'] === 'string') {
     sd.para = window[sensorsDataAnalytic201505].para;
@@ -9002,6 +10292,9 @@ try {
   }
 }
 
-var _sd$1 = _sd;
+var sd$1 = _sd;
 
-export default _sd$1;
+sd$1.use('SensorsChannel');
+sd$1.use('ChannelUtm');
+
+export default sd$1;

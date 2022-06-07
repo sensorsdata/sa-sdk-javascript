@@ -990,8 +990,7 @@
 
     this._events[eventName].push(
       listenerIsWrapped ?
-      listener :
-      {
+      listener : {
         listener: listener,
         once: false
       }
@@ -1014,8 +1013,7 @@
 
     this._events[eventName].unshift(
       listenerIsWrapped ?
-      listener :
-      {
+      listener : {
         listener: listener,
         once: false
       }
@@ -3150,7 +3148,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.22.8';
+  var sdkversion_placeholder = '1.22.9';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3466,21 +3464,7 @@
     pageProp: {},
 
     campaignParams: function() {
-      var campaign_keywords = source_channel_standard.split(' '),
-        kw = '',
-        params = {};
-      if (isArray(sdPara.source_channel) && sdPara.source_channel.length > 0) {
-        campaign_keywords = campaign_keywords.concat(sdPara.source_channel);
-        campaign_keywords = unique(campaign_keywords);
-      }
-      each(campaign_keywords, function(kwkey) {
-        kw = getQueryParam(location.href, kwkey);
-        if (kw.length) {
-          params[kwkey] = kw;
-        }
-      });
-
-      return params;
+      return sd.kit.getUtmData();
     },
     campaignParamsStandard: function(prefix, prefix_add) {
       prefix = prefix || '';
@@ -4472,6 +4456,14 @@
     }
   };
 
+  function processAddCustomProps(data) {
+    return dataStageImpl.stage.process('addCustomProps', data);
+  }
+
+  function processFormatData(data) {
+    return dataStageImpl.stage.process('formatData', data);
+  }
+
   var saEvent = {};
 
   saEvent.check = check;
@@ -5335,6 +5327,69 @@
     }
   };
 
+  function addSinglePageEvent(callback) {
+    var current_url = location.href;
+    var historyPushState = window.history.pushState;
+    var historyReplaceState = window.history.replaceState;
+
+    if (isFunction(window.history.pushState)) {
+      window.history.pushState = function() {
+        historyPushState.apply(window.history, arguments);
+        callback(current_url);
+        current_url = location.href;
+      };
+    }
+
+    if (isFunction(window.history.replaceState)) {
+      window.history.replaceState = function() {
+        historyReplaceState.apply(window.history, arguments);
+        callback(current_url);
+        current_url = location.href;
+      };
+    }
+
+    var singlePageEvent;
+    if (window.document.documentMode) {
+      singlePageEvent = 'hashchange';
+    } else {
+      singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
+    }
+
+    addEvent(window, singlePageEvent, function() {
+      callback(current_url);
+      current_url = location.href;
+    });
+  }
+
+  var spa = new EventEmitter();
+  var sdk = new EventEmitter();
+  var ee = {};
+
+  ee.spa = spa;
+
+  ee.sdk = sdk;
+
+  ee.initSystemEvent = function() {
+    addSinglePageEvent(function(url) {
+      spa.emit('switch', url);
+    });
+  };
+
+  ee.EVENT_LIST = {
+    spaSwitch: ['spa', 'switch'],
+    sdkAfterInitPara: ['sdk', 'afterInitPara'],
+    sdkBeforeInit: ['sdk', 'beforeInit'],
+    sdkAfterInit: ['sdk', 'afterInit']
+  };
+
+  function eventEmitterFacade(event_type, callback) {
+    var splitEvent = [];
+    if (typeof event_type === 'string' && event_type in ee.EVENT_LIST) {
+      splitEvent = ee.EVENT_LIST[event_type];
+      ee[splitEvent[0]].on(splitEvent[1], callback);
+    }
+  }
+
 
   function addReferrerHost(data) {
     var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
@@ -5470,8 +5525,7 @@
       var trackAttrs = isArray(sd.para.heatmap.track_attr) ?
         filter(sd.para.heatmap.track_attr, function(v) {
           return v && typeof v === 'string';
-        }) :
-        [];
+        }) : [];
       trackAttrs.push('data-sensors-click');
       sd.para.heatmap.track_attr = trackAttrs;
 
@@ -6251,7 +6305,8 @@
     para_default: defaultPara,
     log: sdLog,
     debug: debug,
-    IDENTITY_KEY: IDENTITY_KEY
+    IDENTITY_KEY: IDENTITY_KEY,
+    on: eventEmitterFacade
   };
 
   var EventEmitterSa = function() {
@@ -6333,6 +6388,17 @@
     decryptIfNeeded: decryptIfNeeded
   };
 
+  var businessStageImpl = {
+    stage: null,
+    init: function(stage) {
+      this.stage = stage;
+    }
+  };
+
+  function processGetUtmData() {
+    return businessStageImpl.stage && businessStageImpl.stage.process('getUtmData');
+  }
+
   var kit = {};
 
   kit.buildData = function(p) {
@@ -6366,7 +6432,7 @@
 
     extend(data, sd.store.getUnionId(), p);
 
-    dataStageImpl.stage.process('addCustomProps', data);
+    processAddCustomProps(data);
 
     if (isObject(p.properties) && !isEmptyObject(p.properties)) {
       extend(data.properties, p.properties);
@@ -6421,7 +6487,7 @@
     sd.addReferrerHost(data);
     sd.addPropsHook(data);
 
-    dataStageImpl.stage.process('formatData', data);
+    processFormatData(data);
     return data;
   };
 
@@ -6439,6 +6505,10 @@
     var dataStr = base64Encode(data);
     var crc = 'crc=' + hashCode(dataStr);
     return 'data=' + encodeURIComponent(dataStr) + '&ext=' + encodeURIComponent(crc);
+  };
+
+  kit.getUtmData = function() {
+    return processGetUtmData();
   };
 
   function getSendUrl(url, data) {
@@ -8057,50 +8127,6 @@
     }
   };
 
-  function addSinglePageEvent(callback) {
-    var current_url = location.href;
-    var historyPushState = window.history.pushState;
-    var historyReplaceState = window.history.replaceState;
-
-    if (isFunction(window.history.pushState)) {
-      window.history.pushState = function() {
-        historyPushState.apply(window.history, arguments);
-        callback(current_url);
-        current_url = location.href;
-      };
-    }
-
-    if (isFunction(window.history.replaceState)) {
-      window.history.replaceState = function() {
-        historyReplaceState.apply(window.history, arguments);
-        callback(current_url);
-        current_url = location.href;
-      };
-    }
-
-    var singlePageEvent;
-    if (window.document.documentMode) {
-      singlePageEvent = 'hashchange';
-    } else {
-      singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
-    }
-
-    addEvent(window, singlePageEvent, function() {
-      callback(current_url);
-      current_url = location.href;
-    });
-  }
-
-  var spa = new EventEmitter();
-
-  var ee = {};
-  ee.spa = spa;
-  ee.initSystemEvent = function() {
-    addSinglePageEvent(function(url) {
-      spa.emit('switch', url);
-    });
-  };
-
   function getFlagValue(param) {
     var result = null;
     var reg = new RegExp(param + '=([^&#]+)');
@@ -8297,7 +8323,7 @@
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.22.8'
+              sdkversion: '1.22.9'
             }
           },
           '*'
@@ -8535,7 +8561,7 @@
   function InterceptorContext(data, pos, sd) {
     var originalData = null;
     try {
-      originalData = JSON.parse(JSON.stringify(data));
+      originalData = JSON.parse(JSON.stringify(data || null));
     } catch (e) {
       sdLog(e);
     }
@@ -8642,14 +8668,37 @@
 
   var dataStage = new Stage(processDef);
 
+  var processDef$1 = {
+    getUtmData: null
+  };
+
+  var businessStage = new Stage(processDef$1);
+
   function registerFeature(feature) {
     feature && feature.dataStage && dataStage.registerStageImplementation(feature.dataStage);
+    feature && feature.businessStage && businessStage.registerStageImplementation(feature.businessStage);
+  }
+
+  var interceptorRegisters = {
+    dataStage: function registerDataStageInterceptor(interceptor) {
+      interceptor && dataStage.registerInterceptor(interceptor);
+    },
+    businessStage: function registerBusinessInterceptor(interceptor) {
+      interceptor && businessStage.registerInterceptor(interceptor);
+    }
+  };
+
+  function registerInterceptor(stage, interceptor) {
+    if (interceptorRegisters[stage]) {
+      interceptorRegisters[stage](interceptor);
+    }
   }
 
   function CoreFeature(sd) {
     sd.kit = kit;
     sd.saEvent = saEvent;
     this.dataStage = dataStageImpl;
+    this.businessStage = businessStageImpl;
   }
 
   function strip_sa_properties(p) {
@@ -8837,6 +8886,7 @@
       sd.heatmap = heatmap;
       sd.detectMode = detectMode;
       sd.registerFeature = registerFeature;
+      sd.registerInterceptor = registerInterceptor;
       registerFeature(new CoreFeature(sd));
       registerFeature(new DataFormatFeature(sd));
     }
@@ -8845,9 +8895,13 @@
     for (var f in imp) {
       sd[f] = imp[f];
     }
+    sd.on = eventEmitterFacade;
+    sd.ee = ee;
+    sd.use = use;
   }
 
   sd.init = function(para) {
+    ee.sdk.emit('beforeInit');
     if (sd.readyState && sd.readyState.state && sd.readyState.state >= 2) {
       return false;
     }
@@ -8856,14 +8910,16 @@
       implementCore(true);
     }
 
-    sd.ee.initSystemEvent();
+    ee.initSystemEvent();
 
     sd.setInitVar();
     sd.readyState.setState(2);
     sd.initPara(para);
+    ee.sdk.emit('afterInitPara');
     sd.bridge.supportAppCallJs();
     sd.detectMode();
     sd.iOSWebClickPolyfill();
+    ee.sdk.emit('afterInit');
   };
 
   if (is_compliance_enabled) {
@@ -8876,7 +8932,62 @@
   var _sd = sd;
   try {
     sd.modules = {};
+    sd.modules['Utm'] = (function() {
+      'use strict';
 
+      var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
+
+      var sd;
+      var utm = {
+        init: function(sa) {
+          if (!sa || sd) {
+            return;
+          }
+          sd = sa;
+          sd.on &&
+            sd.on('sdkAfterInitPara', function() {
+              sd.registerInterceptor('businessStage', {
+                getUtmData: {
+                  priority: 0,
+                  entry: function() {
+                    return getUtm();
+                  }
+                }
+              });
+            });
+
+          function getUtm() {
+            var campaign_keywords = source_channel_standard.split(' '),
+              kw = '',
+              params = {};
+            if (sd._.isArray(sd.para.source_channel) && sd.para.source_channel.length > 0) {
+              campaign_keywords = campaign_keywords.concat(sd.para.source_channel);
+              campaign_keywords = sd._.unique(campaign_keywords);
+            }
+            sd._.each(campaign_keywords, function(kwkey) {
+              kw = sd._.getQueryParam(location.href, kwkey);
+              if (kw.length) {
+                params[kwkey] = kw;
+              }
+            });
+            return params;
+          }
+        }
+      };
+
+      if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
+        window.SensorsDataWebJSSDKPlugin.Utm = window.SensorsDataWebJSSDKPlugin.Utm || utm;
+      } else {
+        window.SensorsDataWebJSSDKPlugin = {
+          Utm: utm
+        };
+      }
+
+      return utm;
+
+    }());
+
+    sd.use('Utm');
     if (typeof window['sensorsDataAnalytic201505'] === 'string') {
       sd.para = window[sensorsDataAnalytic201505].para;
       sd._q = window[sensorsDataAnalytic201505]._q;
