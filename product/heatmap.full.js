@@ -8150,6 +8150,7 @@
             this.setNoticeMap(data, url);
           }
         } else {
+          var href = sd._.urlParse(location.href);
           if (!data) {
             return false;
           }
@@ -8159,20 +8160,24 @@
           var obj = {
             'sa-request-id': data,
             'sa-request-type': type,
-            'sa-request-url': sessionStorage ? sessionStorage.getItem('sensors_heatmap_url') || '' : ''
+            'sa-request-url': sessionStorage && sessionStorage.getItem ? sessionStorage.getItem('sensors_heatmap_url') || '' : ''
           };
-          var windowNameParam = {};
           try {
-            if (window.name) {
+            var windowNameParam = {};
+            if (_.isJSONString(window.name)) {
               windowNameParam = JSON.parse(window.name);
-              obj = _.extend(windowNameParam, obj);
+              window.name = JSON.stringify(_.extend(windowNameParam, obj));
+            } else if (window.name == '') {
+              window.name = JSON.stringify(obj);
             }
-            window.name = JSON.stringify(obj);
-          } catch (e) {
-            window.name = JSON.stringify(obj);
+          } catch (e) {}
+          if (this.requestType == 1) {
+            href.addQueryString(obj);
+            location.href = href.getUrl();
+          } else {
+            sessionStorage && sessionStorage.setItem && sessionStorage.setItem('sensors_heatmap_type', type);
+            location.reload();
           }
-
-          location.reload();
         }
       },
       setDropDown: function(request_id, type, url) {
@@ -8451,11 +8456,15 @@
             }
             sessionStorage.removeItem('sensors_heatmap_id');
           };
-
+          if (url) {
+            this.requestType = 3;
+          } else {
+            this.requestType = 1;
+          }
           heatmap.getServerData.start({
             url: {
-              ajax: url ? urlParse2Value : urlParse.getUrl(),
-              jsonp: url ? jsonpUrlParse2Value : jsonpUrlParse.getUrl()
+              ajax: this.requestType === 3 ? urlParse2Value : urlParse.getUrl(),
+              jsonp: this.requestType === 3 ? jsonpUrlParse2Value : jsonpUrlParse.getUrl()
             },
             success: suc,
             error: err
@@ -8782,41 +8791,28 @@
           }
 
           $('body').append('<div id="heatMapContainer"></div>');
+
           if (url) {
             this.requestType = 3;
-            heatmap.getServerData.start({
-              url: {
-                ajax: urlParse2Value,
-                jsonp: jsonpUrlParse2Value
-              },
-              success: function(data) {
-                me.originalHeatData = me.processOriginalHeatData(data);
-                me.bindEffect();
-                me.calculateHeatData(data);
-              },
-              error: function(res) {
-                me.showErrorInfo(2, res);
-                sessionStorage.removeItem('sensors_heatmap_id');
-              }
-            });
           } else {
             this.requestType = 1;
-            heatmap.getServerData.start({
-              url: {
-                ajax: urlParse.getUrl(),
-                jsonp: jsonpUrlParse.getUrl()
-              },
-              success: function(data) {
-                me.originalHeatData = me.processOriginalHeatData(data);
-                me.bindEffect();
-                me.calculateHeatData(data);
-              },
-              error: function(res) {
-                me.showErrorInfo(4, res);
-                sessionStorage.removeItem('sensors_heatmap_id');
-              }
-            });
           }
+
+          heatmap.getServerData.start({
+            url: {
+              ajax: this.requestType === 3 ? urlParse2Value : urlParse.getUrl(),
+              jsonp: this.requestType === 3 ? jsonpUrlParse2Value : jsonpUrlParse.getUrl()
+            },
+            success: function(data) {
+              me.originalHeatData = me.processOriginalHeatData(data);
+              me.bindEffect();
+              me.calculateHeatData(data);
+            },
+            error: function(res) {
+              me.showErrorInfo(2, res);
+              sessionStorage.removeItem('sensors_heatmap_id');
+            }
+          });
         } else {
           sd.log('缺少web_url');
         }
@@ -9457,7 +9453,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.22.9';
+      sd.heatmap_version = '1.23.1';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {

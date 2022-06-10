@@ -26,12 +26,12 @@ export default function Layout(props) {
                   is_track_single_page: true, // !important
                   name: 'sensors',
                   server_url:'https://test-syg.datasink.sensorsdata.cn/sa?token=27f1e21b78daf376&project=lixiang',
-                  heatmap_url: "https://cdn.jsdelivr.net/npm/sa-sdk-javascript@1.13.11/heatmap.min.js",
+                  heatmap_url: "https://static.sensorsdata.cn/sdk/latest/heatmap.min.js",
                   heatmap: {}
                 });
             `
             }} />
-        <script src="https://cdn.jsdelivr.net/npm/sa-sdk-javascript@1.13.11/sensorsdata.min.js"></script>
+        <script src="https://static.sensorsdata.cn/sdk/latest/sensorsdata.min.js"></script>
         <script dangerouslySetInnerHTML={{ __html: `sensors.quick('autoTrack');` }} />
       </Head>
       <div style={layoutStyle}>

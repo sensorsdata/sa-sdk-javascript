@@ -18,8 +18,8 @@
     y.parentNode.insertBefore(x, y);
   }
 })({
-  sdk_url: 'https://cdn.jsdelivr.net/npm/sa-sdk-javascript@1.13.10/sensorsdata.min.js',
-  heatmap_url: 'https://cdn.jsdelivr.net/npm/sa-sdk-javascript@1.13.10/heatmap.min.js',
+  sdk_url: 'https://static.sensorsdata.cn/sdk/latest/sensorsdata.min.js',
+  heatmap_url: 'https://static.sensorsdata.cn/sdk/latest/heatmap.min.js',
   name: 'sensors',
   server_url: 'https://test-syg.datasink.sensorsdata.cn/sa?token=27f1e21b78daf376&project=lixiang',
   heatmap: {}

@@ -3144,7 +3144,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.22.9';
+  var sdkversion_placeholder = '1.23.1';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -5463,7 +5463,6 @@
     sd.debug.protocol.serverUrl();
 
     sd.bridge.initPara();
-    sd.bridge.initState();
 
     var batch_send_default = {
       datasend_timeout: 6000,
@@ -6144,19 +6143,19 @@
       resetIdentities(tempObj);
       return true;
     }
-    return true;
+    return false;
   }
 
   function login(id, callback) {
     if (typeof id === 'number') {
       id = String(id);
     }
-    var ret = loginBody({
+    var returnValue = loginBody({
       id: id,
       callback: callback,
       name: IDENTITY_KEY.LOGIN
     });
-    !ret && isFunction(callback) && callback();
+    !returnValue && isFunction(callback) && callback();
   }
 
   function loginWithKey(name, id) {
@@ -6666,6 +6665,61 @@
     return obj;
   }
 
+  var sendStageImpl = {
+    stage: null,
+    init: function(stage) {
+      this.stage = stage;
+    },
+    interceptor: {
+      send: {
+        entry: function(data, context) {
+          var sd = context.sensors;
+          var callback = data.callback;
+
+          if (!sd.para.app_js_bridge) {
+            sd.debug.apph5({
+              data: data.data,
+              step: '1',
+              output: 'code'
+            });
+            sd.sendState.prepareServerUrl(data);
+            return data;
+          }
+
+          if (!sd.para.app_js_bridge.is_mui) {
+            if (sd.para.app_js_bridge.is_send === true) {
+              sd.debug.apph5({
+                data: data.data,
+                step: '2',
+                output: 'all'
+              });
+              sd.sendState.prepareServerUrl(data);
+              return data;
+            }
+            sd._.isFunction(callback) && callback();
+            return data;
+          }
+
+          if (sd.para.app_js_bridge.is_mui) {
+            if (window.plus && window.plus.SDAnalytics && window.plus.SDAnalytics.trackH5Event) {
+              window.plus.SDAnalytics.trackH5Event(data);
+              sd._.isFunction(callback) && callback();
+              return data;
+            }
+
+            if (sd.para.app_js_bridge.is_send === true) {
+              sd.sendState.prepareServerUrl(data);
+              return data;
+            }
+
+            sd._.isFunction(callback) && callback();
+            return data;
+          }
+        }
+      }
+    }
+  };
+
 
   var sendState = {};
 
@@ -6702,7 +6756,7 @@
     if (originData.type === 'item_set' || originData.type === 'item_delete') {
       this.prepareServerUrl(requestData);
     } else {
-      sd.bridge.dataSend(requestData, this, callback);
+      sendStageImpl.stage.process('beforeSend', requestData);
     }
 
     sd.log(originData);
@@ -6822,7 +6876,7 @@
     enterFullTrack();
   }
 
-  function CancelationToken(canceled) {
+  function CancellationToken(canceled) {
     this.cancel = function() {
       canceled = true;
     };
@@ -6844,7 +6898,7 @@
     this.getPosition = function() {
       return pos;
     };
-    this.cancelationToken = new CancelationToken();
+    this.cancellationToken = new CancellationToken();
     this.sensors = sd;
   }
 
@@ -6874,8 +6928,7 @@
         try {
           pos.current = i + 1;
           data = itcptrs[i].call(null, data, context) || data;
-          if (context.cancelationToken.getCanceled()) {
-            sdLog('process [' + proc + '] has been canceled.');
+          if (context.cancellationToken.getCanceled()) {
             break;
           }
         } catch (e) {
@@ -6909,7 +6962,7 @@
       }
 
       if (!isNumber(itcptr.priority)) {
-        itcptr.priority = 10000000;
+        itcptr.priority = Number.MAX_VALUE;
       }
 
       if (!this.registeredInterceptors[i]) {
@@ -6917,20 +6970,12 @@
       }
 
       var curIts = this.registeredInterceptors[i];
-      var priority = itcptr.priority;
-      var entry = itcptr.entry;
+      itcptr.entry.priority = itcptr.priority;
+      curIts.push(itcptr.entry);
 
-      switch (true) {
-        case priority <= 0:
-          curIts.unshift(entry);
-          break;
-        case priority >= curIts.length:
-          curIts.push(entry);
-          break;
-        default:
-          curIts.splice(priority, 0, entry);
-          break;
-      }
+      curIts.sort(function(ita, itb) {
+        return ita.priority - itb.priority;
+      });
     }
   };
 
@@ -6942,20 +6987,30 @@
   var dataStage = new Stage(processDef);
 
   var processDef$1 = {
+    beforeSend: 'send',
+    send: 'afterSend',
+    afterSend: null
+  };
+
+  var sendStage = new Stage(processDef$1);
+
+  var processDef$2 = {
     getUtmData: null
   };
 
-  var businessStage = new Stage(processDef$1);
+  var businessStage = new Stage(processDef$2);
 
   function registerFeature(feature) {
     feature && feature.dataStage && dataStage.registerStageImplementation(feature.dataStage);
     feature && feature.businessStage && businessStage.registerStageImplementation(feature.businessStage);
+    feature && feature.sendStage && sendStage.registerStageImplementation(feature.sendStage);
   }
 
   function CoreFeature(sd) {
     sd.kit = kit;
     sd.saEvent = saEvent;
     this.dataStage = dataStageImpl;
+    this.sendStage = sendStageImpl;
     this.businessStage = businessStageImpl;
   }
 
