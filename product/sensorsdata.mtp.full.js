@@ -3144,7 +3144,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.23.1';
+  var sdkversion_placeholder = '1.23.2';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3589,6 +3589,15 @@
       return cookie.isSupport(testKey, testValue);
     }
   };
+
+  function getSafeHttpProtocol() {
+    var protocol = location.protocol;
+    if (protocol === 'http:' || protocol === 'https:') {
+      return protocol;
+    } else {
+      return 'http:';
+    }
+  }
 
   function getNewUserFlagKey(name_prefix, url) {
     var sub = '';
@@ -4681,7 +4690,7 @@
         }
       }
       if (!sd.para.heatmap_url) {
-        sd.para.heatmap_url = location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/heatmap.min.js';
+        sd.para.heatmap_url = getSafeHttpProtocol() + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/heatmap.min.js';
       }
     },
     getDomIndex: function(el) {

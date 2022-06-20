@@ -3140,7 +3140,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.23.1';
+var sdkversion_placeholder = '1.23.2';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -3585,6 +3585,15 @@ var cookie$1 = {
     return cookie.isSupport(testKey, testValue);
   }
 };
+
+function getSafeHttpProtocol() {
+  var protocol = location.protocol;
+  if (protocol === 'http:' || protocol === 'https:') {
+    return protocol;
+  } else {
+    return 'http:';
+  }
+}
 
 function getNewUserFlagKey(name_prefix, url) {
   var sub = '';
@@ -4677,7 +4686,7 @@ var heatmap = {
       }
     }
     if (!sd.para.heatmap_url) {
-      sd.para.heatmap_url = location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/heatmap.min.js';
+      sd.para.heatmap_url = getSafeHttpProtocol() + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/heatmap.min.js';
     }
   },
   getDomIndex: function(el) {
@@ -6929,16 +6938,16 @@ BatchSend.prototype = {
       lockTimeout = 10000,
       lockPrefix = 'sajssdk-lock-get-';
     for (var i = 0; i < localStorage.length; i++) {
-      var key = localStorage.key(i),
+      var item = localStorage.key(i),
         self = this;
-      if (key.indexOf(tabStoragePrefix) === 0) {
-        var tabStorage = safeJSONParse(_localStorage.get(key)) || this.generateTabStorageVal();
+      if (item.indexOf(tabStoragePrefix) === 0) {
+        var tabStorage = safeJSONParse(_localStorage.get(item)) || this.generateTabStorageVal();
         for (var j = 0; j < tabStorage.data.length; j++) {
           notSendMap[tabStorage.data[j]] = true;
         }
         if (now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
           var concurrentStorage = new ConcurrentStorage(lockPrefix);
-          concurrentStorage.get(key, lockTimeout, 1000, function(data) {
+          concurrentStorage.get(item, lockTimeout, 1000, function(data) {
             if (data) {
               if (_localStorage.get(self.tabKey) === null) {
                 self.generateTabStorage();
@@ -6948,12 +6957,12 @@ BatchSend.prototype = {
             }
           });
         }
-      } else if (key.indexOf(lockPrefix) === 0) {
-        var lock = safeJSONParse(_localStorage.get(key)) || {
+      } else if (item.indexOf(lockPrefix) === 0) {
+        var lock = safeJSONParse(_localStorage.get(item)) || {
           expireTime: 0
         };
         if (now() - lock.expireTime > lockTimeout) {
-          _localStorage.remove(key);
+          _localStorage.remove(item);
         }
       }
     }
@@ -8131,7 +8140,7 @@ var vtrackMode = {
       success: function() {},
       error: function() {},
       type: 'js',
-      url: sd.para.vtrack_url ? sd.para.vtrack_url : location.protocol + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/vtrack.min.js'
+      url: sd.para.vtrack_url ? sd.para.vtrack_url : getSafeHttpProtocol() + '//static.sensorsdata.cn/sdk/' + sd.lib_version + '/vtrack.min.js'
     });
   },
   messageListener: function(event) {
@@ -8176,16 +8185,20 @@ var vtrackMode = {
     vtrackMode.postMessage();
   },
   postMessage: function() {
-    if (window.parent && window.parent.postMessage) {
-      window.parent.postMessage({
-          source: 'sa-web-sdk',
-          type: 'v-is-vtrack',
-          data: {
-            sdkversion: '1.23.1'
-          }
-        },
-        '*'
-      );
+    try {
+      if (window.parent && window.parent.postMessage) {
+        window.parent.postMessage({
+            source: 'sa-web-sdk',
+            type: 'v-is-vtrack',
+            data: {
+              sdkversion: '1.23.2'
+            }
+          },
+          '*'
+        );
+      }
+    } catch (e) {
+      sd.log('浏览器版本过低，不支持 postMessage API');
     }
   },
   notifyUser: function() {

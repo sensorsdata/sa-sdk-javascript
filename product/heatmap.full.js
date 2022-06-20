@@ -1,6 +1,19 @@
 (function() {
   var $ = function(window) {
 
+
+    var getRandomBasic = function() {
+      var today = new Date();
+      var seed = today.getTime();
+
+      function rnd() {
+        seed = (seed * 9301 + 49297) % 233280;
+        return seed / 233280.0;
+      }
+      return Math.ceil(rnd() * 100000) / 100000;
+    };
+
+
     var arr = [];
 
     var document = window.document;
@@ -192,7 +205,7 @@
 
     jQuery.extend({
 
-      expando: "jQuery" + (version + Math.random()).replace(/\D/g, ""),
+      expando: "jQuery" + (version + getRandomBasic()).replace(/\D/g, ""),
 
       isReady: true,
 
@@ -2029,7 +2042,7 @@
                 setMatched = [],
                 contextBackup = outermostContext,
                 elems = seed || byElement && Expr.find["TAG"]("*", outermost),
-                dirrunsUnique = (dirruns += contextBackup == null ? 1 : Math.random() || 0.1),
+                dirrunsUnique = (dirruns += contextBackup == null ? 1 : getRandomBasic() || 0.1),
                 len = elems.length;
 
               if (outermost) {
@@ -9453,7 +9466,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.23.1';
+      sd.heatmap_version = '1.23.2';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {
