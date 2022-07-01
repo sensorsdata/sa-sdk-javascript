@@ -2080,21 +2080,20 @@ function formatJsonString(obj) {
   }
 }
 
+function getSafeHostname(hostname) {
+  if (typeof hostname === 'string' && hostname.match(/^[a-zA-Z0-9\u4e00-\u9fa5\-\.]+$/)) {
+    return hostname;
+  } else {
+    return '';
+  }
+}
+
 function getCookieTopLevelDomain(hostname, testFlag) {
   hostname = hostname || location.hostname;
   testFlag = testFlag || 'domain_test';
 
-  function validHostname(value) {
-    if (value) {
-      return value;
-    } else {
-      return false;
-    }
-  }
-  var new_hostname = validHostname(hostname);
-  if (!new_hostname) {
-    return '';
-  }
+  var new_hostname = getSafeHostname(hostname);
+
   var splitResult = new_hostname.split('.');
   if (isArray(splitResult) && splitResult.length >= 2 && !/^(\d+\.)+\d+$/.test(new_hostname)) {
     var domainStr = '.' + splitResult.splice(splitResult.length - 1, 1);
@@ -2287,7 +2286,11 @@ function getUA() {
   var Sys = {};
   var ua = navigator.userAgent.toLowerCase();
   var s;
-  if ((s = ua.match(/opera.([\d.]+)/))) {
+  if ((s = ua.match(/ qq\/([\d.]+)/))) {
+    Sys.qqBuildinBrowser = Number(s[1].split('.')[0]);
+  } else if ((s = ua.match(/mqqbrowser\/([\d.]+)/))) {
+    Sys.qqBrowser = Number(s[1].split('.')[0]);
+  } else if ((s = ua.match(/opera.([\d.]+)/))) {
     Sys.opera = Number(s[1].split('.')[0]);
   } else if ((s = ua.match(/msie ([\d.]+)/))) {
     Sys.ie = Number(s[1].split('.')[0]);
@@ -2478,7 +2481,9 @@ function isSupportBeaconSend() {
     if (typeof Sys.safari === 'undefined') {
       Sys.safari = ver[0];
     }
-    if (ver[0] && ver[0] < 13) {
+    if (ver[0] && (Sys.qqBuildinBrowser || Sys.qqBrowser)) {
+      supported = false;
+    } else if (ver[0] && ver[0] < 13) {
       if (Sys.chrome > 41 || Sys.firefox > 30 || Sys.opera > 25 || Sys.safari > 12) {
         supported = true;
       }
@@ -3140,7 +3145,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.23.2';
+var sdkversion_placeholder = '1.23.3';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -8191,7 +8196,7 @@ var vtrackMode = {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.23.2'
+              sdkversion: '1.23.3'
             }
           },
           '*'
@@ -9215,7 +9220,7 @@ try {
         }
         sd = sa;
         var that = this;
-        if (sd.on) {
+        if (sd.on && sd.readyState.state < 3) {
           sd.on('sdkAfterInitPara', initChannelPlugin);
         } else {
           initChannelPlugin();
