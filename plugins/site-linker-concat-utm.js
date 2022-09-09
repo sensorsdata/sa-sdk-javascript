@@ -46,6 +46,7 @@ sensorsDataAnalytic201505.modules['SiteLinkerConcatUtm'] = (function () {
   };
 
   siteLinker.rewriteUrl = function (url, target) {
+    var _this = this;
     var reg = /([^?#]+)(\?[^#]*)?(#.*)?/;
     var arr = reg.exec(url),
       nurl = '';
@@ -56,29 +57,43 @@ sensorsDataAnalytic201505.modules['SiteLinkerConcatUtm'] = (function () {
       search = arr[2] || '',
       hash = arr[3] || '';
     var idIndex;
+    var sa_id = '_sasdk=' + this.getCurrenId();
+    var changeSaId = function (str) {
+      var arr = str.split('&');
+      var new_arr = [];
+      _this._.each(arr, function (val) {
+        if (val.indexOf('_sasdk=') > -1) {
+          new_arr.push(sa_id);
+        } else {
+          new_arr.push(val);
+        }
+      });
+      return new_arr.join('&');
+    };
+
     if (this.getPartHash(url)) {
       idIndex = hash.indexOf('_sasdk');
       var queryIndex = hash.indexOf('?');
       if (queryIndex > -1) {
         if (idIndex > -1) {
-          nurl = host + search + '#' + hash.substring(1, idIndex) + '_sasdk=' + this.getCurrenId();
+          nurl = host + search + '#' + hash.substring(1, idIndex) + changeSaId(hash.substring(idIndex, hash.length));
         } else {
-          nurl = host + search + '#' + hash.substring(1) + '&_sasdk=' + this.getCurrenId();
+          nurl = host + search + hash + '&' + sa_id;
         }
       } else {
-        nurl = host + search + '#' + hash.substring(1) + '?_sasdk=' + this.getCurrenId();
+        nurl = host + search + '#' + hash.substring(1) + '?' + sa_id;
       }
     } else {
       idIndex = search.indexOf('_sasdk');
       var hasQuery = /^\?(\w)+/.test(search);
       if (hasQuery) {
         if (idIndex > -1) {
-          nurl = host + '?' + search.substring(1, idIndex) + '_sasdk=' + this.getCurrenId() + hash;
+          nurl = host + '?' + changeSaId(search.substring(1)) + hash;
         } else {
-          nurl = host + '?' + search.substring(1) + '&_sasdk=' + this.getCurrenId() + hash;
+          nurl = host + search + '&' + sa_id + hash;
         }
       } else {
-        nurl = host + '?' + search.substring(1) + '_sasdk=' + this.getCurrenId() + hash;
+        nurl = host + '?' + sa_id + hash;
       }
     }
 

@@ -751,17 +751,6 @@
     };
   });
 
-  (function() {
-    if (!String.prototype.replaceAll) {
-      String.prototype.replaceAll = function(str, newStr) {
-        if (Object.prototype.toString.call(str).toLowerCase() === '[object regexp]') {
-          return this.replace(str, newStr);
-        }
-        return this.replace(new RegExp(str, 'g'), newStr);
-      };
-    }
-  })();
-
   function isFunction(arg) {
     if (!arg) {
       return false;
@@ -1939,7 +1928,7 @@
 
       function getValid(data) {
         if (data) {
-          return data.replaceAll(/\r\n/g, '');
+          return data.replace(/\r\n/g, '');
         } else {
           return false;
         }
@@ -3149,7 +3138,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.23.3';
+  var sdkversion_placeholder = '1.23.4';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -6811,7 +6800,7 @@
     instance.start();
   };
 
-  var methods = ['setItem', 'deleteItem', 'getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister'];
+  var methods = ['setItem', 'deleteItem', 'getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister', 'bind', 'unbind', 'loginWithKey'];
 
   function checkState() {
     each(methods, function(method) {

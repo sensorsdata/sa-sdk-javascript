@@ -747,17 +747,6 @@ var sd = {};
   };
 });
 
-(function() {
-  if (!String.prototype.replaceAll) {
-    String.prototype.replaceAll = function(str, newStr) {
-      if (Object.prototype.toString.call(str).toLowerCase() === '[object regexp]') {
-        return this.replace(str, newStr);
-      }
-      return this.replace(new RegExp(str, 'g'), newStr);
-    };
-  }
-})();
-
 function isFunction(arg) {
   if (!arg) {
     return false;
@@ -1935,7 +1924,7 @@ var cookie = {
 
     function getValid(data) {
       if (data) {
-        return data.replaceAll(/\r\n/g, '');
+        return data.replace(/\r\n/g, '');
       } else {
         return false;
       }
@@ -3145,7 +3134,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.23.3';
+var sdkversion_placeholder = '1.23.4';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -8196,7 +8185,7 @@ var vtrackMode = {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.23.3'
+              sdkversion: '1.23.4'
             }
           },
           '*'
@@ -8368,7 +8357,7 @@ function detectMode() {
   }
 }
 
-var methods = ['setItem', 'deleteItem', 'getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister'];
+var methods = ['setItem', 'deleteItem', 'getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister', 'bind', 'unbind', 'loginWithKey'];
 
 function checkState() {
   each(methods, function(method) {
@@ -9855,7 +9844,7 @@ try {
         var data = JSON.stringify(_.extend({
           server_url: sd.para.server_url
         }, originData));
-        data = data.replaceAll(/\r\n/g, '');
+        data = data.replace(/\r\n/g, '');
         data = encodeURIComponent(data);
         return 'sensorsanalytics://trackEvent?event=' + data;
       }
@@ -10141,7 +10130,7 @@ try {
       var data = {
         $title: document.title,
         $url: this._.getURL(this.url),
-        $url_path: this._.getURLPath(),
+        $url_path: this._.getURLPath(this._.URL(this.url).pathname),
         $referrer_host: referrer ? this._.getHostname(referrer) : '',
         $referrer: referrer,
         $viewport_position: viewport_position
@@ -10453,6 +10442,7 @@ try {
     };
 
     siteLinker.rewriteUrl = function(url, target) {
+      var _this = this;
       var reg = /([^?#]+)(\?[^#]*)?(#.*)?/;
       var arr = reg.exec(url),
         nurl = '';
@@ -10463,29 +10453,43 @@ try {
         search = arr[2] || '',
         hash = arr[3] || '';
       var idIndex;
+      var sa_id = '_sasdk=' + this.getCurrenId();
+      var changeSaId = function(str) {
+        var arr = str.split('&');
+        var new_arr = [];
+        _this._.each(arr, function(val) {
+          if (val.indexOf('_sasdk=') > -1) {
+            new_arr.push(sa_id);
+          } else {
+            new_arr.push(val);
+          }
+        });
+        return new_arr.join('&');
+      };
+
       if (this.getPartHash(url)) {
         idIndex = hash.indexOf('_sasdk');
         var queryIndex = hash.indexOf('?');
         if (queryIndex > -1) {
           if (idIndex > -1) {
-            nurl = host + search + '#' + hash.substring(1, idIndex) + '_sasdk=' + this.getCurrenId();
+            nurl = host + search + '#' + hash.substring(1, idIndex) + changeSaId(hash.substring(idIndex, hash.length));
           } else {
-            nurl = host + search + '#' + hash.substring(1) + '&_sasdk=' + this.getCurrenId();
+            nurl = host + search + hash + '&' + sa_id;
           }
         } else {
-          nurl = host + search + '#' + hash.substring(1) + '?_sasdk=' + this.getCurrenId();
+          nurl = host + search + '#' + hash.substring(1) + '?' + sa_id;
         }
       } else {
         idIndex = search.indexOf('_sasdk');
         var hasQuery = /^\?(\w)+/.test(search);
         if (hasQuery) {
           if (idIndex > -1) {
-            nurl = host + '?' + search.substring(1, idIndex) + '_sasdk=' + this.getCurrenId() + hash;
+            nurl = host + '?' + changeSaId(search.substring(1)) + hash;
           } else {
-            nurl = host + '?' + search.substring(1) + '&_sasdk=' + this.getCurrenId() + hash;
+            nurl = host + search + '&' + sa_id + hash;
           }
         } else {
-          nurl = host + '?' + search.substring(1) + '_sasdk=' + this.getCurrenId() + hash;
+          nurl = host + '?' + sa_id + hash;
         }
       }
 
