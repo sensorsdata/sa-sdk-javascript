@@ -3134,7 +3134,7 @@ var debug = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.23.4';
+var sdkversion_placeholder = '1.23.5';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -8185,7 +8185,7 @@ var vtrackMode = {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.23.4'
+              sdkversion: '1.23.5'
             }
           },
           '*'
@@ -9077,10 +9077,8 @@ try {
   sd.modules['IosBridge'] = (function() {
     'use strict';
 
-    var iosBridge;
     var iosServerUrl;
     var iosTracker;
-    var iosPostMessage;
 
     var sd, _, log;
     var IOSBridge = {
@@ -9094,12 +9092,12 @@ try {
     };
 
     function initBridge() {
-      iosBridge = window.SensorsData_iOS_JS_Bridge;
-      iosServerUrl = iosBridge && iosBridge.sensorsdata_app_server_url;
-      iosTracker = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker;
-      iosPostMessage = iosTracker && iosTracker.postMessage;
+      iosServerUrl = window.SensorsData_iOS_JS_Bridge && window.SensorsData_iOS_JS_Bridge.sensorsdata_app_server_url;
+      iosTracker = function() {
+        return window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker;
+      };
 
-      if (!sd || sd.bridge.activeBridge || !iosPostMessage) {
+      if (!sd || sd.bridge.activeBridge || !iosTracker() || !iosTracker().postMessage) {
         return;
       }
 
@@ -9136,15 +9134,15 @@ try {
       }
       var callback = rqData.callback;
       if (sd.bridge.is_verify_success) {
-        iosPostMessage.call(
-          iosTracker,
-          JSON.stringify({
-            callType: 'app_h5_track',
-            data: _.extend({
-              server_url: sd.para.server_url
-            }, rqData.data)
-          })
-        );
+        iosTracker() &&
+          iosTracker().postMessage(
+            JSON.stringify({
+              callType: 'app_h5_track',
+              data: _.extend({
+                server_url: sd.para.server_url
+              }, rqData.data)
+            })
+          );
         _.isFunction(callback) && callback();
         ctx.cancellationToken.cancel();
         return rqData;
@@ -9174,7 +9172,7 @@ try {
         return _.isObject(window.SensorsData_APP_New_H5_Bridge) && window.SensorsData_APP_New_H5_Bridge[callType];
       }
 
-      return iosPostMessage.call(iosTracker, JSON.stringify(request));
+      return iosTracker() && iosTracker().postMessage(JSON.stringify(request));
     }
 
     if (window.SensorsDataWebJSSDKPlugin && Object.prototype.toString.call(window.SensorsDataWebJSSDKPlugin) === '[object Object]') {
