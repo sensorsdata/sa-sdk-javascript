@@ -3025,6 +3025,22 @@
     }
   }
 
+  function enableLocalLog() {
+    if (_sessionStorage.isSupport()) {
+      try {
+        sessionStorage.setItem('sensorsdata_jssdk_debug', 'true');
+      } catch (e) {
+        console.log('enableLocalLog error: ' + e.message);
+      }
+    }
+  }
+
+  function disableLocalLog() {
+    if (_sessionStorage.isSupport()) {
+      sessionStorage.removeItem('sensorsdata_jssdk_debug');
+    }
+  }
+
   var flag = 'data:enc;';
   var flag_dfm = 'dfm-enc-';
 
@@ -3048,6 +3064,241 @@
 
   function encrypt(v) {
     return flag_dfm + dfmapping(v);
+  }
+
+  var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
+  var sdkversion_placeholder = '1.24.1';
+  var domain_test_key = 'sensorsdata_domain_test';
+
+  var IDENTITY_KEY = {
+    EMAIL: '$identity_email',
+    MOBILE: '$identity_mobile',
+    LOGIN: '$identity_login_id'
+  };
+
+  function getCurrentDomain(url) {
+    var sdDomain = sdPara.current_domain;
+    switch (typeof sdDomain) {
+      case 'function':
+        var resultDomain = sdDomain();
+        if (resultDomain === '' || trim(resultDomain) === '') {
+          return 'url解析失败';
+        } else if (resultDomain.indexOf('.') !== -1) {
+          return resultDomain;
+        } else {
+          return 'url解析失败';
+        }
+        case 'string':
+          if (sdDomain === '' || trim(sdDomain) === '') {
+            return 'url解析失败';
+          } else if (sdDomain.indexOf('.') !== -1) {
+            return sdDomain;
+          } else {
+            return 'url解析失败';
+          }
+          default:
+            var cookieTopLevelDomain = getCookieTopLevelDomain(null, domain_test_key);
+            if (url === '') {
+              return 'url解析失败';
+            } else if (cookieTopLevelDomain === '') {
+              return 'url解析失败';
+            } else {
+              return cookieTopLevelDomain;
+            }
+    }
+  }
+
+  var saCookie = {
+    get: function(name) {
+      return cookie.get(name);
+    },
+    set: function(name, value, days, cross_subdomain) {
+      var cdomain = '';
+      cross_subdomain = isUndefined(cross_subdomain) ? sdPara.cross_subdomain : cross_subdomain;
+
+      if (cross_subdomain) {
+        var domain = getCurrentDomain(location.href);
+        if (domain === 'url解析失败') {
+          domain = '';
+        }
+        cdomain = domain ? '; domain=' + domain : '';
+      }
+
+      return cookie.set(name, value, days, cross_subdomain, sdPara.set_cookie_samesite, sdPara.is_secure_cookie, cdomain);
+    },
+    remove: function(name, cross_subdomain) {
+      cross_subdomain = isUndefined(cross_subdomain) ? sdPara.cross_subdomain : cross_subdomain;
+      return cookie.remove(name, cross_subdomain);
+    },
+    isSupport: function(testKey, testValue) {
+      testKey = testKey || 'sajssdk_2015_cookie_access_test';
+      testValue = testValue || '1';
+      return cookie.isSupport(testKey, testValue);
+    }
+  };
+
+  function isBaiduTraffic() {
+    var referer = document.referrer;
+    var endsWith = 'baidu.com';
+    if (!referer) {
+      return false;
+    }
+
+    try {
+      var hostname = _URL(referer).hostname;
+      return hostname && hostname.substring(hostname.length - endsWith.length) === endsWith;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  var getBaiduKeyword = {
+    data: {},
+    id: function() {
+      if (this.data.id) {
+        return this.data.id;
+      } else {
+        this.data.id = getReferrerEqid();
+        return this.data.id;
+      }
+    },
+    type: function() {
+      if (this.data.type) {
+        return this.data.type;
+      } else {
+        this.data.type = getReferrerEqidType();
+        return this.data.type;
+      }
+    }
+  };
+
+  function getReferrerEqidType() {
+    var query = getQueryParamsFromUrl(document.referrer);
+    if (isEmptyObject(query) || !query.eqid) {
+      var url = getQueryParamsFromUrl(location.href);
+      if (query.ck || url.utm_source) {
+        return 'baidu_sem_keyword_id';
+      }
+      return 'baidu_other_keyword_id';
+    }
+    return 'baidu_seo_keyword_id';
+  }
+
+  function getReferrerEqid() {
+    var query = getQueryParamsFromUrl(document.referrer);
+    if (isEmptyObject(query) || !query.eqid) {
+      return UUID().replace(/-/g, '');
+    }
+    return query.eqid;
+  }
+
+  function getReferrer(referrer, full) {
+    referrer = referrer || document.referrer;
+    if (!isString(referrer)) {
+      return '取值异常_referrer异常_' + String(referrer);
+    }
+    referrer = trim(referrer);
+    referrer = _decodeURI(referrer);
+    if (referrer.indexOf('https://www.baidu.com/') === 0 && !full) {
+      referrer = referrer.split('?')[0];
+    }
+    referrer = referrer.slice(0, sdPara.max_referrer_string_length);
+    return isString(referrer) ? referrer : '';
+  }
+
+  function isReferralTraffic(refererstring) {
+    refererstring = refererstring || document.referrer;
+    if (refererstring === '') {
+      return true;
+    }
+
+    return getCookieTopLevelDomain(getHostname(refererstring), domain_test_key) !== getCookieTopLevelDomain(null, domain_test_key);
+  }
+
+  function getKeywordFromReferrer(referrerUrl, activeValue) {
+    referrerUrl = referrerUrl || document.referrer;
+    var search_keyword = sdPara.source_type.keyword;
+    if (document && isString(referrerUrl)) {
+      if (referrerUrl.indexOf('http') === 0) {
+        var searchEngine = getReferSearchEngine(referrerUrl);
+        var query = getQueryParamsFromUrl(referrerUrl);
+        if (isEmptyObject(query)) {
+          if (sdPara.preset_properties.search_keyword_baidu && isBaiduTraffic()) {
+            return;
+          } else {
+            return '未取到值';
+          }
+        }
+        var temp = null;
+        for (var i in search_keyword) {
+          if (searchEngine === i) {
+            if (isObject(query)) {
+              temp = search_keyword[i];
+              if (isArray(temp)) {
+                for (i = 0; i < temp.length; i++) {
+                  var _value = query[temp[i]];
+                  if (_value) {
+                    if (activeValue) {
+                      return {
+                        active: _value
+                      };
+                    } else {
+                      return _value;
+                    }
+                  }
+                }
+              } else if (query[temp]) {
+                if (activeValue) {
+                  return {
+                    active: query[temp]
+                  };
+                } else {
+                  return query[temp];
+                }
+              }
+            }
+          }
+        }
+        if (sdPara.preset_properties.search_keyword_baidu && isBaiduTraffic()) {
+          return;
+        } else {
+          return '未取到值';
+        }
+      } else {
+        if (referrerUrl === '') {
+          return '未取到值_直接打开';
+        } else {
+          return '未取到值_非http的url';
+        }
+      }
+    } else {
+      return '取值异常_referrer异常_' + String(referrerUrl);
+    }
+  }
+
+  function getReferSearchEngine(referrerUrl) {
+    var hostname = getHostname(referrerUrl);
+    if (!hostname || hostname === 'hostname解析异常') {
+      return '';
+    }
+    var searchEngineUrls = {
+      baidu: [/^.*\.baidu\.com$/],
+      bing: [/^.*\.bing\.com$/],
+      google: [/^www\.google\.com$/, /^www\.google\.com\.[a-z]{2}$/, /^www\.google\.[a-z]{2}$/],
+      sm: [/^m\.sm\.cn$/],
+      so: [/^.+\.so\.com$/],
+      sogou: [/^.*\.sogou\.com$/],
+      yahoo: [/^.*\.yahoo\.com$/]
+    };
+    for (var prop in searchEngineUrls) {
+      var urls = searchEngineUrls[prop];
+      for (var i = 0, len = urls.length; i < len; i++) {
+        if (urls[i].test(hostname)) {
+          return prop;
+        }
+      }
+    }
+    return '未知搜索引擎';
   }
 
   var debug = {
@@ -3137,303 +3388,6 @@
     }
   };
 
-  var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.23.5';
-  var domain_test_key = 'sensorsdata_domain_test';
-
-  var IDENTITY_KEY = {
-    EMAIL: '$identity_email',
-    MOBILE: '$identity_mobile',
-    LOGIN: '$identity_login_id'
-  };
-
-  function parseSuperProperties(data) {
-    var obj = data.properties;
-    var copyData = JSON.parse(JSON.stringify(data));
-    if (isObject(obj)) {
-      each(obj, function(objVal, key) {
-        if (isFunction(objVal)) {
-          try {
-            obj[key] = objVal(copyData);
-            if (isFunction(obj[key])) {
-              sdLog('您的属性- ' + key + ' 格式不满足要求，我们已经将其删除');
-              delete obj[key];
-            }
-          } catch (e) {
-            delete obj[key];
-            sdLog('您的属性- ' + key + ' 抛出了异常，我们已经将其删除');
-          }
-        }
-      });
-    }
-  }
-
-  function searchConfigData(data) {
-    if (typeof data === 'object' && data.$option) {
-      var data_config = data.$option;
-      delete data.$option;
-      return data_config;
-    } else {
-      return {};
-    }
-  }
-
-  function strip_empty_properties(p) {
-    var ret = {};
-    each(p, function(v, k) {
-      if (v != null) {
-        ret[k] = v;
-      }
-    });
-    return ret;
-  }
-
-  function getCurrentDomain(url) {
-    var sdDomain = sdPara.current_domain;
-    switch (typeof sdDomain) {
-      case 'function':
-        var resultDomain = sdDomain();
-        if (resultDomain === '' || trim(resultDomain) === '') {
-          return 'url解析失败';
-        } else if (resultDomain.indexOf('.') !== -1) {
-          return resultDomain;
-        } else {
-          return 'url解析失败';
-        }
-        case 'string':
-          if (sdDomain === '' || trim(sdDomain) === '') {
-            return 'url解析失败';
-          } else if (sdDomain.indexOf('.') !== -1) {
-            return sdDomain;
-          } else {
-            return 'url解析失败';
-          }
-          default:
-            var cookieTopLevelDomain = getCookieTopLevelDomain(null, domain_test_key);
-            if (url === '') {
-              return 'url解析失败';
-            } else if (cookieTopLevelDomain === '') {
-              return 'url解析失败';
-            } else {
-              return cookieTopLevelDomain;
-            }
-    }
-  }
-
-  function getEleInfo(obj) {
-    if (!obj.target) {
-      return false;
-    }
-
-    var target = obj.target;
-    var tagName = target.tagName.toLowerCase();
-
-    var props = {};
-
-    props.$element_type = tagName;
-    props.$element_name = target.getAttribute('name');
-    props.$element_id = target.getAttribute('id');
-    props.$element_class_name = typeof target.className === 'string' ? target.className : null;
-    props.$element_target_url = target.getAttribute('href');
-    props.$element_content = getElementContent$1(target, tagName);
-    props = strip_empty_properties(props);
-    props.$url = getURL();
-    props.$url_path = getURLPath();
-    props.$title = document.title;
-
-    return props;
-  }
-
-  function isBaiduTraffic() {
-    var referer = document.referrer;
-    var endsWith = 'baidu.com';
-    if (!referer) {
-      return false;
-    }
-
-    try {
-      var hostname = _URL(referer).hostname;
-      return hostname && hostname.substring(hostname.length - endsWith.length) === endsWith;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function getReferrerEqid() {
-    var query = getQueryParamsFromUrl(document.referrer);
-    if (isEmptyObject(query) || !query.eqid) {
-      return UUID().replace(/-/g, '');
-    }
-    return query.eqid;
-  }
-
-  function getReferrerEqidType() {
-    var query = getQueryParamsFromUrl(document.referrer);
-    if (isEmptyObject(query) || !query.eqid) {
-      var url = getQueryParamsFromUrl(location.href);
-      if (query.ck || url.utm_source) {
-        return 'baidu_sem_keyword_id';
-      }
-      return 'baidu_other_keyword_id';
-    }
-    return 'baidu_seo_keyword_id';
-  }
-
-  var getBaiduKeyword = {
-    data: {},
-    id: function() {
-      if (this.data.id) {
-        return this.data.id;
-      } else {
-        this.data.id = getReferrerEqid();
-        return this.data.id;
-      }
-    },
-    type: function() {
-      if (this.data.type) {
-        return this.data.type;
-      } else {
-        this.data.type = getReferrerEqidType();
-        return this.data.type;
-      }
-    }
-  };
-
-  function isReferralTraffic(refererstring) {
-    refererstring = refererstring || document.referrer;
-    if (refererstring === '') {
-      return true;
-    }
-
-    return getCookieTopLevelDomain(getHostname(refererstring), domain_test_key) !== getCookieTopLevelDomain(null, domain_test_key);
-  }
-
-  function getReferrer(referrer, full) {
-    referrer = referrer || document.referrer;
-    if (typeof referrer !== 'string') {
-      return '取值异常_referrer异常_' + String(referrer);
-    }
-    referrer = trim(referrer);
-    referrer = _decodeURI(referrer);
-    if (referrer.indexOf('https://www.baidu.com/') === 0 && !full) {
-      referrer = referrer.split('?')[0];
-    }
-    referrer = referrer.slice(0, sdPara.max_referrer_string_length);
-    return typeof referrer === 'string' ? referrer : '';
-  }
-
-  function getReferSearchEngine(referrerUrl) {
-    var hostname = getHostname(referrerUrl);
-    if (!hostname || hostname === 'hostname解析异常') {
-      return '';
-    }
-    var searchEngineUrls = {
-      baidu: [/^.*\.baidu\.com$/],
-      bing: [/^.*\.bing\.com$/],
-      google: [/^www\.google\.com$/, /^www\.google\.com\.[a-z]{2}$/, /^www\.google\.[a-z]{2}$/],
-      sm: [/^m\.sm\.cn$/],
-      so: [/^.+\.so\.com$/],
-      sogou: [/^.*\.sogou\.com$/],
-      yahoo: [/^.*\.yahoo\.com$/]
-    };
-    for (var prop in searchEngineUrls) {
-      var urls = searchEngineUrls[prop];
-      for (var i = 0, len = urls.length; i < len; i++) {
-        if (urls[i].test(hostname)) {
-          return prop;
-        }
-      }
-    }
-    return '未知搜索引擎';
-  }
-
-  function getKeywordFromReferrer(referrerUrl, activeValue) {
-    referrerUrl = referrerUrl || document.referrer;
-    var search_keyword = sdPara.source_type.keyword;
-    if (document && typeof referrerUrl === 'string') {
-      if (referrerUrl.indexOf('http') === 0) {
-        var searchEngine = getReferSearchEngine(referrerUrl);
-        var query = getQueryParamsFromUrl(referrerUrl);
-        if (isEmptyObject(query)) {
-          if (sdPara.preset_properties.search_keyword_baidu && isBaiduTraffic()) {
-            return;
-          } else {
-            return '未取到值';
-          }
-        }
-        var temp = null;
-        for (var i in search_keyword) {
-          if (searchEngine === i) {
-            if (typeof query === 'object') {
-              temp = search_keyword[i];
-              if (isArray(temp)) {
-                for (i = 0; i < temp.length; i++) {
-                  var _value = query[temp[i]];
-                  if (_value) {
-                    if (activeValue) {
-                      return {
-                        active: _value
-                      };
-                    } else {
-                      return _value;
-                    }
-                  }
-                }
-              } else if (query[temp]) {
-                if (activeValue) {
-                  return {
-                    active: query[temp]
-                  };
-                } else {
-                  return query[temp];
-                }
-              }
-            }
-          }
-        }
-        if (sdPara.preset_properties.search_keyword_baidu && isBaiduTraffic()) {
-          return;
-        } else {
-          return '未取到值';
-        }
-      } else {
-        if (referrerUrl === '') {
-          return '未取到值_直接打开';
-        } else {
-          return '未取到值_非http的url';
-        }
-      }
-    } else {
-      return '取值异常_referrer异常_' + String(referrerUrl);
-    }
-  }
-
-  function getWxAdIdFromUrl(url) {
-    var click_id = getQueryParam(url, 'gdt_vid');
-    var hash_key = getQueryParam(url, 'hash_key');
-    var callbacks = getQueryParam(url, 'callbacks');
-    var obj = {
-      click_id: '',
-      hash_key: '',
-      callbacks: ''
-    };
-    if (isString(click_id) && click_id.length) {
-      obj.click_id = click_id.length == 16 || click_id.length == 18 ? click_id : '参数解析不合法';
-
-      if (isString(hash_key) && hash_key.length) {
-        obj.hash_key = hash_key;
-      }
-      if (isString(callbacks) && callbacks.length) {
-        obj.callbacks = callbacks;
-      }
-    }
-
-    return obj;
-  }
-
-
-
-
   var pageInfo = {
     initPage: function() {
       var referrer = getReferrer();
@@ -3475,8 +3429,8 @@
       };
     },
     properties: function() {
-      var viewportHeightValue = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight || 0;
-      var viewportWidthValue = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
+      var viewportHeightValue = window.innerHeight || document.documentElement.clientHeight || (document.body && document.body.clientHeight) || 0;
+      var viewportWidthValue = window.innerWidth || document.documentElement.clientWidth || (document.body && document.body.clientWidth) || 0;
       var propertiesObj = {
         $timezone_offset: new Date().getTimezoneOffset(),
         $screen_height: Number(screen.height) || 0,
@@ -3493,105 +3447,6 @@
       extend(pageInfo.currentProps, obj);
     }
   };
-
-  function getSourceFromReferrer() {
-    function getMatchStrFromArr(arr, str) {
-      for (var i = 0; i < arr.length; i++) {
-        if (str.split('?')[0].indexOf(arr[i]) !== -1) {
-          return true;
-        }
-      }
-    }
-
-    var utm_reg = '(' + sdPara.source_type.utm.join('|') + ')\\=[^&]+';
-    var search_engine = sdPara.source_type.search;
-    var social_engine = sdPara.source_type.social;
-
-    var referrer = document.referrer || '';
-    var url = pageInfo.pageProp.url;
-    if (url) {
-      var utm_match = url.match(new RegExp(utm_reg));
-      if (utm_match && utm_match[0]) {
-        return '付费广告流量';
-      } else if (getMatchStrFromArr(search_engine, referrer)) {
-        return '自然搜索流量';
-      } else if (getMatchStrFromArr(social_engine, referrer)) {
-        return '社交网站流量';
-      } else if (referrer === '') {
-        return '直接流量';
-      } else {
-        return '引荐流量';
-      }
-    } else {
-      return '获取url异常';
-    }
-  }
-
-  function getInputElementValue(inputEle) {
-    var allowCollectInputVal = sdPara.heatmap && typeof sdPara.heatmap.collect_input === 'function' && sdPara.heatmap.collect_input(inputEle);
-    if (inputEle.type === 'button' || inputEle.type === 'submit' || allowCollectInputVal) {
-      return inputEle.value || '';
-    }
-    return '';
-  }
-
-  function getElementContent$1(element, tagName) {
-    if (isString(tagName) && tagName.toLowerCase() === 'input') {
-      return getInputElementValue(element);
-    }
-    return getElementContent(element, tagName);
-  }
-
-  function ajax$1(para) {
-    debug.protocol.ajax(para.url);
-    return ajax(para);
-  }
-
-  function addEvent$1(target, eventName, evenHandler) {
-    var useCapture = isObject(sdPara.heatmap) && sdPara.heatmap.useCapture ? true : false;
-    if (isObject(sdPara.heatmap) && typeof sdPara.heatmap.useCapture === 'undefined' && eventName === 'click') {
-      useCapture = true;
-    }
-    return addEvent(target, eventName, evenHandler, useCapture);
-  }
-
-  var cookie$1 = {
-    get: function(name) {
-      return cookie.get(name);
-    },
-    set: function(name, value, days, cross_subdomain) {
-      var cdomain = '';
-      cross_subdomain = typeof cross_subdomain === 'undefined' ? sdPara.cross_subdomain : cross_subdomain;
-
-      if (cross_subdomain) {
-        var domain = getCurrentDomain(location.href);
-        if (domain === 'url解析失败') {
-          domain = '';
-        }
-        cdomain = domain ? '; domain=' + domain : '';
-      }
-
-      return cookie.set(name, value, days, cross_subdomain, sdPara.set_cookie_samesite, sdPara.is_secure_cookie, cdomain);
-    },
-    remove: function(name, cross_subdomain) {
-      cross_subdomain = typeof cross_subdomain === 'undefined' ? sdPara.cross_subdomain : cross_subdomain;
-      return cookie.remove(name, cross_subdomain);
-    },
-    isSupport: function(testKey, testValue) {
-      testKey = testKey || 'sajssdk_2015_cookie_access_test';
-      testValue = testValue || '1';
-      return cookie.isSupport(testKey, testValue);
-    }
-  };
-
-  function getSafeHttpProtocol() {
-    var protocol = location.protocol;
-    if (protocol === 'http:' || protocol === 'https:') {
-      return protocol;
-    } else {
-      return 'http:';
-    }
-  }
 
   function getNewUserFlagKey(name_prefix, url) {
     var sub = '';
@@ -3613,12 +3468,12 @@
     return sub;
   }
 
-  cookie$1.getNewUser = isNewUser;
+  saCookie.getNewUser = isNewUser;
 
   function isNewUser() {
     var prefix = 'new_user';
-    if (cookie$1.isSupport()) {
-      if (cookie$1.get('sensorsdata_is_new_user') !== null || cookie$1.get(getNewUserFlagKey(prefix)) !== null) {
+    if (saCookie.isSupport()) {
+      if (saCookie.get('sensorsdata_is_new_user') !== null || saCookie.get(getNewUserFlagKey(prefix)) !== null) {
         return true;
       }
       return false;
@@ -3687,9 +3542,9 @@
         }
       }
     },
-    setDeviceId: function(uuid) {
+    setDeviceId: function(uuid, store) {
       var device_id = null;
-      var ds = cookie$1.get('sensorsdata2015jssdkcross' + sd.para.sdk_id);
+      var ds = saCookie.get('sensorsdata2015jssdkcross' + sd.para.sdk_id);
       ds = decryptIfNeeded(ds);
       var state = {};
       if (ds != null && isJSONString(ds)) {
@@ -3702,14 +3557,14 @@
       device_id = device_id || uuid;
 
       if (sd.para.cross_subdomain === true) {
-        sd.store.set('$device_id', device_id);
+        store.set('$device_id', device_id);
       } else {
         state.$device_id = device_id;
         state = JSON.stringify(state);
         if (sd.para.encrypt_cookie) {
           state = encrypt(state);
         }
-        cookie$1.set('sensorsdata2015jssdkcross' + sd.para.sdk_id, state, null, true);
+        saCookie.set('sensorsdata2015jssdkcross' + sd.para.sdk_id, state, null, true);
       }
 
       if (sd.para.is_track_device_id) {
@@ -3724,8 +3579,8 @@
           m: 59 - date.getMinutes(),
           s: 59 - date.getSeconds()
         };
-        if (cookie$1.isSupport()) {
-          cookie$1.set(getNewUserFlagKey('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
+        if (saCookie.isSupport()) {
+          saCookie.set(getNewUserFlagKey('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
         } else {
           memory.set(memory.getNewUserFlagMemoryKey('new_user'), '1', obj.h * 3600 + obj.m * 60 + obj.s + 's');
         }
@@ -3745,120 +3600,267 @@
           }
         };
       }
-    },
-    checkIsFirstLatest: function() {
-      var url_domain = pageInfo.pageProp.url_domain;
+    }
+  };
 
+  function saAddEvent(target, eventName, evenHandler) {
+    var useCapture = isObject(sdPara.heatmap) && sdPara.heatmap.useCapture ? true : false;
+    if (isObject(sdPara.heatmap) && isUndefined(sdPara.heatmap.useCapture) && eventName === 'click') {
+      useCapture = true;
+    }
+    return addEvent(target, eventName, evenHandler, useCapture);
+  }
 
-      var latestObj = {};
+  var EventEmitterSa = function() {
+    this._events = [];
+    this.pendingEvents = [];
+  };
 
-      if (url_domain === '') {
-        url_domain = 'url解析失败';
-      }
+  EventEmitterSa.prototype = {
+    emit: function(type) {
+      var args = [].slice.call(arguments, 1);
 
-      var baiduKey = getKeywordFromReferrer(document.referrer, true);
-      if (sd.para.preset_properties.search_keyword_baidu) {
-        if (isReferralTraffic(document.referrer)) {
-          if (isBaiduTraffic() && !(isObject(baiduKey) && baiduKey.active)) {
-            latestObj['$search_keyword_id'] = getBaiduKeyword.id();
-            latestObj['$search_keyword_id_type'] = getBaiduKeyword.type();
-            latestObj['$search_keyword_id_hash'] = hashCode53(latestObj['$search_keyword_id']);
-          } else {
-            if (sd.store._state && sd.store._state.props) {
-              sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
-              sd.store._state.props.$search_keyword_id_type && delete sd.store._state.props.$search_keyword_id_type;
-              sd.store._state.props.$search_keyword_id_hash && delete sd.store._state.props.$search_keyword_id_hash;
-            }
-          }
+      each(this._events, function(val) {
+        if (val.type !== type) {
+          return;
         }
-      } else {
-        if (sd.store._state && sd.store._state.props) {
-          sd.store._state.props.$search_keyword_id && delete sd.store._state.props.$search_keyword_id;
-          sd.store._state.props.$search_keyword_id_type && delete sd.store._state.props.$search_keyword_id_type;
-          sd.store._state.props.$search_keyword_id_hash && delete sd.store._state.props.$search_keyword_id_hash;
-        }
-      }
-
-      sd.store.save();
-
-      each(sd.para.preset_properties, function(value, key) {
-        if (key.indexOf('latest_') === -1) {
-          return false;
-        }
-        key = key.slice(7);
-        if (value) {
-          if (key === 'wx_ad_click_id' && value === 'not_collect') {
-            return false;
-          }
-          if (key !== 'utm' && url_domain === 'url解析失败') {
-            if (key === 'wx_ad_click_id') {
-              latestObj['_latest_wx_ad_click_id'] = 'url的domain解析失败';
-              latestObj['_latest_wx_ad_hash_key'] = 'url的domain解析失败';
-              latestObj['_latest_wx_ad_callbacks'] = 'url的domain解析失败';
-            } else {
-              latestObj['$latest_' + key] = 'url的domain解析失败';
-            }
-          } else if (isReferralTraffic(document.referrer)) {
-            switch (key) {
-              case 'traffic_source_type':
-                latestObj['$latest_traffic_source_type'] = getSourceFromReferrer();
-                break;
-              case 'referrer':
-                latestObj['$latest_referrer'] = pageInfo.pageProp.referrer;
-                break;
-              case 'search_keyword':
-                if (getKeywordFromReferrer()) {
-                  latestObj['$latest_search_keyword'] = getKeywordFromReferrer();
-                } else if (isObject(sd.store._state) && isObject(sd.store._state.props) && sd.store._state.props.$latest_search_keyword) {
-                  delete sd.store._state.props.$latest_search_keyword;
-                }
-                break;
-              case 'landing_page':
-                latestObj['$latest_landing_page'] = getURL();
-                break;
-              case 'wx_ad_click_id':
-                var adObj = getWxAdIdFromUrl(location.href);
-                latestObj['_latest_wx_ad_click_id'] = adObj.click_id;
-                latestObj['_latest_wx_ad_hash_key'] = adObj.hash_key;
-                latestObj['_latest_wx_ad_callbacks'] = adObj.callbacks;
-                break;
-            }
-          }
-        } else {
-          if (key === 'utm' && sd.store._state && sd.store._state.props) {
-            for (var key1 in sd.store._state.props) {
-              if (key1.indexOf('$latest_utm') === 0 || (key1.indexOf('_latest_') === 0 && key1.indexOf('_latest_wx_ad_') < 0)) {
-                delete sd.store._state.props[key1];
-              }
-            }
-          } else if (sd.store._state && sd.store._state.props && '$latest_' + key in sd.store._state.props) {
-            delete sd.store._state.props['$latest_' + key];
-          } else if (key == 'wx_ad_click_id' && sd.store._state && sd.store._state.props && value === false) {
-            var wxPro = ['_latest_wx_ad_click_id', '_latest_wx_ad_hash_key', '_latest_wx_ad_callbacks'];
-            each(wxPro, function(value) {
-              if (value in sd.store._state.props) {
-                delete sd.store._state.props[value];
-              }
-            });
-          }
-        }
+        val.callback.apply(val.context, args);
       });
 
-      sd.register(latestObj);
+      this.pendingEvents.push({
+        type: type,
+        data: args
+      });
+      this.pendingEvents.length > 20 ? this.pendingEvents.shift() : null;
+    },
+    on: function(event, callback, context, replayAll) {
+      if (!isFunction(callback)) {
+        return;
+      }
+      this._events.push({
+        type: event,
+        callback: callback,
+        context: context || this
+      });
 
-      if (sd.para.preset_properties.latest_utm) {
-        var allUtms = pageInfo.campaignParamsStandard('$latest_', '_latest_');
-        var $utms = allUtms.$utms;
-        var otherUtms = allUtms.otherUtms;
-        if (!isEmptyObject($utms)) {
-          sd.register($utms);
-        }
-        if (!isEmptyObject(otherUtms)) {
-          sd.register(otherUtms);
+      replayAll = replayAll === false ? false : true;
+      if (this.pendingEvents.length > 0 && replayAll) {
+        each(this.pendingEvents, function(val) {
+          if (val.type === event) {
+            callback.apply(context, val.data);
+          }
+        });
+      }
+    },
+    tempAdd: function(event, data) {
+      if (!data || !event) {
+        return;
+      }
+      return this.emit(event, data);
+    },
+    isReady: function() {}
+  };
+
+  function getSourceFromReferrer() {
+    function getMatchStrFromArr(arr, str) {
+      for (var i = 0; i < arr.length; i++) {
+        if (str.split('?')[0].indexOf(arr[i]) !== -1) {
+          return true;
         }
       }
     }
+
+    var utm_reg = '(' + sdPara.source_type.utm.join('|') + ')\\=[^&]+';
+    var search_engine = sdPara.source_type.search;
+    var social_engine = sdPara.source_type.social;
+
+    var referrer = document.referrer || '';
+    var url = pageInfo.pageProp.url;
+    if (url) {
+      var utm_match = url.match(new RegExp(utm_reg));
+      if (utm_match && utm_match[0]) {
+        return '付费广告流量';
+      } else if (getMatchStrFromArr(search_engine, referrer)) {
+        return '自然搜索流量';
+      } else if (getMatchStrFromArr(social_engine, referrer)) {
+        return '社交网站流量';
+      } else if (referrer === '') {
+        return '直接流量';
+      } else {
+        return '引荐流量';
+      }
+    } else {
+      return '获取url异常';
+    }
+  }
+
+  function getWxAdIdFromUrl(url) {
+    var click_id = getQueryParam(url, 'gdt_vid');
+    var hash_key = getQueryParam(url, 'hash_key');
+    var callbacks = getQueryParam(url, 'callbacks');
+    var obj = {
+      click_id: '',
+      hash_key: '',
+      callbacks: ''
+    };
+    if (isString(click_id) && click_id.length) {
+      obj.click_id = click_id.length == 16 || click_id.length == 18 ? click_id : '参数解析不合法';
+
+      if (isString(hash_key) && hash_key.length) {
+        obj.hash_key = hash_key;
+      }
+      if (isString(callbacks) && callbacks.length) {
+        obj.callbacks = callbacks;
+      }
+    }
+
+    return obj;
+  }
+
+  function parseSuperProperties(data) {
+    var obj = data.properties;
+    var copyData = JSON.parse(JSON.stringify(data));
+    if (isObject(obj)) {
+      each(obj, function(objVal, key) {
+        if (isFunction(objVal)) {
+          try {
+            obj[key] = objVal(copyData);
+            if (isFunction(obj[key])) {
+              sdLog('您的属性- ' + key + ' 格式不满足要求，我们已经将其删除');
+              delete obj[key];
+            }
+          } catch (e) {
+            delete obj[key];
+            sdLog('您的属性- ' + key + ' 抛出了异常，我们已经将其删除');
+          }
+        }
+      });
+    }
+  }
+
+  function searchConfigData(data) {
+    if (isObject(data) && data.$option) {
+      var data_config = data.$option;
+      delete data.$option;
+      return data_config;
+    } else {
+      return {};
+    }
+  }
+
+  function strip_empty_properties(p) {
+    var ret = {};
+    each(p, function(v, k) {
+      if (v != null) {
+        ret[k] = v;
+      }
+    });
+    return ret;
+  }
+
+  function addReferrerHost(data) {
+    var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
+    var defaultHost = '取值异常';
+    if (isObject(data.properties)) {
+      if (data.properties.$first_referrer) {
+        data.properties.$first_referrer_host = getHostname(data.properties.$first_referrer, defaultHost);
+      }
+      if (isNotProfileType) {
+        if ('$referrer' in data.properties) {
+          data.properties.$referrer_host = data.properties.$referrer === '' ? '' : getHostname(data.properties.$referrer, defaultHost);
+        }
+        if (sdPara.preset_properties.latest_referrer && sdPara.preset_properties.latest_referrer_host) {
+          data.properties.$latest_referrer_host = data.properties.$latest_referrer === '' ? '' : getHostname(data.properties.$latest_referrer, defaultHost);
+        }
+      }
+    }
+  }
+
+  function addPropsHook(data) {
+    var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
+    var isSatisfy = sdPara.preset_properties && isNotProfileType;
+    if (isSatisfy && sdPara.preset_properties.url && isUndefined(data.properties.$url)) {
+      data.properties.$url = getURL();
+    }
+    if (isSatisfy && sdPara.preset_properties.title && isUndefined(data.properties.$title)) {
+      data.properties.$title = document.title;
+    }
+  }
+
+  function getEleInfo(obj) {
+    if (!obj.target) {
+      return false;
+    }
+
+    var target = obj.target;
+    var tagName = target.tagName.toLowerCase();
+
+    var props = {};
+
+    props.$element_type = tagName;
+    props.$element_name = target.getAttribute('name');
+    props.$element_id = target.getAttribute('id');
+    props.$element_class_name = isString(target.className) ? target.className : null;
+    props.$element_target_url = target.getAttribute('href');
+    props.$element_content = getElementContent$1(target, tagName);
+    props = strip_empty_properties(props);
+    props.$url = getURL();
+    props.$url_path = getURLPath();
+    props.$title = document.title;
+
+    return props;
+  }
+
+  function getInputElementValue(inputEle) {
+    var allowCollectInputVal = sdPara.heatmap && isFunction(sdPara.heatmap.collect_input) && sdPara.heatmap.collect_input(inputEle);
+    if (inputEle.type === 'button' || inputEle.type === 'submit' || allowCollectInputVal) {
+      return inputEle.value || '';
+    }
+    return '';
+  }
+
+  function getElementContent$1(element, tagName) {
+    if (isString(tagName) && tagName.toLowerCase() === 'input') {
+      return getInputElementValue(element);
+    }
+    return getElementContent(element, tagName);
+  }
+
+  function ajax$1(para) {
+    debug.protocol.ajax(para.url);
+    return ajax(para);
+  }
+
+
+
+  var business = {
+    __proto__: null,
+    addEvent: saAddEvent,
+    EventEmitterSa: EventEmitterSa,
+    encrypt: encrypt,
+    decryptIfNeeded: decryptIfNeeded,
+    cookie: saCookie,
+    info: pageInfo,
+    getReferrer: getReferrer,
+    getCurrentDomain: getCurrentDomain,
+    isBaiduTraffic: isBaiduTraffic,
+    getReferrerEqid: getReferrerEqid,
+    getReferrerEqidType: getReferrerEqidType,
+    getBaiduKeyword: getBaiduKeyword,
+    isReferralTraffic: isReferralTraffic,
+    getKeywordFromReferrer: getKeywordFromReferrer,
+    getReferSearchEngine: getReferSearchEngine,
+    getSourceFromReferrer: getSourceFromReferrer,
+    getWxAdIdFromUrl: getWxAdIdFromUrl,
+    parseSuperProperties: parseSuperProperties,
+    searchConfigData: searchConfigData,
+    strip_empty_properties: strip_empty_properties,
+    getEleInfo: getEleInfo,
+    getElementContent: getElementContent$1,
+    ajax: ajax$1
   };
+
+  var events = new EventEmitterSa();
 
 
   var store = {
@@ -3898,7 +3900,7 @@
     },
     getUnionId: function(state) {
       var obj = this.getOriginUnionId(state);
-      if (obj.login_id && this._state.history_login_id && this._state.history_login_id.name && this._state.history_login_id.name !== sd.IDENTITY_KEY.LOGIN) {
+      if (obj.login_id && this._state.history_login_id && this._state.history_login_id.name && this._state.history_login_id.name !== IDENTITY_KEY.LOGIN) {
         obj.login_id = this._state.history_login_id.name + '+' + obj.login_id;
       }
       return obj;
@@ -3907,7 +3909,7 @@
       return this._state._first_id || this._state.first_id;
     },
     initSessionState: function() {
-      var ds = cookie$1.get('sensorsdata2015session');
+      var ds = saCookie.get('sensorsdata2015session');
       ds = decryptIfNeeded(ds);
       var state = null;
       if (ds !== null && typeof(state = safeJSONParse(ds)) === 'object') {
@@ -3931,7 +3933,7 @@
       }
       this.save();
       if (name === 'distinct_id' && pre_id) {
-        sd.events.tempAdd('changeDistinctId', value);
+        events.tempAdd('changeDistinctId', value);
       }
     },
     change: function(name, value) {
@@ -3993,7 +3995,7 @@
       if (sd.para.encrypt_cookie) {
         sessionStateStr = encrypt(sessionStateStr);
       }
-      cookie$1.set('sensorsdata2015session', sessionStateStr, 0);
+      saCookie.set('sensorsdata2015session', sessionStateStr, 0);
     },
     save: function() {
       var copyState = JSON.parse(JSON.stringify(this._state));
@@ -4008,7 +4010,7 @@
       if (sd.para.encrypt_cookie) {
         stateStr = encrypt(stateStr);
       }
-      cookie$1.set(this.getCookieName(), stateStr, 73000, sd.para.cross_subdomain);
+      saCookie.set(this.getCookieName(), stateStr, 73000, sd.para.cross_subdomain);
     },
     getCookieName: function() {
       var sub = '';
@@ -4070,7 +4072,7 @@
               state.history_login_id.value = unionId.login_id;
             }
           } else {
-            var currentLoginKey = old_login_id_name || sd.IDENTITY_KEY.LOGIN;
+            var currentLoginKey = old_login_id_name || IDENTITY_KEY.LOGIN;
             state.identities[currentLoginKey] = unionId.login_id;
             for (identitiesprop in state.identities) {
               if (state.identities.hasOwnProperty(identitiesprop)) {
@@ -4105,11 +4107,11 @@
       }
 
       function cookieExistExpection(uuid) {
-        sd.store.set('distinct_id', uuid);
-        sd.store.set('identities', {
+        store.set('distinct_id', uuid);
+        store.set('identities', {
           $identity_cookie_id: uuid
         });
-        sd.store.set('history_login_id', {
+        store.set('history_login_id', {
           name: '',
           value: ''
         });
@@ -4117,21 +4119,20 @@
       this.initSessionState();
       var uuid = UUID();
       var cross, cookieJSON;
-      if (cookie$1.isSupport()) {
-        cross = cookie$1.get(this.getCookieName());
+      if (saCookie.isSupport()) {
+        cross = saCookie.get(this.getCookieName());
         cross = decryptIfNeeded(cross);
         cookieJSON = safeJSONParse(cross);
       }
-      if (!cookie$1.isSupport() || cross === null || !isJSONString(cross) || !isObject(cookieJSON) || (isObject(cookieJSON) && !cookieJSON.distinct_id)) {
+      if (!saCookie.isSupport() || cross === null || !isJSONString(cross) || !isObject(cookieJSON) || (isObject(cookieJSON) && !cookieJSON.distinct_id)) {
         sd.is_first_visitor = true;
         cookieExistExpection(uuid);
       } else {
-        sd.store._state = extend(compatibleWith3(cookieJSON));
-        sd.store.save();
+        store._state = extend(compatibleWith3(cookieJSON));
+        store.save();
       }
-      saNewUser.setDeviceId(uuid);
+      saNewUser.setDeviceId(uuid, this);
       saNewUser.storeInitCheck();
-      saNewUser.checkIsFirstLatest();
     },
     saveObjectVal: function(name, value) {
       if (!isString(value)) {
@@ -4479,8 +4480,7 @@
 
     extend(data, p);
     dataStageImpl.stage.process('formatData', data);
-
-    sd.sendState.getSendCall(data);
+    sd.kit.sendData(data);
   };
 
   saEvent.send = function(p, callback) {
@@ -4508,6 +4508,633 @@
         isEmptyObject(data) === true ? alert('debug数据发送成功' + _data) : alert('debug失败 错误原因' + JSON.stringify(data));
       }
     });
+  };
+
+  function trackLinkByCustomTrackFunc(obj, event_name, event_prop, trackFn) {
+    obj = obj || {};
+    var link = null;
+    if (obj.ele) {
+      link = obj.ele;
+    }
+    if (obj.event) {
+      if (obj.target) {
+        link = obj.target;
+      } else {
+        link = obj.event.target;
+      }
+    }
+
+    event_prop = event_prop || {};
+    if (!link || typeof link !== 'object') {
+      return false;
+    }
+    if (!link.href || /^javascript/.test(link.href) || link.target || link.download || link.onclick) {
+      trackFn(event_name, event_prop);
+      return false;
+    }
+
+    function linkFunc(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      var hasCalled = false;
+
+      function track_a_click() {
+        if (!hasCalled) {
+          hasCalled = true;
+          location.href = link.href;
+        }
+      }
+      setTimeout(track_a_click, 1000);
+      trackFn(event_name, event_prop, track_a_click);
+    }
+    if (obj.event) {
+      linkFunc(obj.event);
+    }
+    if (obj.ele) {
+      saAddEvent(obj.ele, 'click', function(e) {
+        linkFunc(e);
+      });
+    }
+  }
+
+  function getSafeHttpProtocol() {
+    var protocol = location.protocol;
+    if (protocol === 'http:' || protocol === 'https:') {
+      return protocol;
+    } else {
+      return 'http:';
+    }
+  }
+
+  var viewStageImpl = {
+    stage: null,
+    init: function(stage) {
+      this.stage = stage;
+    }
+  };
+
+  function processWebClickEvent(data) {
+    return viewStageImpl.stage.process('webClickEvent', data);
+  }
+
+  function processWebStayEvent(data) {
+    return viewStageImpl.stage.process('webStayEvent', data);
+  }
+
+  var vtrackBase = {};
+  vtrackBase.initUrl = function() {
+    var url_info = {
+      server_url: {
+        project: '',
+        host: ''
+      },
+      page_url: {
+        host: '',
+        pathname: ''
+      }
+    };
+    var serverParse;
+    if (!isHttpUrl(sd.para.server_url)) {
+      sd.log('----vcollect---server_url必须为有效 URL 字符串');
+      return false;
+    }
+    try {
+      serverParse = _URL(sd.para.server_url);
+      url_info.server_url.project = serverParse.searchParams.get('project') || 'default';
+      url_info.server_url.host = serverParse.host;
+    } catch (error) {
+      sd.log('----vcollect---server_url解析异常', error);
+      return false;
+    }
+
+    var urlParse;
+    try {
+      urlParse = _URL(location.href);
+      url_info.page_url.host = urlParse.hostname;
+      url_info.page_url.pathname = urlParse.pathname;
+    } catch (error) {
+      sd.log('----vcollect---页面地址解析异常', error);
+      return false;
+    }
+    return url_info;
+  };
+
+  vtrackBase.isDiv = function(obj) {
+    if (obj.element_path) {
+      var pathArr = obj.element_path.split('>');
+      var lastPath = trim(pathArr.pop());
+      if (lastPath.slice(0, 3) !== 'div') {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  vtrackBase.configIsMatchNew = function(properties, eventConf) {
+    if (isString(properties.$element_selector) && isString(eventConf.element_selector)) {
+      if (eventConf.element_field === 'element_selector' && eventConf['function'] === 'equal') {
+        return properties.$element_selector === eventConf.element_selector;
+      }
+      if (eventConf.element_field === 'element_selector' && eventConf['function'] === 'contain') {
+        return properties.$element_selector.indexOf(eventConf.element_selector) > -1;
+      }
+    }
+    if (isString(properties.$element_path) && isString(eventConf.element_path)) {
+      if (eventConf.element_field === 'element_path' && eventConf['function'] === 'equal') {
+        return properties.$element_path === eventConf.element_path;
+      }
+      if (eventConf.element_field === 'element_path' && eventConf['function'] === 'contain') {
+        return properties.$element_path.indexOf(eventConf.element_path) > -1;
+      }
+    }
+    return false;
+  };
+
+  vtrackBase.configIsMatch = function(properties, eventConf) {
+    if (eventConf.limit_element_content) {
+      if (eventConf.element_content !== properties.$element_content) {
+        return false;
+      }
+    }
+    if (eventConf.limit_element_position) {
+      if (eventConf.element_position !== String(properties.$element_position)) {
+        return false;
+      }
+    }
+
+    if (eventConf.element_field && eventConf['function']) {
+      return vtrackBase.configIsMatchNew(properties, eventConf);
+    } else {
+      return vtrackBase.configIsMatchOldVersion(properties, eventConf);
+    }
+  };
+
+  vtrackBase.configIsMatchOldVersion = function(properties, eventConf) {
+    if (!eventConf.element_path) {
+      return false;
+    }
+    if (properties.$element_position !== undefined) {
+      if (eventConf.element_path !== properties.$element_path) {
+        return false;
+      }
+    } else {
+      if (vtrackBase.isDiv({
+          element_path: eventConf.element_path
+        })) {
+        if (properties.$element_path.indexOf(eventConf.element_path) < 0) {
+          return false;
+        }
+      } else {
+        if (eventConf.element_path !== properties.$element_path) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  vtrackBase.filterConfig = function(data, events, page_url) {
+    var arr = [];
+    if (!page_url) {
+      var urlinfo = vtrackBase.initUrl();
+      if (!urlinfo) {
+        return [];
+      } else {
+        page_url = urlinfo.page_url;
+      }
+    }
+    if (data.event === '$WebClick') {
+      each(events, function(item) {
+        if (isObject(item) && (item.event_type === 'webclick' || item.event_type === 'appclick') && isObject(item.event)) {
+          if (item.event.url_host === page_url.host && item.event.url_path === page_url.pathname) {
+            if (vtrackBase.configIsMatch(data.properties, item.event)) {
+              arr.push(item);
+            }
+          }
+        }
+      });
+    }
+    return arr;
+  };
+
+  vtrackBase.getPropElInLi = function(li, list_selector) {
+    if (!(li && isElement(li) && isString(list_selector))) {
+      return null;
+    }
+    if (li.tagName.toLowerCase() !== 'li') {
+      return null;
+    }
+    var li_selector = sd.heatmap.getDomSelector(li);
+    var selector;
+    if (li_selector) {
+      selector = li_selector + list_selector;
+      var target = getDomBySelector(selector);
+      if (target) {
+        return target;
+      } else {
+        return null;
+      }
+    } else {
+      sd.log('----custom---获取同级属性元素失败，selector信息异常', li_selector, list_selector);
+      return null;
+    }
+  };
+
+  vtrackBase.getProp = function(propConf, data) {
+    if (!isObject(propConf)) {
+      return false;
+    }
+    if (!(isString(propConf.name) && propConf.name.length > 0)) {
+      sd.log('----vcustom----属性名不合法,属性抛弃', propConf.name);
+      return false;
+    }
+
+    var result = {};
+    var value;
+    var regResult;
+
+    if (propConf.method === 'content') {
+      var el;
+      if (isString(propConf.element_selector) && propConf.element_selector.length > 0) {
+        el = getDomBySelector(propConf.element_selector);
+      } else if (data && isString(propConf.list_selector)) {
+        var clickTarget = getDomBySelector(data.properties.$element_selector);
+        if (clickTarget) {
+          var closeli = sd.heatmap.getClosestLi(clickTarget);
+          el = vtrackBase.getPropElInLi(closeli, propConf.list_selector);
+        } else {
+          sd.log('----vcustom----点击元素获取异常，属性抛弃', propConf.name);
+          return false;
+        }
+      } else {
+        sd.log('----vcustom----属性配置异常，属性抛弃', propConf.name);
+        return false;
+      }
+
+      if (el && isElement(el)) {
+        if (el.tagName.toLowerCase() === 'input') {
+          value = el.value || '';
+        } else if (el.tagName.toLowerCase() === 'select') {
+          var sid = el.selectedIndex;
+          if (isNumber(sid) && isElement(el[sid])) {
+            value = getElementContent$1(el[sid], 'select');
+          }
+        } else {
+          value = getElementContent$1(el, el.tagName.toLowerCase());
+        }
+      } else {
+        sd.log('----vcustom----属性元素获取失败，属性抛弃', propConf.name);
+        return false;
+      }
+
+      if (propConf.regular) {
+        try {
+          regResult = new RegExp(propConf.regular).exec(value);
+        } catch (error) {
+          sd.log('----vcustom----正则处理失败，属性抛弃', propConf.name);
+          return false;
+        }
+
+        if (regResult === null) {
+          sd.log('----vcustom----属性规则处理，未匹配到结果,属性抛弃', propConf.name);
+          return false;
+        } else {
+          if (!(isArray(regResult) && isString(regResult[0]))) {
+            sd.log('----vcustom----正则处理异常，属性抛弃', propConf.name, regResult);
+            return false;
+          }
+          value = regResult[0];
+        }
+      }
+
+      if (propConf.type === 'STRING') {
+        result[propConf.name] = value;
+      } else if (propConf.type === 'NUMBER') {
+        if (value.length < 1) {
+          sd.log('----vcustom----未获取到数字内容，属性抛弃', propConf.name, value);
+          return false;
+        }
+        if (!isNaN(Number(value))) {
+          result[propConf.name] = Number(value);
+        } else {
+          sd.log('----vcustom----数字类型属性转换失败，属性抛弃', propConf.name, value);
+          return false;
+        }
+      }
+
+      return result;
+    } else {
+      sd.log('----vcustom----属性不支持此获取方式', propConf.name, propConf.method);
+      return false;
+    }
+  };
+
+  vtrackBase.getAssignConfigs = function(func, config) {
+    var url_info = vtrackBase.initUrl();
+    if (!(url_info && url_info.page_url)) {
+      return [];
+    }
+    if (!isObject(config)) {
+      return [];
+    }
+    var arr = [];
+    config.events = config.events || config.eventList;
+
+    if (!(isArray(config.events) && config.events.length > 0)) {
+      return [];
+    }
+
+    each(config.events, function(event) {
+      if (isObject(event) && isObject(event.event) && event.event.url_host === url_info.page_url.host && event.event.url_path === url_info.page_url.pathname) {
+        if (func(event)) {
+          arr.push(event);
+        }
+      }
+    });
+
+    return arr;
+  };
+
+  var unlimitedDiv = {
+    events: [],
+    init: function(data) {
+      this.filterWebClickEvents(data);
+    },
+    filterWebClickEvents: function(data) {
+      this.events = vtrackcollect.getAssignConfigs(function(event) {
+        if (isObject(event) && event.event.unlimited_div === true && event.event_type === 'webclick') {
+          return true;
+        } else {
+          return false;
+        }
+      }, data);
+    },
+    isTargetEle: function(ele) {
+      var prop = sd.heatmap.getEleDetail(ele);
+
+      if (!isObject(prop) || !isString(prop.$element_path)) {
+        return false;
+      }
+
+      for (var i = 0; i < this.events.length; i++) {
+        if (isObject(this.events[i]) && isObject(this.events[i].event) && vtrackcollect.configIsMatch(prop, this.events[i].event)) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+  };
+
+  var customProp = {
+    events: [],
+    configSwitch: false,
+    collectAble: function() {
+      return this.configSwitch && isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config;
+    },
+    updateEvents: function(data) {
+      this.events = vtrackcollect.getAssignConfigs(function(event) {
+        if (isObject(event) && isArray(event.properties) && event.properties.length > 0) {
+          return true;
+        } else {
+          return false;
+        }
+      }, data);
+      if (this.events.length) {
+        this.configSwitch = true;
+      } else {
+        this.configSwitch = false;
+      }
+    },
+    getVtrackProps: function(data) {
+      var props = {};
+      if (!this.collectAble()) {
+        return {};
+      }
+      if (data.event === '$WebClick') {
+        props = this.clickCustomPropMaker(data, this.events);
+      }
+      return props;
+    },
+    clickCustomPropMaker: function(data, events, configs) {
+      var _this = this;
+      configs = configs || this.filterConfig(data, events, vtrackcollect.url_info.page_url);
+      var props = {};
+      if (!configs.length) {
+        return {};
+      }
+      each(configs, function(config) {
+        if (isArray(config.properties) && config.properties.length > 0) {
+          each(config.properties, function(propConf) {
+            var prop = _this.getProp(propConf, data);
+            if (isObject(prop)) {
+              extend(props, prop);
+            }
+          });
+        }
+      });
+      return props;
+    },
+    getProp: vtrackBase.getProp,
+    getPropElInLi: vtrackBase.getPropElInLi,
+
+    filterConfig: vtrackBase.filterConfig
+  };
+
+  var vtrackcollect = {
+    unlimitedDiv: unlimitedDiv,
+    config: {},
+    storageEnable: true,
+    storage_name: 'webjssdkvtrackcollect',
+    para: {
+      session_time: 30 * 60 * 1000,
+      timeout: 5000,
+      update_interval: 30 * 60 * 1000
+    },
+    url_info: {},
+    timer: null,
+    update_time: null,
+    customProp: customProp,
+    initUrl: function() {
+      var info = vtrackBase.initUrl();
+      if (info) {
+        var apiParse;
+        try {
+          apiParse = new urlParse(sd.para.server_url);
+          apiParse._values.Path = '/config/visualized/Web.conf';
+          info.api_url = apiParse.getUrl();
+        } catch (error) {
+          sd.log('----vtrackcollect---API地址解析异常', error);
+          return false;
+        }
+        this.url_info = info;
+      }
+      return info;
+    },
+    init: function() {
+      if (!(isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config)) {
+        return false;
+      }
+
+      if (!_localStorage.isSupport()) {
+        this.storageEnable = false;
+      }
+      if (!this.initUrl()) {
+        sd.log('----vtrackcustom----初始化失败，url信息解析失败');
+        return false;
+      }
+
+      if (!this.storageEnable) {
+        this.getConfigFromServer();
+      } else {
+        var data = store.readObjectVal(this.storage_name);
+        if (!(isObject(data) && isObject(data.data))) {
+          this.getConfigFromServer();
+        } else if (!this.serverUrlIsSame(data.serverUrl)) {
+          this.getConfigFromServer();
+        } else {
+          this.config = data.data;
+          this.update_time = data.updateTime;
+          this.updateConfig(data.data);
+          var now_time = new Date().getTime();
+          var duration = now_time - this.update_time;
+          if (!(isNumber(duration) && duration > 0 && duration < this.para.session_time)) {
+            this.getConfigFromServer();
+          } else {
+            var next_time = this.para.update_interval - duration;
+            this.setNextFetch(next_time);
+          }
+        }
+      }
+      this.pageStateListenner();
+    },
+    serverUrlIsSame: function(obj) {
+      if (!isObject(obj)) {
+        return false;
+      }
+      if (obj.host === this.url_info.server_url.host && obj.project === this.url_info.server_url.project) {
+        return true;
+      }
+      return false;
+    },
+    getConfigFromServer: function() {
+      var _this = this;
+      var success = function(code, data) {
+        _this.update_time = new Date().getTime();
+        var serverData = {};
+        if (code === 200) {
+          if (data && isObject(data) && data.os === 'Web') {
+            serverData = data;
+            _this.updateConfig(serverData);
+          }
+        } else if (code === 205) {
+          _this.updateConfig(serverData);
+        } else if (code === 304) {
+          serverData = _this.config;
+        } else {
+          sd.log('----vtrackcustom----数据异常', code);
+          _this.updateConfig(serverData);
+        }
+        _this.updateStorage(serverData);
+        _this.setNextFetch();
+      };
+      var error = function(err) {
+        _this.update_time = new Date().getTime();
+        sd.log('----vtrackcustom----配置拉取失败', err);
+        _this.setNextFetch();
+      };
+      this.sendRequest(success, error);
+    },
+    setNextFetch: function(time) {
+      var _this = this;
+      if (this.timer) {
+        clearTimeout(this.timer);
+        this.timer = null;
+      }
+      time = time || this.para.update_interval;
+      this.timer = setTimeout(function() {
+        _this.getConfigFromServer();
+      }, time);
+    },
+    pageStateListenner: function() {
+      var _this = this;
+      listenPageState({
+        visible: function() {
+          var time = new Date().getTime();
+          var duration = time - _this.update_time;
+          if (isNumber(duration) && duration > 0 && duration < _this.para.update_interval) {
+            var next_time = _this.para.update_interval - duration;
+            _this.setNextFetch(next_time);
+          } else {
+            _this.getConfigFromServer();
+          }
+        },
+        hidden: function() {
+          if (_this.timer) {
+            clearTimeout(_this.timer);
+            _this.timer = null;
+          }
+        }
+      });
+    },
+    updateConfig: function(data) {
+      if (!isObject(data)) {
+        return false;
+      }
+      this.config = data;
+      this.customProp.updateEvents(data);
+      this.unlimitedDiv.init(data);
+    },
+    updateStorage: function(data) {
+      if (!this.storageEnable) {
+        return false;
+      }
+      if (!isObject(data)) {
+        return false;
+      }
+      var server_url;
+      if (!this.url_info.server_url) {
+        var urlinfo = vtrackcollect.initUrl();
+        if (!urlinfo) {
+          return false;
+        } else {
+          server_url = urlinfo.server_url;
+        }
+      } else {
+        server_url = this.url_info.server_url;
+      }
+      var obj = {
+        updateTime: new Date().getTime(),
+        data: data,
+        serverUrl: server_url
+      };
+      store.saveObjectVal(this.storage_name, obj);
+    },
+    sendRequest: function(suc, err) {
+      var _this = this;
+      var data = {
+        app_id: this.url_info.page_url.host
+      };
+      if (this.config.version) {
+        data.v = this.config.version;
+      }
+      jsonp({
+        url: _this.url_info.api_url,
+        callbackName: 'saJSSDKVtrackCollectConfig',
+        data: data,
+        timeout: _this.para.timeout,
+        success: function(code, data) {
+          suc(code, data);
+        },
+        error: function(error) {
+          err(error);
+        }
+      });
+    },
+
+    getAssignConfigs: vtrackBase.getAssignConfigs,
+
+    configIsMatch: vtrackBase.configIsMatch
   };
 
 
@@ -4802,6 +5429,10 @@
       return getPage(ev);
     },
     start: function(ev, target, tagName, customProps, callback) {
+      var basicEleInfo = heatmap.getBasicEleInfo(ev, target, tagName, customProps, callback);
+      processWebClickEvent(basicEleInfo);
+    },
+    getBasicEleInfo: function(ev, target, tagName, customProps, callback) {
       var userCustomProps = isObject(customProps) ? customProps : {};
       var userCallback = isFunction(callback) ? callback : isFunction(customProps) ? customProps : undefined;
       if (sd.para.heatmap && sd.para.heatmap.collect_element && !sd.para.heatmap.collect_element(target)) {
@@ -4817,14 +5448,13 @@
         }
       }
       prop = extend(prop, this.getPointerEventProp(ev, target), userCustomProps);
-      if (tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true) {
-        sd.trackLink({
-          event: ev,
-          target: target
-        }, '$WebClick', prop);
-      } else {
-        sd.track('$WebClick', prop, userCallback);
-      }
+      return {
+        event: ev,
+        target: target,
+        props: prop,
+        tagName: tagName,
+        callback: userCallback
+      };
     },
     hasElement: function(obj, func) {
       var path;
@@ -4958,7 +5588,7 @@
             para.$url_path = getURLPath();
             para.event_duration = Math.min(sd.para.heatmap.scroll_event_duration, parseInt(delay_time) / 1000);
             para.event_duration = para.event_duration < 0 ? 0 : para.event_duration;
-            sd.track('$WebStay', para);
+            processWebStayEvent(para);
           }
           this.current_time = current_time;
         }
@@ -4966,14 +5596,14 @@
 
       delayTime.current_time = new Date();
 
-      addEvent$1(window, 'scroll', function() {
+      saAddEvent(window, 'scroll', function() {
         if (!isPageCollect) {
           return false;
         }
         delayTime.go();
       });
 
-      addEvent$1(window, 'unload', function() {
+      saAddEvent(window, 'unload', function() {
         if (!isPageCollect) {
           return false;
         }
@@ -4999,7 +5629,7 @@
         sd.para.heatmap.collect_elements = 'interact';
       }
       if (sd.para.heatmap.collect_elements === 'all') {
-        addEvent$1(document, 'click', function(e) {
+        saAddEvent(document, 'click', function(e) {
           if (!isPageCollect) return false;
           var ev = e || window.event;
           if (!ev) {
@@ -5027,7 +5657,7 @@
           }
         });
       } else {
-        addEvent$1(document, 'click', function(e) {
+        saAddEvent(document, 'click', function(e) {
           if (!isPageCollect) return false;
           var ev = e || window.event;
           if (!ev) {
@@ -5037,8 +5667,8 @@
           var theTarget = sd.heatmap.getTargetElement(target, e);
           if (theTarget) {
             that.start(ev, theTarget, theTarget.tagName.toLowerCase());
-          } else if (isElement(target) && target.tagName.toLowerCase() === 'div' && isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config && sd.unlimitedDiv.events.length > 0) {
-            if (sd.unlimitedDiv.isTargetEle(target)) {
+          } else if (isElement(target) && target.tagName.toLowerCase() === 'div' && isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config && unlimitedDiv.events.length > 0) {
+            if (unlimitedDiv.isTargetEle(target)) {
               that.start(ev, target, target.tagName.toLowerCase(), {
                 $lib_method: 'vtrack'
               });
@@ -5049,6 +5679,267 @@
     }
   };
 
+  function getSendUrl(url, data) {
+    var dataStr = sd.kit.encodeTrackData(data);
+    if (url.indexOf('?') !== -1) {
+      return url + '&' + dataStr;
+    }
+    return url + '?' + dataStr;
+  }
+
+  function getSendData(data) {
+    return sd.kit.encodeTrackData(data);
+  }
+
+
+  function getUA$1() {
+    var Sys = {};
+    var ua = navigator.userAgent.toLowerCase();
+    var s;
+    if ((s = ua.match(/ qq\/([\d.]+)/))) {
+      Sys.qqBuildinBrowser = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/mqqbrowser\/([\d.]+)/))) {
+      Sys.qqBrowser = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/opera.([\d.]+)/))) {
+      Sys.opera = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/msie ([\d.]+)/))) {
+      Sys.ie = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/edge.([\d.]+)/))) {
+      Sys.edge = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/firefox\/([\d.]+)/))) {
+      Sys.firefox = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/chrome\/([\d.]+)/))) {
+      Sys.chrome = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/version\/([\d.]+).*safari/))) {
+      Sys.safari = Number(s[1].match(/^\d*.\d*/));
+    } else if ((s = ua.match(/trident\/([\d.]+)/))) {
+      Sys.ie = 11;
+    }
+    return Sys;
+  }
+
+  var ImageSender = function(para) {
+    this.callback = para.callback;
+    this.img = document.createElement('img');
+    this.img.width = 1;
+    this.img.height = 1;
+    if (sd.para.img_use_crossorigin) {
+      this.img.crossOrigin = 'anonymous';
+    }
+    this.data = para.data;
+    this.server_url = getSendUrl(para.server_url, para.data);
+  };
+
+  ImageSender.prototype.start = function() {
+    var me = this;
+    if (sd.para.ignore_oom) {
+      this.img.onload = function() {
+        this.onload = null;
+        this.onerror = null;
+        this.onabort = null;
+        me.isEnd();
+      };
+      this.img.onerror = function() {
+        this.onload = null;
+        this.onerror = null;
+        this.onabort = null;
+        me.isEnd();
+      };
+      this.img.onabort = function() {
+        this.onload = null;
+        this.onerror = null;
+        this.onabort = null;
+        me.isEnd();
+      };
+    }
+    this.img.src = this.server_url;
+  };
+
+  ImageSender.prototype.lastClear = function() {
+    var sys = getUA$1();
+    if (sys.ie !== undefined) {
+      this.img.src = 'about:blank';
+    } else {
+      this.img.src = '';
+    }
+  };
+
+  var AjaxSender = function(para) {
+    this.callback = para.callback;
+    this.server_url = para.server_url;
+    this.data = getSendData(para.data);
+  };
+
+  AjaxSender.prototype.start = function() {
+    var me = this;
+    ajax$1({
+      url: this.server_url,
+      type: 'POST',
+      data: this.data,
+      credentials: false,
+      timeout: sd.para.datasend_timeout,
+      cors: true,
+      success: function() {
+        me.isEnd();
+      },
+      error: function() {
+        me.isEnd();
+      }
+    });
+  };
+
+  var BeaconSender = function(para) {
+    this.callback = para.callback;
+    this.server_url = para.server_url;
+    this.data = getSendData(para.data);
+  };
+
+  BeaconSender.prototype.start = function() {
+    var me = this;
+    if (typeof navigator === 'object' && typeof navigator.sendBeacon === 'function') {
+      navigator.sendBeacon(this.server_url, this.data);
+    }
+    setTimeout(function() {
+      me.isEnd();
+    }, 40);
+  };
+
+  function getSendType(data) {
+    var supportedSendTypes = ['image', 'ajax', 'beacon'];
+    var sendType = supportedSendTypes[0];
+
+    if (data.config && indexOf(supportedSendTypes, data.config.send_type) > -1) {
+      sendType = data.config.send_type;
+    } else {
+      sendType = sd.para.send_type;
+    }
+
+    if (sendType === 'beacon' && isSupportBeaconSend() === false) {
+      sendType = 'image';
+    }
+
+    if (sendType === 'ajax' && isSupportCors() === false) {
+      sendType = 'image';
+    }
+
+    return sendType;
+  }
+
+  function getSender(data) {
+    var sendType = getSendType(data);
+    switch (sendType) {
+      case 'image':
+        return new ImageSender(data);
+      case 'ajax':
+        return new AjaxSender(data);
+      case 'beacon':
+        return new BeaconSender(data);
+      default:
+        return new ImageSender(data);
+    }
+  }
+
+  function getRealtimeInstance(data) {
+    var obj = getSender(data);
+    var start = obj.start;
+    obj.start = function() {
+      var me = this;
+      start.apply(this, arguments);
+      setTimeout(function() {
+        me.isEnd(true);
+      }, sd.para.callback_timeout);
+    };
+    obj.end = function() {
+      this.callback && this.callback();
+      var self = this;
+      setTimeout(function() {
+        self.lastClear && self.lastClear();
+      }, sd.para.datasend_timeout - sd.para.callback_timeout);
+    };
+    obj.isEnd = function() {
+      if (!this.received) {
+        this.received = true;
+        this.end();
+      }
+    };
+    return obj;
+  }
+
+  function prepareServerUrl(requestData) {
+    if (typeof requestData.config === 'object' && requestData.config.server_url) {
+      sendCall(requestData, requestData.config.server_url, requestData.callback);
+    } else if (isArray(sd.para.server_url) && sd.para.server_url.length) {
+      for (var i = 0; i < sd.para.server_url.length; i++) {
+        sendCall(requestData, sd.para.server_url[i]);
+      }
+    } else if (typeof sd.para.server_url === 'string' && sd.para.server_url !== '') {
+      sendCall(requestData, sd.para.server_url, requestData.callback);
+    } else {
+      sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
+    }
+  }
+
+  function sendCall(requestData, server_url, callback) {
+    var data = {
+      server_url: server_url,
+      data: JSON.stringify(requestData.data),
+      callback: callback,
+      config: requestData.config
+    };
+    if (isObject(sd.para.jsapp) && !sd.para.jsapp.isOnline && typeof sd.para.jsapp.setData === 'function') {
+      delete data.callback;
+      data = JSON.stringify(data);
+      sd.para.jsapp.setData(data);
+    } else {
+      realtimeSend(data);
+    }
+  }
+
+  function realtimeSend(data) {
+    var instance = getRealtimeInstance(data);
+    instance.start();
+  }
+
+  function getClassifiedUtms() {
+    var utms = pageInfo.campaignParams();
+    var $utms = {};
+    each(utms, function(v, i, utms) {
+      if ((' ' + sd.source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {
+        $utms['$' + i] = utms[i];
+      } else {
+        $utms[i] = utms[i];
+      }
+    });
+    return $utms;
+  }
+
+  function sendFirstProfile(setOnceProfileFn, fullReferrer, is_set_profile) {
+    if (sd.is_first_visitor && is_set_profile) {
+      var eqidObj = {};
+
+      if (sd.para.preset_properties.search_keyword_baidu && isReferralTraffic(document.referrer) && isBaiduTraffic()) {
+        eqidObj['$search_keyword_id'] = getBaiduKeyword.id();
+        eqidObj['$search_keyword_id_type'] = getBaiduKeyword.type();
+        eqidObj['$search_keyword_id_hash'] = hashCode53(eqidObj['$search_keyword_id']);
+      }
+
+      setOnceProfileFn(
+        extend({
+            $first_visit_time: new Date(),
+            $first_referrer: getReferrer(null, fullReferrer),
+            $first_browser_language: isString(navigator.language) ? navigator.language.toLowerCase() : '取值异常',
+            $first_browser_charset: isString(document.charset) ? document.charset.toUpperCase() : '取值异常',
+            $first_traffic_source_type: getSourceFromReferrer(),
+            $first_search_keyword: getKeywordFromReferrer()
+          },
+          getClassifiedUtms(),
+          eqidObj
+        )
+      );
+      sd.is_first_visitor = false;
+    }
+  }
+
   var commonWays = {
     setOnlineState: function(state) {
       if (state === true && isObject(sd.para.jsapp) && typeof sd.para.jsapp.getData === 'function') {
@@ -5057,7 +5948,7 @@
         if (isArray(arr) && arr.length > 0) {
           each(arr, function(str) {
             if (isJSONString(str)) {
-              sd.sendState.realtimeSend(JSON.parse(str));
+              realtimeSend(JSON.parse(str));
             }
           });
         }
@@ -5083,7 +5974,7 @@
       if (!isObject(obj) || isEmptyObject(obj)) {
         return false;
       }
-      var saveData = sd.store.readObjectVal('sensorsdata_2015_jssdk_profile');
+      var saveData = store.readObjectVal('sensorsdata_2015_jssdk_profile');
       var isNeedSend = false;
       if (isObject(saveData) && !isEmptyObject(saveData)) {
         for (var i in obj) {
@@ -5093,11 +5984,11 @@
           }
         }
         if (isNeedSend) {
-          sd.store.saveObjectVal('sensorsdata_2015_jssdk_profile', saveData);
+          store.saveObjectVal('sensorsdata_2015_jssdk_profile', saveData);
           sd.setProfile(obj);
         }
       } else {
-        sd.store.saveObjectVal('sensorsdata_2015_jssdk_profile', obj);
+        store.saveObjectVal('sensorsdata_2015_jssdk_profile', obj);
         sd.setProfile(obj);
       }
     },
@@ -5110,7 +6001,7 @@
     },
     setSessionReferrer: function() {
       var _referrer = getReferrer();
-      sd.store.setSessionPropsOnce({
+      store.setSessionPropsOnce({
         _session_referrer: _referrer,
         _session_referrer_host: pageInfo.pageProp.referrer_host
       });
@@ -5146,20 +6037,6 @@
         url = pageInfo.pageProp.referrer;
       }
       para = isObject(para) ? para : {};
-
-      function getUtm() {
-        var utms = pageInfo.campaignParams();
-        var $utms = {};
-        each(utms, function(v, i, utms) {
-          if ((' ' + sd.source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {
-            $utms['$' + i] = utms[i];
-          } else {
-            $utms[i] = utms[i];
-          }
-        });
-        return $utms;
-      }
-
       var is_set_profile = !para.not_set_profile;
       if (para.not_set_profile) {
         delete para.not_set_profile;
@@ -5175,7 +6052,7 @@
               $title: document.title
             },
             p,
-            getUtm()
+            getClassifiedUtms()
           ),
           c
         );
@@ -5183,32 +6060,7 @@
       }
       closure(para, callback);
       this.autoTrackSinglePage = closure;
-
-      if (sd.is_first_visitor && is_set_profile) {
-        var eqidObj = {};
-
-        if (sd.para.preset_properties.search_keyword_baidu && isReferralTraffic(document.referrer) && isBaiduTraffic()) {
-          eqidObj['$search_keyword_id'] = getBaiduKeyword.id();
-          eqidObj['$search_keyword_id_type'] = getBaiduKeyword.type();
-          eqidObj['$search_keyword_id_hash'] = hashCode53(eqidObj['$search_keyword_id']);
-        }
-
-        sd.setOnceProfile(
-          extend({
-              $first_visit_time: new Date(),
-              $first_referrer: getReferrer(),
-              $first_browser_language: isString(navigator.language) ? navigator.language.toLowerCase() : '取值异常',
-              $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
-              $first_traffic_source_type: getSourceFromReferrer(),
-              $first_search_keyword: getKeywordFromReferrer()
-            },
-            getUtm(),
-            eqidObj
-          )
-        );
-
-        sd.is_first_visitor = false;
-      }
+      sendFirstProfile(sd.setOnceProfile, false, is_set_profile);
     },
     autoTrackWithoutProfile: function(para, callback) {
       para = isObject(para) ? para : {};
@@ -5218,16 +6070,7 @@
     },
     autoTrack: function(para, callback) {
       para = isObject(para) ? para : {};
-
-      var utms = pageInfo.campaignParams();
-      var $utms = {};
-      each(utms, function(v, i, utms) {
-        if ((' ' + sd.source_channel_standard + ' ').indexOf(' ' + i + ' ') !== -1) {
-          $utms['$' + i] = utms[i];
-        } else {
-          $utms[i] = utms[i];
-        }
-      });
+      var $utms = getClassifiedUtms();
 
       var is_set_profile = !para.not_set_profile;
       if (para.not_set_profile) {
@@ -5269,39 +6112,15 @@
         callback
       );
 
-      if (sd.is_first_visitor && is_set_profile) {
-        var eqidObj = {};
-
-        if (sd.para.preset_properties.search_keyword_baidu && isReferralTraffic(document.referrer) && isBaiduTraffic()) {
-          eqidObj['$search_keyword_id'] = getBaiduKeyword.id();
-          eqidObj['$search_keyword_id_type'] = getBaiduKeyword.type();
-          eqidObj['$search_keyword_id_hash'] = hashCode53(eqidObj['$search_keyword_id']);
-        }
-
-        sd.setOnceProfile(
-          extend({
-              $first_visit_time: new Date(),
-              $first_referrer: getReferrer(null, true),
-              $first_browser_language: isString(navigator.language) ? navigator.language.toLowerCase() : '取值异常',
-              $first_browser_charset: typeof document.charset === 'string' ? document.charset.toUpperCase() : '取值异常',
-              $first_traffic_source_type: getSourceFromReferrer(),
-              $first_search_keyword: getKeywordFromReferrer()
-            },
-            $utms,
-            eqidObj
-          )
-        );
-
-        sd.is_first_visitor = false;
-      }
+      sendFirstProfile(sd.setOnceProfile, true, is_set_profile);
 
       this.autoTrackIsUsed = true;
     },
     getAnonymousID: function() {
-      if (isEmptyObject(sd.store._state)) {
-        return '请先初始化SDK';
+      if (isEmptyObject(store._state)) {
+        return 'SDK is not initialized.';
       } else {
-        return sd.store._state._first_id || sd.store._state.first_id || sd.store._state._distinct_id || sd.store._state.distinct_id;
+        return store._state._first_id || store._state.first_id || store._state._distinct_id || store._state.distinct_id;
       }
     },
     setPlugin: function(para) {
@@ -5312,8 +6131,10 @@
         if (isFunction(v)) {
           if (isObject(window.SensorsDataWebJSSDKPlugin) && window.SensorsDataWebJSSDKPlugin[k]) {
             v(window.SensorsDataWebJSSDKPlugin[k]);
+          } else if (isObject(sd.modules) && sd.modules[k]) {
+            v(window.SensorsDataWebJSSDKPlugin[k]);
           } else {
-            sd.log(k + '没有获取到,请查阅文档，调整' + k + '的引入顺序！');
+            sd.log(k + 'is not found,please check sensorsdata documents.');
           }
         }
       });
@@ -5378,7 +6199,8 @@
     spaSwitch: ['spa', 'switch'],
     sdkAfterInitPara: ['sdk', 'afterInitPara'],
     sdkBeforeInit: ['sdk', 'beforeInit'],
-    sdkAfterInit: ['sdk', 'afterInit']
+    sdkAfterInit: ['sdk', 'afterInit'],
+    sdkReady: ['sdk', 'ready']
   };
 
   function eventEmitterFacade(event_type, callback) {
@@ -5389,34 +6211,97 @@
     }
   }
 
+  function loginBody(obj, sendSignup) {
+    var id = obj.id;
+    var callback = obj.callback;
+    var name = obj.name;
 
-  function addReferrerHost(data) {
-    var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
-    var defaultHost = '取值异常';
-    if (isObject(data.properties)) {
-      if (data.properties.$first_referrer) {
-        data.properties.$first_referrer_host = getHostname(data.properties.$first_referrer, defaultHost);
-      }
-      if (isNotProfileType) {
-        if ('$referrer' in data.properties) {
-          data.properties.$referrer_host = data.properties.$referrer === '' ? '' : getHostname(data.properties.$referrer, defaultHost);
-        }
-        if (sd.para.preset_properties.latest_referrer && sd.para.preset_properties.latest_referrer_host) {
-          data.properties.$latest_referrer_host = data.properties.$latest_referrer === '' ? '' : getHostname(data.properties.$latest_referrer, defaultHost);
-        }
-      }
+    var firstId = store.getFirstId();
+    var distinctId = store.getOriginDistinctId();
+
+    if (!check({
+        distinct_id: id
+      })) {
+      sdLog('login id is invalid');
+      return false;
     }
+    if (id === store.getOriginDistinctId() && !firstId) {
+      sdLog('login id is equal to distinct_id');
+      return false;
+    }
+    if (isObject(store._state.identities) && store._state.identities.hasOwnProperty(name) && id === store._state.first_id) {
+      return false;
+    }
+
+    var isNewLoginId = store._state.history_login_id.name !== name || id !== store._state.history_login_id.value;
+    if (isNewLoginId) {
+      store._state.identities[name] = id;
+      store.set('history_login_id', {
+        name: name,
+        value: id
+      });
+
+      if (!firstId) {
+        store.set('first_id', distinctId);
+      }
+
+      sendSignup(id, '$SignUp', {}, callback);
+
+      var tempObj = {
+        $identity_cookie_id: store._state.identities.$identity_cookie_id
+      };
+      tempObj[name] = id;
+      resetIdentities(tempObj);
+      return true;
+    }
+    return false;
   }
 
-  function addPropsHook(data) {
-    var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
-    var isSatisfy = sd.para.preset_properties && isNotProfileType;
-    if (isSatisfy && sd.para.preset_properties.url && typeof data.properties.$url === 'undefined') {
-      data.properties.$url = getURL();
+  function resetIdentities(resetObj) {
+    var identities = {};
+    for (var i in resetObj) {
+      identities[i] = resetObj[i];
     }
-    if (isSatisfy && sd.para.preset_properties.title && typeof data.properties.$title === 'undefined') {
-      data.properties.$title = document.title;
+    store._state.identities = identities;
+    store.save();
+  }
+
+  function deleteBindIDData(name, value) {
+    if (!check({
+        unbindKey: name,
+        bindValue: value
+      })) {
+      return false;
     }
+
+    if (isObject(store._state.identities) && store._state.identities.hasOwnProperty(name) && store._state.identities[name] === value) {
+      var loginID = store.getUnionId().login_id;
+      if (loginID && name + '+' + value === loginID) {
+        store._state.distinct_id = store._state.first_id;
+        store._state.first_id = '';
+        store.set('history_login_id', {
+          name: '',
+          value: ''
+        });
+      }
+
+      if (name !== '$identity_cookie_id') {
+        delete store._state.identities[name];
+        store.save();
+      }
+    }
+
+    var identities = {};
+    identities[name] = value;
+    return identities;
+  }
+
+
+  function setInitVar() {
+    sd._t = sd._t || 1 * new Date();
+    sd.lib_version = sdkversion_placeholder;
+    sd.is_first_visitor = false;
+    sd.source_channel_standard = source_channel_standard;
   }
 
   function initPara(para) {
@@ -5430,12 +6315,12 @@
         latestObj['latest_' + latestProp] = sd.para.is_track_latest[latestProp];
       }
     }
-    sd.para.preset_properties = extend({}, sd.para_default.preset_properties, latestObj, sd.para.preset_properties || {});
+    sd.para.preset_properties = extend({}, defaultPara.preset_properties, latestObj, sd.para.preset_properties || {});
 
     var i;
-    for (i in sd.para_default) {
+    for (i in defaultPara) {
       if (sd.para[i] === void 0) {
-        sd.para[i] = sd.para_default[i];
+        sd.para[i] = defaultPara[i];
       }
     }
     if (typeof sd.para.server_url === 'string') {
@@ -5463,9 +6348,9 @@
       sd.para.send_type = 'image';
     }
 
-    sd.debug.protocol.serverUrl();
+    debug.protocol.serverUrl();
 
-    sd.bridge.initPara();
+    sd.bridge && sd.bridge.initPara();
 
     var batch_send_default = {
       datasend_timeout: 6000,
@@ -5608,38 +6493,6 @@
     }
   };
 
-  function resetIdentities(resetObj) {
-    var identities = {};
-    for (var i in resetObj) {
-      identities[i] = resetObj[i];
-    }
-    sd.store._state.identities = identities;
-    sd.store.save();
-  }
-
-  function setInitVar() {
-    sd._t = sd._t || 1 * new Date();
-    sd.lib_version = sdkversion_placeholder;
-    sd.is_first_visitor = false;
-    sd.source_channel_standard = source_channel_standard;
-  }
-
-  function enableLocalLog() {
-    if (_sessionStorage.isSupport()) {
-      try {
-        sessionStorage.setItem('sensorsdata_jssdk_debug', 'true');
-      } catch (e) {
-        sd.log('enableLocalLog error: ' + e.message);
-      }
-    }
-  }
-
-  function disableLocalLog() {
-    if (_sessionStorage.isSupport()) {
-      sessionStorage.removeItem('sensorsdata_jssdk_debug');
-    }
-  }
-
   function quick() {
     var arg = Array.prototype.slice.call(arguments);
     var arg0 = arg[0];
@@ -5654,25 +6507,54 @@
   }
 
 
-  function use(name, option) {
-    if (!isString(name)) {
-      sd.log('use插件名称必须是字符串！');
-      return false;
+  function use(plugin, option) {
+    if (!isString(plugin) && !isObject(plugin)) {
+      sd.log('use\'s first arguments must be string or object.');
+      return;
     }
 
-    if (isObject(window.SensorsDataWebJSSDKPlugin) && isObject(window.SensorsDataWebJSSDKPlugin[name]) && isFunction(window.SensorsDataWebJSSDKPlugin[name].init)) {
-      window.SensorsDataWebJSSDKPlugin[name].init(sd, option);
-      return window.SensorsDataWebJSSDKPlugin[name];
-    } else if (isObject(sd.modules) && isObject(sd.modules[name]) && isFunction(sd.modules[name].init)) {
-      sd.modules[name].init(sd, option);
-      return sd.modules[name];
-    } else {
-      sd.log(name + '没有获取到,请查阅文档，调整' + name + '的引入顺序！');
+    var curPlugin;
+    if (isObject(plugin)) {
+      var m = sd.modules && sd.modules[plugin.name];
+      if (m && m !== plugin) {
+        sd.log(plugin.name + ' is conflict with builtin plugin, and sdk uses builtin plugin.');
+      }
+      curPlugin = m || plugin;
     }
+
+    if (isString(plugin)) {
+      if (isObject(sd.modules) && isObject(sd.modules[plugin])) {
+        curPlugin = sd.modules[plugin];
+      } else if (isObject(window.SensorsDataWebJSSDKPlugin) && isObject(window.SensorsDataWebJSSDKPlugin[plugin])) {
+        curPlugin = window.SensorsDataWebJSSDKPlugin[plugin];
+      } else if (window.sensorsDataAnalytic201505 && window.sensorsDataAnalytic201505.modules[plugin]) {
+        curPlugin = window.sensorsDataAnalytic201505.modules[plugin];
+      }
+    }
+
+    if (!curPlugin || !isFunction(curPlugin.init)) {
+      sd.log(plugin + ' is not found or it\'s not a valid plugin。Please check sensorsdata official documents.');
+      return;
+    }
+
+    function initPlugin() {
+      !curPlugin.is_init && curPlugin.init(sd, option);
+      curPlugin.is_init = true;
+      sd.modules = sd.modules || {};
+      sd.modules[curPlugin.name || plugin] = curPlugin;
+      return curPlugin;
+    }
+
+    if (curPlugin.is_init) {
+      sd.log(plugin + ' is initiated.');
+      return curPlugin;
+    }
+
+    return initPlugin();
   }
 
   function track(e, p, c) {
-    if (saEvent.check({
+    if (check({
         event: e,
         properties: p
       })) {
@@ -5687,15 +6569,15 @@
   }
 
   function bind(itemName, itemValue) {
-    if (!saEvent.check({
+    if (!check({
         bindKey: itemName,
         bindValue: itemValue
       })) {
       return false;
     }
 
-    sd.store._state.identities[itemName] = itemValue;
-    sd.store.save();
+    store._state.identities[itemName] = itemValue;
+    store.save();
 
     saEvent.send({
       type: 'track_id_bind',
@@ -5705,95 +6587,23 @@
   }
 
   function unbind(itemName, itemValue) {
-    if (!saEvent.check({
-        unbindKey: itemName,
-        bindValue: itemValue
-      })) {
-      return false;
-    }
-
-    if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(itemName) && sd.store._state.identities[itemName] === itemValue) {
-      var loginID = sd.store.getUnionId().login_id;
-      if (loginID && itemName + '+' + itemValue === loginID) {
-        sd.store._state.distinct_id = sd.store._state.first_id;
-        sd.store._state.first_id = '';
-        sd.store.set('history_login_id', {
-          name: '',
-          value: ''
-        });
-      }
-
-      if (itemName !== '$identity_cookie_id') {
-        delete sd.store._state.identities[itemName];
-        sd.store.save();
-      }
-    }
-
-    var identities = {};
-    identities[itemName] = itemValue;
-
-    saEvent.send({
-      identities: identities,
-      type: 'track_id_unbind',
-      event: '$UnbindID',
-      properties: {}
-    });
+    var identities = deleteBindIDData(itemName, itemValue);
+    identities &&
+      saEvent.send({
+        identities: identities,
+        type: 'track_id_unbind',
+        event: '$UnbindID',
+        properties: {}
+      });
   }
 
   function trackLink(link, event_name, event_prop) {
-    function _trackLink(obj, event_name, event_prop) {
-      obj = obj || {};
-      var link = null;
-      if (obj.ele) {
-        link = obj.ele;
-      }
-      if (obj.event) {
-        if (obj.target) {
-          link = obj.target;
-        } else {
-          link = obj.event.target;
-        }
-      }
-
-      event_prop = event_prop || {};
-      if (!link || typeof link !== 'object') {
-        return false;
-      }
-      if (!link.href || /^javascript/.test(link.href) || link.target || link.download || link.onclick) {
-        sd.track(event_name, event_prop);
-        return false;
-      }
-
-      function linkFunc(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        var hasCalled = false;
-
-        function track_a_click() {
-          if (!hasCalled) {
-            hasCalled = true;
-            location.href = link.href;
-          }
-        }
-        setTimeout(track_a_click, 1000);
-        sd.track(event_name, event_prop, track_a_click);
-      }
-      if (obj.event) {
-        linkFunc(obj.event);
-      }
-      if (obj.ele) {
-        addEvent$1(obj.ele, 'click', function(e) {
-          linkFunc(e);
-        });
-      }
-    }
-
     if (typeof link === 'object' && link.tagName) {
-      _trackLink({
+      trackLinkByCustomTrackFunc({
         ele: link
-      }, event_name, event_prop);
+      }, event_name, event_prop, sd.track);
     } else if (typeof link === 'object' && link.target && link.event) {
-      _trackLink(link, event_name, event_prop);
+      trackLinkByCustomTrackFunc(link, event_name, event_prop, sd.track);
     }
   }
 
@@ -5805,7 +6615,7 @@
     if (!link.href || /^javascript/.test(link.href) || link.target) {
       return false;
     }
-    addEvent$1(link, 'click', function(e) {
+    saAddEvent(link, 'click', function(e) {
       e.preventDefault();
       var hasCalled = false;
       setTimeout(track_a_click, 1000);
@@ -5821,7 +6631,7 @@
   }
 
   function setItem(type, id, p) {
-    if (saEvent.check({
+    if (check({
         item_type: type,
         item_id: id,
         properties: p
@@ -5836,7 +6646,7 @@
   }
 
   function deleteItem(type, id) {
-    if (saEvent.check({
+    if (check({
         item_type: type,
         item_id: id
       })) {
@@ -5849,7 +6659,7 @@
   }
 
   function setProfile(p, c) {
-    if (saEvent.check({
+    if (check({
         propertiesMust: p
       })) {
       saEvent.send({
@@ -5862,7 +6672,7 @@
   }
 
   function setOnceProfile(p, c) {
-    if (saEvent.check({
+    if (check({
         propertiesMust: p
       })) {
       saEvent.send({
@@ -5875,7 +6685,7 @@
   }
 
   function appendProfile(p, c) {
-    if (saEvent.check({
+    if (check({
         propertiesMust: p
       })) {
       each(p, function(value, key) {
@@ -5915,7 +6725,7 @@
       return true;
     }
 
-    if (saEvent.check({
+    if (check({
         propertiesMust: p
       })) {
       if (isChecked(p)) {
@@ -5973,8 +6783,8 @@
     }
 
     function saveIdentities(id) {
-      sd.store._state.identities.$identity_anonymous_id = id;
-      sd.store.save();
+      store._state.identities.$identity_anonymous_id = id;
+      store.save();
     }
 
     var firstId = store.getFirstId();
@@ -5986,7 +6796,7 @@
         store.set('distinct_id', uuid);
       }
       saveIdentities(uuid);
-    } else if (saEvent.check({
+    } else if (check({
         distinct_id: id
       })) {
       if (isSave === true) {
@@ -6011,7 +6821,7 @@
     store.set('distinct_id', id);
     saEvent.send({
         original_id: original_id,
-        distinct_id: sd.store.getDistinctId(),
+        distinct_id: store.getDistinctId(),
         type: 'track_signup',
         event: e,
         properties: p
@@ -6024,7 +6834,7 @@
     if (typeof id === 'number') {
       id = String(id);
     }
-    if (saEvent.check({
+    if (check({
         distinct_id: id,
         event: e,
         properties: p
@@ -6035,7 +6845,7 @@
 
 
   function registerPage(obj) {
-    if (saEvent.check({
+    if (check({
         properties: obj
       })) {
       extend(pageInfo.currentProps, obj);
@@ -6064,7 +6874,7 @@
   }
 
   function register(props) {
-    if (saEvent.check({
+    if (check({
         properties: props
       })) {
       store.setProps(props);
@@ -6074,7 +6884,7 @@
   }
 
   function registerOnce(props) {
-    if (saEvent.check({
+    if (check({
         properties: props
       })) {
       store.setPropsOnce(props);
@@ -6084,7 +6894,7 @@
   }
 
   function registerSession(props) {
-    if (saEvent.check({
+    if (check({
         properties: props
       })) {
       store.setSessionProps(props);
@@ -6094,7 +6904,7 @@
   }
 
   function registerSessionOnce(props) {
-    if (saEvent.check({
+    if (check({
         properties: props
       })) {
       store.setSessionPropsOnce(props);
@@ -6103,61 +6913,17 @@
     }
   }
 
-  function loginBody(obj) {
-    var id = obj.id;
-    var callback = obj.callback;
-    var name = obj.name;
-
-    var firstId = store.getFirstId();
-    var distinctId = store.getOriginDistinctId();
-
-    if (!saEvent.check({
-        distinct_id: id
-      })) {
-      sd.log('login id is invalid');
-      return false;
-    }
-    if (id === sd.store.getOriginDistinctId() && !firstId) {
-      sd.log('login id is equal to distinct_id');
-      return false;
-    }
-    if (isObject(sd.store._state.identities) && sd.store._state.identities.hasOwnProperty(name) && id === sd.store._state.first_id) {
-      return false;
-    }
-
-    var isNewLoginId = sd.store._state.history_login_id.name !== name || id !== sd.store._state.history_login_id.value;
-    if (isNewLoginId) {
-      sd.store._state.identities[name] = id;
-      sd.store.set('history_login_id', {
-        name: name,
-        value: id
-      });
-
-      if (!firstId) {
-        store.set('first_id', distinctId);
-      }
-
-      sendSignup(id, '$SignUp', {}, callback);
-
-      var tempObj = {
-        $identity_cookie_id: sd.store._state.identities.$identity_cookie_id
-      };
-      tempObj[name] = id;
-      resetIdentities(tempObj);
-      return true;
-    }
-    return false;
-  }
-
   function login(id, callback) {
     if (typeof id === 'number') {
       id = String(id);
     }
     var returnValue = loginBody({
-      id: id,
-      callback: callback,
-      name: IDENTITY_KEY.LOGIN
-    });
+        id: id,
+        callback: callback,
+        name: IDENTITY_KEY.LOGIN
+      },
+      sendSignup
+    );
     !returnValue && isFunction(callback) && callback();
   }
 
@@ -6170,7 +6936,7 @@
       name = String(name);
     }
 
-    if (!saEvent.check({
+    if (!check({
         loginIdKey: name
       })) {
       return false;
@@ -6182,10 +6948,12 @@
     }
 
     loginBody({
-      id: id,
-      callback: null,
-      name: name
-    });
+        id: id,
+        callback: null,
+        name: name
+      },
+      sendSignup
+    );
   }
 
   function logout(isChangeId) {
@@ -6200,10 +6968,10 @@
       }
     }
     resetIdentities({
-      $identity_cookie_id: sd.store._state.identities.$identity_cookie_id
+      $identity_cookie_id: store._state.identities.$identity_cookie_id
     });
 
-    sd.store.set('history_login_id', {
+    store.set('history_login_id', {
       name: '',
       value: ''
     });
@@ -6234,42 +7002,17 @@
       _distinct_id: store.getDistinctId(),
       identities: JSON.parse(JSON.stringify(store._state.identities))
     };
-    var result = extend({}, pageInfo.properties(), sd.store.getProps(), getUtm(), obj);
+    var result = extend({}, pageInfo.properties(), store.getProps(), getUtm(), obj);
     if (sd.para.preset_properties.latest_referrer && sd.para.preset_properties.latest_referrer_host) {
       result.$latest_referrer_host = result.$latest_referrer === '' ? '' : getHostname(result.$latest_referrer);
     }
     return result;
   }
 
-  function iOSWebClickPolyfill() {
-    var iOS_other_tags_css = '';
-    var default_cursor_css = ' { cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0); }';
-    if (sd.heatmap && isArray(sd.heatmap.otherTags)) {
-      each(sd.heatmap.otherTags, function(val) {
-        iOS_other_tags_css += val + default_cursor_css;
-      });
-    }
-    if (isIOS() && getIOSVersion() && getIOSVersion() < 13) {
-      if (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div) {
-        setCssStyle('div, [data-sensors-click]' + default_cursor_css);
-      }
-      if (sd.para.heatmap && sd.para.heatmap.track_attr) {
-        setCssStyle('[' + sd.para.heatmap.track_attr.join('], [') + ']' + default_cursor_css);
-      }
-      if (iOS_other_tags_css !== '') {
-        setCssStyle(iOS_other_tags_css);
-      }
-    }
-  }
-
   var functions = {
     __proto__: null,
-    addReferrerHost: addReferrerHost,
-    addPropsHook: addPropsHook,
-    initPara: initPara,
     setInitVar: setInitVar,
-    enableLocalLog: enableLocalLog,
-    disableLocalLog: disableLocalLog,
+    initPara: initPara,
     quick: quick,
     use: use,
     track: track,
@@ -6298,507 +7041,37 @@
     loginWithKey: loginWithKey,
     logout: logout,
     getPresetProperties: getPresetProperties,
-    iOSWebClickPolyfill: iOSWebClickPolyfill,
     readyState: readyState,
-    para_default: defaultPara,
     log: sdLog,
     debug: debug,
-    IDENTITY_KEY: IDENTITY_KEY,
-    on: eventEmitterFacade
+    on: eventEmitterFacade,
+    disableLocalLog: disableLocalLog,
+    enableLocalLog: enableLocalLog
   };
 
-  var EventEmitterSa = function() {
-    this._events = [];
-    this.pendingEvents = [];
-  };
+  logger.setup(sdLog);
+  var _ = extend({}, W, business);
 
-  EventEmitterSa.prototype = {
-    emit: function(type) {
-      var args = [].slice.call(arguments, 1);
-
-      each(this._events, function(val) {
-        if (val.type !== type) {
-          return;
-        }
-        val.callback.apply(val.context, args);
+  function iOSWebClickPolyfill() {
+    var iOS_other_tags_css = '';
+    var default_cursor_css = ' { cursor: pointer; -webkit-tap-highlight-color: rgba(0,0,0,0); }';
+    if (sd.heatmap && isArray(sd.heatmap.otherTags)) {
+      each(sd.heatmap.otherTags, function(val) {
+        iOS_other_tags_css += val + default_cursor_css;
       });
-
-      this.pendingEvents.push({
-        type: type,
-        data: args
-      });
-      this.pendingEvents.length > 20 ? this.pendingEvents.shift() : null;
-    },
-    on: function(event, callback, context, replayAll) {
-      if (typeof callback !== 'function') {
-        return;
+    }
+    if (isIOS() && getIOSVersion() && getIOSVersion() < 13) {
+      if (sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div) {
+        setCssStyle('div, [data-sensors-click]' + default_cursor_css);
       }
-      this._events.push({
-        type: event,
-        callback: callback,
-        context: context || this
-      });
-
-      replayAll = replayAll === false ? false : true;
-      if (this.pendingEvents.length > 0 && replayAll) {
-        each(this.pendingEvents, function(val) {
-          if (val.type === event) {
-            callback.apply(context, val.data);
-          }
-        });
+      if (sd.para.heatmap && sd.para.heatmap.track_attr) {
+        setCssStyle('[' + sd.para.heatmap.track_attr.join('], [') + ']' + default_cursor_css);
       }
-    },
-    tempAdd: function(event, data) {
-      if (!data || !event) {
-        return;
+      if (iOS_other_tags_css !== '') {
+        setCssStyle(iOS_other_tags_css);
       }
-      return this.emit(event, data);
-    },
-    isReady: function() {}
-  };
-
-
-
-  var common = {
-    __proto__: null,
-    parseSuperProperties: parseSuperProperties,
-    searchConfigData: searchConfigData,
-    strip_empty_properties: strip_empty_properties,
-    getCurrentDomain: getCurrentDomain,
-    getEleInfo: getEleInfo,
-    isBaiduTraffic: isBaiduTraffic,
-    getReferrerEqid: getReferrerEqid,
-    getReferrerEqidType: getReferrerEqidType,
-    getBaiduKeyword: getBaiduKeyword,
-    isReferralTraffic: isReferralTraffic,
-    getReferrer: getReferrer,
-    getKeywordFromReferrer: getKeywordFromReferrer,
-    getWxAdIdFromUrl: getWxAdIdFromUrl,
-    getReferSearchEngine: getReferSearchEngine,
-    getSourceFromReferrer: getSourceFromReferrer,
-    info: pageInfo,
-    ajax: ajax$1,
-    getElementContent: getElementContent$1,
-    cookie: cookie$1,
-    addEvent: addEvent$1,
-    EventEmitterSa: EventEmitterSa,
-    encrypt: encrypt,
-    decryptIfNeeded: decryptIfNeeded
-  };
-
-  var businessStageImpl = {
-    stage: null,
-    init: function(stage) {
-      this.stage = stage;
-    }
-  };
-
-  function processGetUtmData() {
-    return businessStageImpl.stage && businessStageImpl.stage.process('getUtmData');
-  }
-
-  var kit = {};
-
-  kit.buildData = function(p) {
-    var data = {
-      identities: {},
-      distinct_id: sd.store.getDistinctId(),
-      lib: {
-        $lib: 'js',
-        $lib_method: 'code',
-        $lib_version: String(sd.lib_version)
-      },
-      properties: {}
-    };
-
-    if (isObject(p) && isObject(p.identities) && !isEmptyObject(p.identities)) {
-      extend(data.identities, p.identities);
-    } else {
-      extend(data.identities, store._state.identities);
-    }
-
-    if (isObject(p) && isObject(p.properties) && !isEmptyObject(p.properties)) {
-      if (p.properties.$lib_detail) {
-        data.lib.$lib_detail = p.properties.$lib_detail;
-        delete p.properties.$lib_detail;
-      }
-      if (p.properties.$lib_method) {
-        data.lib.$lib_method = p.properties.$lib_method;
-        delete p.properties.$lib_method;
-      }
-    }
-
-    extend(data, sd.store.getUnionId(), p);
-
-    processAddCustomProps(data);
-
-    if (isObject(p.properties) && !isEmptyObject(p.properties)) {
-      extend(data.properties, p.properties);
-    }
-
-
-    if (!p.type || p.type.slice(0, 7) !== 'profile') {
-
-      data.properties = extend({}, pageInfo.properties(), store.getProps(), store.getSessionProps(), pageInfo.currentProps, data.properties);
-      if (sd.para.preset_properties.latest_referrer && !isString(data.properties.$latest_referrer)) {
-        data.properties.$latest_referrer = '取值异常';
-      }
-      if (sd.para.preset_properties.latest_search_keyword && !isString(data.properties.$latest_search_keyword)) {
-        if (!sd.para.preset_properties.search_keyword_baidu || !isString(data.properties.$search_keyword_id) || !isNumber(data.properties.$search_keyword_id_hash) || !isString(data.properties.$search_keyword_id_type)) {
-          data.properties.$latest_search_keyword = '取值异常';
-        }
-      }
-      if (sd.para.preset_properties.latest_traffic_source_type && !isString(data.properties.$latest_traffic_source_type)) {
-        data.properties.$latest_traffic_source_type = '取值异常';
-      }
-      if (sd.para.preset_properties.latest_landing_page && !isString(data.properties.$latest_landing_page)) {
-        data.properties.$latest_landing_page = '取值异常';
-      }
-      if (sd.para.preset_properties.latest_wx_ad_click_id === 'not_collect') {
-        delete data.properties._latest_wx_ad_click_id;
-        delete data.properties._latest_wx_ad_hash_key;
-        delete data.properties._latest_wx_ad_callbacks;
-      } else if (sd.para.preset_properties.latest_wx_ad_click_id && !isString(data.properties._latest_wx_ad_click_id)) {
-        data.properties._latest_wx_ad_click_id = '取值异常';
-        data.properties._latest_wx_ad_hash_key = '取值异常';
-        data.properties._latest_wx_ad_callbacks = '取值异常';
-      }
-      if (isString(data.properties._latest_wx_ad_click_id)) {
-        data.properties.$url = getURL();
-      }
-    }
-
-    if (data.properties.$time && isDate(data.properties.$time)) {
-      data.time = data.properties.$time * 1;
-      delete data.properties.$time;
-    } else {
-      data.time = new Date() * 1;
-    }
-
-    sd.vtrackBase.addCustomProps(data);
-
-    parseSuperProperties(data);
-
-    saNewUser.checkIsAddSign(data);
-    saNewUser.checkIsFirstTime(data);
-
-    sd.addReferrerHost(data);
-    sd.addPropsHook(data);
-
-    processFormatData(data);
-    return data;
-  };
-
-  kit.sendData = function(data, callback) {
-    var data_config = searchConfigData(data.properties);
-    if (sd.para.debug_mode === true) {
-      sd.log(data);
-      sd.saEvent.debugPath(JSON.stringify(data), callback);
-    } else {
-      sd.sendState.getSendCall(data, data_config, callback);
-    }
-  };
-
-  kit.encodeTrackData = function(data) {
-    var dataStr = base64Encode(data);
-    var crc = 'crc=' + hashCode(dataStr);
-    return 'data=' + encodeURIComponent(dataStr) + '&ext=' + encodeURIComponent(crc);
-  };
-
-  kit.getUtmData = function() {
-    return processGetUtmData();
-  };
-
-  function getSendUrl(url, data) {
-    var dataStr = kit.encodeTrackData(data);
-    if (url.indexOf('?') !== -1) {
-      return url + '&' + dataStr;
-    }
-    return url + '?' + dataStr;
-  }
-
-  function getSendData(data) {
-    return kit.encodeTrackData(data);
-  }
-
-  var ImageSender = function(para) {
-    this.callback = para.callback;
-    this.img = document.createElement('img');
-    this.img.width = 1;
-    this.img.height = 1;
-    if (sd.para.img_use_crossorigin) {
-      this.img.crossOrigin = 'anonymous';
-    }
-    this.data = para.data;
-    this.server_url = getSendUrl(para.server_url, para.data);
-  };
-
-  ImageSender.prototype.start = function() {
-    var me = this;
-    if (sd.para.ignore_oom) {
-      this.img.onload = function() {
-        this.onload = null;
-        this.onerror = null;
-        this.onabort = null;
-        me.isEnd();
-      };
-      this.img.onerror = function() {
-        this.onload = null;
-        this.onerror = null;
-        this.onabort = null;
-        me.isEnd();
-      };
-      this.img.onabort = function() {
-        this.onload = null;
-        this.onerror = null;
-        this.onabort = null;
-        me.isEnd();
-      };
-    }
-    this.img.src = this.server_url;
-  };
-
-  ImageSender.prototype.lastClear = function() {
-    var sys = getUA();
-    if (sys.ie !== undefined) {
-      this.img.src = 'about:blank';
-    } else {
-      this.img.src = '';
-    }
-  };
-
-  var AjaxSender = function(para) {
-    this.callback = para.callback;
-    this.server_url = para.server_url;
-    this.data = getSendData(para.data);
-  };
-
-  AjaxSender.prototype.start = function() {
-    var me = this;
-    ajax$1({
-      url: this.server_url,
-      type: 'POST',
-      data: this.data,
-      credentials: false,
-      timeout: sd.para.datasend_timeout,
-      cors: true,
-      success: function() {
-        me.isEnd();
-      },
-      error: function() {
-        me.isEnd();
-      }
-    });
-  };
-
-  var BeaconSender = function(para) {
-    this.callback = para.callback;
-    this.server_url = para.server_url;
-    this.data = getSendData(para.data);
-  };
-
-  BeaconSender.prototype.start = function() {
-    var me = this;
-    if (typeof navigator === 'object' && typeof navigator.sendBeacon === 'function') {
-      navigator.sendBeacon(this.server_url, this.data);
-    }
-    setTimeout(function() {
-      me.isEnd();
-    }, 40);
-  };
-
-  function getSendType(data) {
-    var supportedSendTypes = ['image', 'ajax', 'beacon'];
-    var sendType = supportedSendTypes[0];
-
-    if (data.config && indexOf(supportedSendTypes, data.config.send_type) > -1) {
-      sendType = data.config.send_type;
-    } else {
-      sendType = sd.para.send_type;
-    }
-
-    if (sendType === 'beacon' && isSupportBeaconSend() === false) {
-      sendType = 'image';
-    }
-
-    if (sendType === 'ajax' && isSupportCors() === false) {
-      sendType = 'image';
-    }
-
-    return sendType;
-  }
-
-  function getSender(data) {
-    var sendType = getSendType(data);
-    switch (sendType) {
-      case 'image':
-        return new ImageSender(data);
-      case 'ajax':
-        return new AjaxSender(data);
-      case 'beacon':
-        return new BeaconSender(data);
-      default:
-        return new ImageSender(data);
     }
   }
-
-  function getRealtimeInstance(data) {
-    var obj = getSender(data);
-    var start = obj.start;
-    obj.start = function() {
-      var me = this;
-      start.apply(this, arguments);
-      setTimeout(function() {
-        me.isEnd(true);
-      }, sd.para.callback_timeout);
-    };
-    obj.end = function() {
-      this.callback && this.callback();
-      var self = this;
-      setTimeout(function() {
-        self.lastClear && self.lastClear();
-      }, sd.para.datasend_timeout - sd.para.callback_timeout);
-    };
-    obj.isEnd = function() {
-      if (!this.received) {
-        this.received = true;
-        this.end();
-      }
-    };
-    return obj;
-  }
-
-  var sendStageImpl = {
-    stage: null,
-    init: function(stage) {
-      this.stage = stage;
-    },
-    interceptor: {
-      send: {
-        entry: function(data, context) {
-          var sd = context.sensors;
-          var callback = data.callback;
-
-          if (!sd.para.app_js_bridge) {
-            sd.debug.apph5({
-              data: data.data,
-              step: '1',
-              output: 'code'
-            });
-            sd.sendState.prepareServerUrl(data);
-            return data;
-          }
-
-          if (!sd.para.app_js_bridge.is_mui) {
-            if (sd.para.app_js_bridge.is_send === true) {
-              sd.debug.apph5({
-                data: data.data,
-                step: '2',
-                output: 'all'
-              });
-              sd.sendState.prepareServerUrl(data);
-              return data;
-            }
-            sd._.isFunction(callback) && callback();
-            return data;
-          }
-
-          if (sd.para.app_js_bridge.is_mui) {
-            if (window.plus && window.plus.SDAnalytics && window.plus.SDAnalytics.trackH5Event) {
-              window.plus.SDAnalytics.trackH5Event(data);
-              sd._.isFunction(callback) && callback();
-              return data;
-            }
-
-            if (sd.para.app_js_bridge.is_send === true) {
-              sd.sendState.prepareServerUrl(data);
-              return data;
-            }
-
-            sd._.isFunction(callback) && callback();
-            return data;
-          }
-        }
-      }
-    }
-  };
-
-
-  var sendState = {};
-
-  sendState.getSendCall = function(data, config, callback) {
-    if (sd.is_heatmap_render_mode) {
-      return false;
-    }
-
-    if (sd.readyState.state < 3) {
-      sd.log('初始化没有完成');
-      return false;
-    }
-
-    data._track_id = Number(String(getRandom()).slice(2, 5) + String(getRandom()).slice(2, 4) + String(new Date().getTime()).slice(-4));
-    data._flush_time = new Date().getTime();
-
-    var originData = data;
-
-    data = JSON.stringify(data);
-
-    var requestData = {
-      data: originData,
-      config: config,
-      callback: callback
-    };
-
-    sd.events.tempAdd('send', originData);
-
-    if (!sd.para.app_js_bridge && sd.para.batch_send && _localStorage.isSupport() && localStorage.length < 100) {
-      sd.log(originData);
-      sd.batchSend.add(requestData.data);
-      return false;
-    }
-    if (originData.type === 'item_set' || originData.type === 'item_delete') {
-      this.prepareServerUrl(requestData);
-    } else {
-      sendStageImpl.stage.process('beforeSend', requestData);
-    }
-
-    sd.log(originData);
-  };
-
-  sendState.prepareServerUrl = function(requestData) {
-    if (typeof requestData.config === 'object' && requestData.config.server_url) {
-      this.sendCall(requestData, requestData.config.server_url, requestData.callback);
-    } else if (isArray(sd.para.server_url) && sd.para.server_url.length) {
-      for (var i = 0; i < sd.para.server_url.length; i++) {
-        this.sendCall(requestData, sd.para.server_url[i]);
-      }
-    } else if (typeof sd.para.server_url === 'string' && sd.para.server_url !== '') {
-      this.sendCall(requestData, sd.para.server_url, requestData.callback);
-    } else {
-      sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
-    }
-  };
-
-  sendState.sendCall = function(requestData, server_url, callback) {
-    var data = {
-      server_url: server_url,
-      data: JSON.stringify(requestData.data),
-      callback: callback,
-      config: requestData.config
-    };
-    if (isObject(sd.para.jsapp) && !sd.para.jsapp.isOnline && typeof sd.para.jsapp.setData === 'function') {
-      delete data.callback;
-      data = JSON.stringify(data);
-      sd.para.jsapp.setData(data);
-    } else {
-      this.realtimeSend(data);
-    }
-  };
-
-  sendState.realtimeSend = function(data) {
-    var instance = getRealtimeInstance(data);
-    instance.start();
-  };
 
   var methods = ['setItem', 'deleteItem', 'getAppStatus', 'track', 'quick', 'register', 'registerPage', 'registerOnce', 'trackSignup', 'setProfile', 'setOnceProfile', 'appendProfile', 'incrementProfile', 'deleteProfile', 'unsetProfile', 'identify', 'login', 'logout', 'trackLink', 'clearAllRegister', 'clearPageRegister', 'bind', 'unbind', 'loginWithKey'];
 
@@ -6826,17 +7099,474 @@
     });
   }
 
-  function listenSinglePage() {
+  var vapph5CustomProp = {
+    events: [],
+    getAssignConfigs: vtrackBase.getAssignConfigs,
+    filterConfig: vtrackBase.filterConfig,
+    getProp: vtrackBase.getProp,
+    initUrl: vtrackBase.initUrl,
+    updateEvents: function(events) {
+      if (!isArray(events)) {
+        return;
+      }
+      this.events = events;
+    },
+    init: function() {
+      this.initAppGetPropsBridge();
+    },
+    geth5Props: function(data) {
+      var props = {};
+      var name_arr = [];
+      var that = this;
+      if (!this.events.length) {
+        return {};
+      }
+      if (data.event === '$WebClick') {
+        var events = this.filterConfig(data, this.events);
+        if (!events.length) {
+          return {};
+        } else {
+          each(events, function(event) {
+            if (!isObject(event)) {
+              return;
+            }
+            if (isArray(event.properties) && event.properties.length > 0) {
+              each(event.properties, function(propConf) {
+                if (!isObject(propConf)) {
+                  return;
+                }
+                if (propConf.h5 === false) {
+                  if (!isArray(props.sensorsdata_app_visual_properties)) {
+                    props.sensorsdata_app_visual_properties = [];
+                  }
+                  props.sensorsdata_app_visual_properties.push(propConf);
+                } else {
+                  var prop = that.getProp(propConf, data);
+                  if (isObject(prop)) {
+                    props = extend(props, prop);
+                  }
+                }
+              });
+            }
+            if (isString(event.event_name)) {
+              name_arr.push(event.event_name);
+            }
+          });
+
+          if (sd.bridge.hasVisualModeBridge()) {
+            props.sensorsdata_web_visual_eventName = name_arr;
+          }
+        }
+      }
+      if (props.sensorsdata_app_visual_properties) {
+        props.sensorsdata_app_visual_properties = base64Encode(JSON.stringify(props.sensorsdata_app_visual_properties));
+      }
+
+      return props;
+    },
+
+    initAppGetPropsBridge: function() {
+      var that = this;
+      var bridgeCall = new sd.SDKJSBridge('getJSVisualProperties');
+
+      bridgeCall.onAppNotify(function(data) {
+        var props = {};
+        try {
+          data = JSON.parse(base64Decode(data));
+        } catch (error) {
+          sd.log('getJSVisualProperties data parse error!');
+        }
+        if (isObject(data)) {
+          var confs = data.sensorsdata_js_visual_properties;
+          var url_info = that.initUrl();
+          if (url_info) {
+            url_info = url_info.page_url;
+            if (isArray(confs) && confs.length > 0) {
+              each(confs, function(propConf) {
+                if (!isObject(propConf)) {
+                  return;
+                }
+                if (propConf.url_host === url_info.host && propConf.url_path === url_info.pathname) {
+                  if (propConf.h5) {
+                    var prop = that.getProp(propConf);
+                    if (isObject(prop)) {
+                      props = extend(props, prop);
+                    }
+                  }
+                }
+              });
+            }
+          }
+        }
+        var platform = sd.bridge.bridge_info.platform;
+        if (platform === 'android') {
+          bridgeCall.notifyApp({
+            data: props
+          }, data.message_id);
+        }
+        return props;
+      });
+
+      return bridgeCall;
+    }
+  };
+
+  var vapph5collect = {
+    events: [],
+    customProp: vapph5CustomProp,
+    getAssignConfigs: vtrackBase.getAssignConfigs,
+    initUrl: vtrackBase.initUrl,
+    init: function() {
+      if (!this.initUrl()) {
+        return;
+      }
+      var result = this.getConfigFromApp();
+      if (result) {
+        this.updateConfigs(result);
+      }
+      this.customProp.init();
+      this.initAppUpdateConfigBridge();
+    },
+    initAppUpdateConfigBridge: function() {
+      var _this = this;
+      return new sd.SDKJSBridge('updateH5VisualConfig').onAppNotify(function(data) {
+        if (data) {
+          try {
+            data = JSON.parse(base64Decode(data));
+          } catch (error) {
+            sd.log('updateH5VisualConfig result parse error！');
+            return;
+          }
+          _this.updateConfigs(data);
+        }
+      });
+    },
+    getConfigFromApp: function() {
+      var result = new sd.SDKJSBridge('sensorsdata_get_app_visual_config').notifyApp();
+      if (result) {
+        try {
+          result = JSON.parse(base64Decode(result));
+        } catch (error) {
+          result = null;
+          sd.log('getAppVisualConfig result parse error！');
+        }
+      }
+      return result;
+    },
+    updateConfigs: function(config) {
+      this.events = this.filterConfigs(config);
+      this.customProp.updateEvents(this.events);
+    },
+    filterConfigs: function(config) {
+      return this.getAssignConfigs(function(event) {
+        if (isObject(event) && event.h5 !== false) {
+          return true;
+        } else {
+          return false;
+        }
+      }, config);
+    }
+  };
+
+  function initLatestProps() {
+    var url_domain = pageInfo.pageProp.url_domain;
+
+
+    var latestObj = {};
+
+    if (url_domain === '') {
+      url_domain = 'url解析失败';
+    }
+
+    var baiduKey = getKeywordFromReferrer(document.referrer, true);
+    if (sdPara.preset_properties.search_keyword_baidu) {
+      if (isReferralTraffic(document.referrer)) {
+        if (isBaiduTraffic() && !(isObject(baiduKey) && baiduKey.active)) {
+          latestObj['$search_keyword_id'] = getBaiduKeyword.id();
+          latestObj['$search_keyword_id_type'] = getBaiduKeyword.type();
+          latestObj['$search_keyword_id_hash'] = hashCode53(latestObj['$search_keyword_id']);
+        } else {
+          if (store._state && store._state.props) {
+            store._state.props.$search_keyword_id && delete store._state.props.$search_keyword_id;
+            store._state.props.$search_keyword_id_type && delete store._state.props.$search_keyword_id_type;
+            store._state.props.$search_keyword_id_hash && delete store._state.props.$search_keyword_id_hash;
+          }
+        }
+      }
+    } else {
+      if (store._state && store._state.props) {
+        store._state.props.$search_keyword_id && delete store._state.props.$search_keyword_id;
+        store._state.props.$search_keyword_id_type && delete store._state.props.$search_keyword_id_type;
+        store._state.props.$search_keyword_id_hash && delete store._state.props.$search_keyword_id_hash;
+      }
+    }
+
+    store.save();
+
+    each(sdPara.preset_properties, function(value, key) {
+      if (key.indexOf('latest_') === -1) {
+        return false;
+      }
+      key = key.slice(7);
+      if (value) {
+        if (key === 'wx_ad_click_id' && value === 'not_collect') {
+          return false;
+        }
+        if (key !== 'utm' && url_domain === 'url解析失败') {
+          if (key === 'wx_ad_click_id') {
+            latestObj['_latest_wx_ad_click_id'] = 'url的domain解析失败';
+            latestObj['_latest_wx_ad_hash_key'] = 'url的domain解析失败';
+            latestObj['_latest_wx_ad_callbacks'] = 'url的domain解析失败';
+          } else {
+            latestObj['$latest_' + key] = 'url的domain解析失败';
+          }
+        } else if (isReferralTraffic(document.referrer)) {
+          switch (key) {
+            case 'traffic_source_type':
+              latestObj['$latest_traffic_source_type'] = getSourceFromReferrer();
+              break;
+            case 'referrer':
+              latestObj['$latest_referrer'] = pageInfo.pageProp.referrer;
+              break;
+            case 'search_keyword':
+              if (getKeywordFromReferrer()) {
+                latestObj['$latest_search_keyword'] = getKeywordFromReferrer();
+              } else if (isObject(store._state) && isObject(store._state.props) && store._state.props.$latest_search_keyword) {
+                delete store._state.props.$latest_search_keyword;
+              }
+              break;
+            case 'landing_page':
+              latestObj['$latest_landing_page'] = getURL();
+              break;
+            case 'wx_ad_click_id':
+              var adObj = getWxAdIdFromUrl(location.href);
+              latestObj['_latest_wx_ad_click_id'] = adObj.click_id;
+              latestObj['_latest_wx_ad_hash_key'] = adObj.hash_key;
+              latestObj['_latest_wx_ad_callbacks'] = adObj.callbacks;
+              break;
+          }
+        }
+      } else {
+        if (key === 'utm' && store._state && store._state.props) {
+          for (var key1 in store._state.props) {
+            if (key1.indexOf('$latest_utm') === 0 || (key1.indexOf('_latest_') === 0 && key1.indexOf('_latest_wx_ad_') < 0)) {
+              delete store._state.props[key1];
+            }
+          }
+        } else if (store._state && store._state.props && '$latest_' + key in store._state.props) {
+          delete store._state.props['$latest_' + key];
+        } else if (key == 'wx_ad_click_id' && store._state && store._state.props && value === false) {
+          var wxPro = ['_latest_wx_ad_click_id', '_latest_wx_ad_hash_key', '_latest_wx_ad_callbacks'];
+          each(wxPro, function(value) {
+            if (value in store._state.props) {
+              delete store._state.props[value];
+            }
+          });
+        }
+      }
+    });
+
+    if (sdPara.preset_properties.latest_utm) {
+      var allUtms = pageInfo.campaignParamsStandard('$latest_', '_latest_');
+      var $utms = allUtms.$utms;
+      var otherUtms = allUtms.otherUtms;
+      if (!isEmptyObject($utms)) {
+        extend(latestObj, $utms);
+      }
+      if (!isEmptyObject(otherUtms)) {
+        extend(latestObj, otherUtms);
+      }
+    }
+    register(latestObj);
+  }
+
+  var dataStoragePrefix = 'sawebjssdk-';
+  var tabStoragePrefix = 'tab-sawebjssdk-';
+
+  function BatchSend() {
+    this.sendTimeStamp = 0;
+    this.timer = null;
+    this.serverUrl = '';
+    this.hasTabStorage = false;
+  }
+
+  BatchSend.prototype = {
+    batchInterval: function() {
+      if (this.serverUrl === '') this.getServerUrl();
+      if (!this.hasTabStorage) {
+        this.generateTabStorage();
+        this.hasTabStorage = true;
+      }
+      var self = this;
+      self.timer = setTimeout(function() {
+        self.updateExpireTime();
+        self.recycle();
+        self.send();
+        clearTimeout(self.timer);
+        self.batchInterval();
+      }, sd.para.batch_send.send_interval);
+    },
+
+    getServerUrl: function() {
+      if ((isString(sd.para.server_url) && sd.para.server_url !== '') || (isArray(sd.para.server_url) && sd.para.server_url.length)) {
+        this.serverUrl = isArray(sd.para.server_url) ? sd.para.server_url[0] : sd.para.server_url;
+      } else {
+        return sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
+      }
+    },
+
+    send: function() {
+      if (this.sendTimeStamp && now() - this.sendTimeStamp < sd.para.batch_send.datasend_timeout) return;
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        this.sendTimeStamp = now();
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+        if (tabStorage.data.length) {
+          var data = [];
+          for (var i = 0; i < tabStorage.data.length; i++) {
+            data.push(store.readObjectVal(tabStorage.data[i]));
+          }
+          this.request(data, tabStorage.data);
+        }
+      }
+    },
+
+    updateExpireTime: function() {
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+        tabStorage.expireTime = now() + sd.para.batch_send.send_interval * 2;
+        tabStorage.serverUrl = this.serverUrl;
+        _localStorage.set(this.tabKey, JSON.stringify(tabStorage));
+      }
+    },
+
+    request: function(data, dataKeys) {
+      var self = this;
+      ajax$1({
+        url: this.serverUrl,
+        type: 'POST',
+        data: 'data_list=' + encodeURIComponent(base64Encode(JSON.stringify(data))),
+        credentials: false,
+        timeout: sd.para.batch_send.datasend_timeout,
+        cors: true,
+        success: function() {
+          self.remove(dataKeys);
+          self.sendTimeStamp = 0;
+        },
+        error: function() {
+          self.sendTimeStamp = 0;
+        }
+      });
+    },
+
+    remove: function(dataKeys) {
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        var tabStorageData = (safeJSONParse(tabStorage) || this.generateTabStorageVal()).data;
+        for (var i = 0; i < dataKeys.length; i++) {
+          var idx = indexOf(tabStorageData, dataKeys[i]);
+          if (idx > -1) {
+            tabStorageData.splice(idx, 1);
+          }
+          _localStorage.remove(dataKeys[i]);
+        }
+        _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal(tabStorageData)));
+      }
+    },
+
+    add: function(data) {
+      var dataKey = dataStoragePrefix + String(getRandom());
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage === null) {
+        this.tabKey = tabStoragePrefix + String(getRandom());
+        tabStorage = this.generateTabStorageVal();
+      } else {
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+      }
+      tabStorage.data.push(dataKey);
+      tabStorage.expireTime = now() + sd.para.batch_send.send_interval * 2;
+      _localStorage.set(this.tabKey, JSON.stringify(tabStorage));
+      store.saveObjectVal(dataKey, data);
+      if (data.type === 'track_signup' || data.event === '$pageview') {
+        this.sendImmediately();
+      }
+    },
+
+    generateTabStorage: function() {
+      this.tabKey = tabStoragePrefix + String(getRandom());
+      _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal()));
+    },
+
+    generateTabStorageVal: function(data) {
+      data = data || [];
+      return {
+        data: data,
+        expireTime: now() + sd.para.batch_send.send_interval * 2,
+        serverUrl: this.serverUrl
+      };
+    },
+
+    sendImmediately: function() {
+      this.send();
+    },
+
+    recycle: function() {
+      var notSendMap = {},
+        lockTimeout = 10000,
+        lockPrefix = 'sajssdk-lock-get-';
+      for (var i = 0; i < localStorage.length; i++) {
+        var item = localStorage.key(i),
+          self = this;
+        if (item.indexOf(tabStoragePrefix) === 0) {
+          var tabStorage = safeJSONParse(_localStorage.get(item)) || this.generateTabStorageVal();
+          for (var j = 0; j < tabStorage.data.length; j++) {
+            notSendMap[tabStorage.data[j]] = true;
+          }
+          if (now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
+            var concurrentStorage = new ConcurrentStorage(lockPrefix);
+            concurrentStorage.get(item, lockTimeout, 1000, function(data) {
+              if (data) {
+                if (_localStorage.get(self.tabKey) === null) {
+                  self.generateTabStorage();
+                }
+                var recycleData = safeJSONParse(data) || self.generateTabStorageVal();
+                _localStorage.set(self.tabKey, JSON.stringify(self.generateTabStorageVal((safeJSONParse(_localStorage.get(self.tabKey)) || this.generateTabStorageVal()).data.concat(recycleData.data))));
+              }
+            });
+          }
+        } else if (item.indexOf(lockPrefix) === 0) {
+          var lock = safeJSONParse(_localStorage.get(item)) || {
+            expireTime: 0
+          };
+          if (now() - lock.expireTime > lockTimeout) {
+            _localStorage.remove(item);
+          }
+        }
+      }
+      for (var n = 0; n < localStorage.length; n++) {
+        var key1 = localStorage.key(n);
+        if (key1.indexOf(dataStoragePrefix) === 0 && !notSendMap[key1]) {
+          _localStorage.remove(key1);
+        }
+      }
+    }
+  };
+
+  var batchSend = new BatchSend();
+
+  function listenSinglePage(trackFn) {
     if (sd.para.is_track_single_page) {
       spa.on('switch', function(last_url) {
         var sendData = function(extraData) {
           extraData = extraData || {};
           if (last_url !== location.href) {
             pageInfo.pageProp.referrer = getURL(last_url);
-            sd.quick('autoTrack', extend({
+            var data = extend({
               $url: getURL(),
               $referrer: getURL(last_url)
-            }, extraData));
+            }, extraData);
+            isFunction(trackFn) ? trackFn(data) : sd.quick && sd.quick('autoTrack', data);
           }
         };
         if (typeof sd.para.is_track_single_page === 'boolean') {
@@ -6866,15 +7596,16 @@
     }
   }
 
-  function trackModeOnly() {
-    sd.readyState.setState(3);
+  function trackModeOnly(trackFn) {
+    sd.readyState && sd.readyState.setState(3);
     pageInfo.initPage();
 
-    listenSinglePage();
+    listenSinglePage(trackFn);
 
-    sd.store.init();
+    store.init();
+    initLatestProps();
 
-    sd.readyState.setState(4);
+    sd.readyState && sd.readyState.setState(4);
 
     enterFullTrack();
   }
@@ -6998,16 +7729,283 @@
   var sendStage = new Stage(processDef$1);
 
   var processDef$2 = {
-    getUtmData: null
+    getUtmData: null,
+    callSchema: null
   };
 
   var businessStage = new Stage(processDef$2);
+
+  var processDef$3 = {
+    webClickEvent: null,
+    webStayEvent: null
+  };
+
+  var viewStage = new Stage(processDef$3);
 
   function registerFeature(feature) {
     feature && feature.dataStage && dataStage.registerStageImplementation(feature.dataStage);
     feature && feature.businessStage && businessStage.registerStageImplementation(feature.businessStage);
     feature && feature.sendStage && sendStage.registerStageImplementation(feature.sendStage);
+    feature && feature.viewStage && viewStage.registerStageImplementation(feature.viewStage);
   }
+
+  var interceptorRegisters = {
+    dataStage: function registerDataStageInterceptor(interceptor) {
+      interceptor && dataStage.registerInterceptor(interceptor);
+    },
+    businessStage: function registerBusinessInterceptor(interceptor) {
+      interceptor && businessStage.registerInterceptor(interceptor);
+    },
+    sendStage: function registerSendStageInterceptor(interceptor) {
+      interceptor && sendStage.registerInterceptor(interceptor);
+    },
+    viewStage: function registerViewInterceptor(interceptor) {
+      interceptor && viewStage.registerInterceptor(interceptor);
+    }
+  };
+
+  function registerInterceptor(stage, interceptor) {
+    if (interceptorRegisters[stage]) {
+      interceptorRegisters[stage](interceptor);
+    }
+  }
+
+  var businessStageImpl = {
+    stage: null,
+    init: function(stage) {
+      this.stage = stage;
+    }
+  };
+
+  function processGetUtmData() {
+    return businessStageImpl.stage && businessStageImpl.stage.process('getUtmData');
+  }
+
+  var sendStageImpl = {
+    stage: null,
+    init: function(stage) {
+      this.stage = stage;
+    },
+    interceptor: {
+      send: {
+        entry: function(data, context) {
+          var sd = context.sensors;
+          var callback = data.callback;
+
+          if (!sd.para.app_js_bridge) {
+            debug.apph5({
+              data: data.data,
+              step: '1',
+              output: 'code'
+            });
+            prepareServerUrl(data);
+            return data;
+          }
+
+          if (!sd.para.app_js_bridge.is_mui) {
+            if (sd.para.app_js_bridge.is_send === true) {
+              debug.apph5({
+                data: data.data,
+                step: '2',
+                output: 'all'
+              });
+              prepareServerUrl(data);
+              return data;
+            }
+            sd._.isFunction(callback) && callback();
+            return data;
+          }
+
+          if (sd.para.app_js_bridge.is_mui) {
+            if (window.plus && window.plus.SDAnalytics && window.plus.SDAnalytics.trackH5Event) {
+              window.plus.SDAnalytics.trackH5Event(data);
+              sd._.isFunction(callback) && callback();
+              return data;
+            }
+
+            if (sd.para.app_js_bridge.is_send === true) {
+              prepareServerUrl(data);
+              return data;
+            }
+
+            sd._.isFunction(callback) && callback();
+            return data;
+          }
+        }
+      }
+    }
+  };
+
+  function processBeforeSend(requestData) {
+    sendStageImpl.stage && sendStageImpl.stage.process('beforeSend', requestData);
+  }
+
+
+  var sendState = {};
+
+  sendState.getSendCall = function(data, config, callback) {
+    if (sd.is_heatmap_render_mode) {
+      return false;
+    }
+
+    if (sd.readyState && sd.readyState.state < 3) {
+      sd.log('初始化没有完成');
+      return false;
+    }
+
+    data._track_id = Number(String(getRandom()).slice(2, 5) + String(getRandom()).slice(2, 4) + String(new Date().getTime()).slice(-4));
+    data._flush_time = new Date().getTime();
+
+    var originData = data;
+
+    data = JSON.stringify(data);
+
+    var requestData = {
+      data: originData,
+      config: config,
+      callback: callback
+    };
+
+    events.tempAdd('send', originData);
+
+    if (!sd.para.app_js_bridge && sd.para.batch_send && _localStorage.isSupport() && localStorage.length < 100) {
+      sd.log(originData);
+      batchSend.add(requestData.data);
+      return false;
+    }
+    if (originData.type === 'item_set' || originData.type === 'item_delete') {
+      prepareServerUrl(requestData);
+    } else {
+      processBeforeSend(requestData);
+    }
+    sd.log(originData);
+  };
+  sendState.prepareServerUrl = prepareServerUrl;
+  sendState.sendCall = sendCall;
+  sendState.realtimeSend = realtimeSend;
+
+  var kit = {};
+
+  kit.buildData = function(p) {
+    var identities = {};
+    if (isObject(p) && isObject(p.identities) && !isEmptyObject(p.identities)) {
+      extend(identities, p.identities);
+    } else {
+      extend(identities, store._state.identities);
+    }
+
+    var data = {
+      identities: identities,
+      distinct_id: store.getDistinctId(),
+      lib: {
+        $lib: 'js',
+        $lib_method: 'code',
+        $lib_version: String(sd.lib_version)
+      },
+      properties: {}
+    };
+
+    if (isObject(p) && isObject(p.properties) && !isEmptyObject(p.properties)) {
+      if (p.properties.$lib_detail) {
+        data.lib.$lib_detail = p.properties.$lib_detail;
+        delete p.properties.$lib_detail;
+      }
+      if (p.properties.$lib_method) {
+        data.lib.$lib_method = p.properties.$lib_method;
+        delete p.properties.$lib_method;
+      }
+    }
+
+    extend2Lev(data, store.getUnionId(), p);
+
+    processAddCustomProps(data);
+
+    if (isObject(p.properties) && !isEmptyObject(p.properties)) {
+      extend(data.properties, p.properties);
+    }
+
+    if (!p.type || p.type.slice(0, 7) !== 'profile') {
+
+      data.properties = extend({}, pageInfo.properties(), store.getProps(), store.getSessionProps(), pageInfo.currentProps, data.properties);
+      if (sd.para.preset_properties.latest_referrer && !isString(data.properties.$latest_referrer)) {
+        data.properties.$latest_referrer = '取值异常';
+      }
+      if (sd.para.preset_properties.latest_search_keyword && !isString(data.properties.$latest_search_keyword)) {
+        if (!sd.para.preset_properties.search_keyword_baidu || !isString(data.properties.$search_keyword_id) || !isNumber(data.properties.$search_keyword_id_hash) || !isString(data.properties.$search_keyword_id_type)) {
+          data.properties.$latest_search_keyword = '取值异常';
+        }
+      }
+      if (sd.para.preset_properties.latest_traffic_source_type && !isString(data.properties.$latest_traffic_source_type)) {
+        data.properties.$latest_traffic_source_type = '取值异常';
+      }
+      if (sd.para.preset_properties.latest_landing_page && !isString(data.properties.$latest_landing_page)) {
+        data.properties.$latest_landing_page = '取值异常';
+      }
+      if (sd.para.preset_properties.latest_wx_ad_click_id === 'not_collect') {
+        delete data.properties._latest_wx_ad_click_id;
+        delete data.properties._latest_wx_ad_hash_key;
+        delete data.properties._latest_wx_ad_callbacks;
+      } else if (sd.para.preset_properties.latest_wx_ad_click_id && !isString(data.properties._latest_wx_ad_click_id)) {
+        data.properties._latest_wx_ad_click_id = '取值异常';
+        data.properties._latest_wx_ad_hash_key = '取值异常';
+        data.properties._latest_wx_ad_callbacks = '取值异常';
+      }
+      if (isString(data.properties._latest_wx_ad_click_id)) {
+        data.properties.$url = getURL();
+      }
+    }
+
+    if (data.properties.$time && isDate(data.properties.$time)) {
+      data.time = data.properties.$time * 1;
+      delete data.properties.$time;
+    } else {
+      data.time = new Date() * 1;
+    }
+
+    (function addVtrackProps(data) {
+      if (sd.bridge && sd.bridge.bridge_info.verify_success === 'success') {
+        var h5_props = vapph5collect.customProp.geth5Props(JSON.parse(JSON.stringify(data)));
+        if (isObject(h5_props) && !isEmptyObject(h5_props)) {
+          data.properties = extend(data.properties, h5_props);
+        }
+      }
+      var props = vtrackcollect.customProp.getVtrackProps(JSON.parse(JSON.stringify(data)));
+      if (isObject(props) && !isEmptyObject(props)) {
+        data.properties = extend(data.properties, props);
+      }
+    })(data);
+
+    parseSuperProperties(data);
+
+    saNewUser.checkIsAddSign(data);
+    saNewUser.checkIsFirstTime(data);
+
+    addReferrerHost(data);
+    addPropsHook(data);
+
+    processFormatData(data);
+    return data;
+  };
+
+  kit.sendData = function(data, callback) {
+    var data_config = searchConfigData(data.properties);
+    if (sd.para.debug_mode === true) {
+      sd.log(data);
+      saEvent.debugPath(JSON.stringify(data), callback);
+    } else {
+      sendState.getSendCall(data, data_config, callback);
+    }
+  };
+
+  kit.encodeTrackData = function(data) {
+    var dataStr = base64Encode(data);
+    var crc = 'crc=' + hashCode(dataStr);
+    return 'data=' + encodeURIComponent(dataStr) + '&ext=' + encodeURIComponent(crc);
+  };
+
+  kit.getUtmData = function() {
+    return processGetUtmData();
+  };
 
   function CoreFeature(sd) {
     sd.kit = kit;
@@ -7017,7 +8015,7 @@
     this.businessStage = businessStageImpl;
   }
 
-  function strip_sa_properties(p) {
+  function strip_sa_properties(p, ignores) {
     if (!isObject(p)) {
       return p;
     }
@@ -7033,7 +8031,7 @@
         });
         p[k] = temp;
       }
-      if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option')) {
+      if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option') && indexOf(ignores || [], k) === -1) {
         sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
         delete p[k];
       }
@@ -7050,13 +8048,17 @@
     }
   }
 
-  function filterReservedProperties(obj) {
+  function filterReservedProperties(obj, ignore) {
     var reservedFields = ['distinct_id', 'user_id', 'id', 'date', 'datetime', 'event', 'events', 'first_id', 'original_id', 'device_id', 'properties', 'second_id', 'time', 'users'];
     if (!isObject(obj)) {
       return;
     }
     each(reservedFields, function(key, index) {
       if (!(key in obj)) {
+        return;
+      }
+
+      if (indexOf(ignore || [], key) > -1) {
         return;
       }
       if (index < 3) {
@@ -7127,7 +8129,7 @@
     }
   }
 
-  function formatProperties(p) {
+  function formatProperties(p, ignore) {
     each(p, function(val, key) {
       var onComplete = function(status, value, rule_type) {
         if (!status && rule_type !== 'keyLength') {
@@ -7135,7 +8137,7 @@
         }
         return true;
       };
-      check({
+      indexOf(ignore || [], key) === -1 && check({
         propertyKey: key
       }, onComplete);
     });
@@ -7180,18 +8182,54 @@
     this.dataStage = dataStageImpl$1;
   }
 
-  function use$1(name, option) {
-    if (!isString(name)) {
-      sdLog('use插件名称必须是字符串！');
-      return false;
+  function HeatCollectFeature(sd) {
+    sd.heatmap = heatmap;
+    this.viewStage = viewStageImpl;
+  }
+
+  var heatCollectInterceptor = {
+    webClickEvent: {
+      entry: function(data, ctx) {
+        var sd = ctx.sensors;
+        if (data.tagName === 'a' && sd.para.heatmap && sd.para.heatmap.isTrackLink === true) {
+          sd.trackLink({
+            event: data.event,
+            target: data.target
+          }, '$WebClick', data.props);
+        } else {
+          sd.track('$WebClick', data.props, data.callback);
+        }
+      }
+    },
+    webStayEvent: {
+      entry: function(data, ctx) {
+        var sd = ctx.sensors;
+        sd.track('$WebStay', data);
+      }
+    }
+  };
+
+  function use$1(plugin, option) {
+    if (!isString(plugin) && !isObject(plugin)) {
+      sd.log('use\'s first arguments must be string or object.');
+      return;
     }
 
-    if (isObject(window.SensorsDataWebJSSDKPlugin) && isObject(window.SensorsDataWebJSSDKPlugin[name]) && isFunction(window.SensorsDataWebJSSDKPlugin[name].__constructor__)) {
-      var instance = new window.SensorsDataWebJSSDKPlugin[name].__constructor__();
+    if (!sd.readyState || sd.readyState.state < 3) {
+      sd.log('error: use plugin after sdk init.');
+      return;
+    }
+
+    if (isObject(plugin) && isFunction(plugin.init)) {
+      !plugin.is_init && plugin.init(sd, option);
+      plugin.is_init = true;
+      return plugin;
+    } else if (isObject(window.SensorsDataWebJSSDKPlugin) && isObject(window.SensorsDataWebJSSDKPlugin[plugin]) && isFunction(window.SensorsDataWebJSSDKPlugin[plugin].__constructor__)) {
+      var instance = new window.SensorsDataWebJSSDKPlugin[plugin].__constructor__();
       instance.init(sd, option);
       return instance;
     } else {
-      sdLog(name + '多版本 SDK，不支持' + name + '插件！');
+      sdLog('multiple version SDK doesn\'t support plugin:' + plugin);
     }
   }
 
@@ -7201,24 +8239,16 @@
     initDefineBridgeInfo: function() {},
     bridge_info: {
       touch_app_bridge: false
-    },
-    dataSend: function(requestData, that) {
-      that.prepareServerUrl(requestData);
     }
   };
 
   function JSBridge() {}
 
-  var vtrackBase = {
-    init: function() {},
-    addCustomProps: function() {}
-  };
-
-  var batchSend = {
+  var batchSend$1 = {
     add: function(data) {
       sd.para.batch_send = false;
       var data_config = searchConfigData(data.properties);
-      sd.sendState.prepareServerUrl({
+      prepareServerUrl({
         data: data,
         config: data_config
       });
@@ -7230,22 +8260,20 @@
   }
 
   sd.modules = {};
-  logger.setup(sdLog);
-  sd._ = extend(W, common);
+  sd._ = _;
 
-  sd.sendState = sendState;
-  sd.events = new sd._.EventEmitterSa();
+  sd.events = events;
   sd.store = store;
-  sd.heatmap = heatmap;
 
   sd.bridge = bridge;
   sd.JSBridge = JSBridge;
-  sd.vtrackBase = vtrackBase;
-  sd.batchSend = batchSend;
+  sd.batchSend = batchSend$1;
   sd.use = use$1;
 
   registerFeature(new CoreFeature(sd));
   registerFeature(new DataFormatFeature(sd));
+  registerFeature(new HeatCollectFeature(sd));
+  registerInterceptor('viewStage', heatCollectInterceptor);
 
   sd.init = function(para) {
     if (sd.readyState && sd.readyState.state && sd.readyState.state >= 2) {
@@ -7253,7 +8281,7 @@
     }
     para = para || {};
     para.batch_send = false;
-    if (isObject(para.heatmap)) {
+    if (_.isObject(para.heatmap)) {
       para.heatmap.get_vtrack_config = false;
     }
 
@@ -7261,7 +8289,7 @@
     sd.readyState.setState(2);
     sd.initPara(para);
     trackModeOnly();
-    sd.iOSWebClickPolyfill();
+    iOSWebClickPolyfill();
   };
 
   checkState();

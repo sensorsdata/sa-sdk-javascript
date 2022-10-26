@@ -1,0 +1,25 @@
+{
+    "name": "abtesting-sdk-web",
+    "version": "0.1.3",
+    "description": "神策 abtesting sdk",
+    "main": "",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/sensorsdata/abtesting-sdk-web.git"
+    },
+    "keywords": [
+      "sensorsdata",
+      "sdk",
+      "abtesting",
+      "web-js-sdk"
+    ],
+    "author": "shengyonggen",
+    "license": "ISC",
+    "bugs": {
+      "url": "https://github.com/sensorsdata/abtesting-sdk-web/issues"
+    },
+    "homepage": "https://github.com/sensorsdata/abtesting-sdk-web#readme"
+  }

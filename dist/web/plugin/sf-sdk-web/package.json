@@ -1,0 +1,25 @@
+{
+  "name": "sf-sdk-popup",
+  "version": "0.4.5",
+  "description": "神策 sf 弹窗 sdk",
+  "main": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sensorsdata/sa-webjssdk-application.git"
+  },
+  "keywords": [
+    "sensorsdata",
+    "sdk",
+    "popup",
+    "web-js-sdk"
+  ],
+  "author": "shengyonggen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sensorsdata/sa-webjssdk-application/issues"
+  },
+  "homepage": "https://github.com/sensorsdata/sa-webjssdk-application#readme"
+}
