@@ -1,8 +1,8 @@
 {
   "name": "sa-sdk-javascript",
-  "version": "1.24.1",
+  "version": "1.24.2",
   "description": "official sensorsdata javascript sdk",
-  "main": "dist/web/sensorsdata.min.js",
+  "main": "dist/web/sensorsdata.js",
   "scripts": {
     "build": "echo \"Error: no test specified\" && exit 1"
   },
