@@ -3067,7 +3067,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.2';
+  var sdkversion_placeholder = '1.24.3';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {

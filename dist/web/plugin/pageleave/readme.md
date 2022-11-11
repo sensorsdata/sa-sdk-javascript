@@ -13,6 +13,7 @@ sensors.use(pageleave,option);
 初始化参数对象属性：
 - `option.custom_props`：页面浏览时长自定义属性。   类型：Object，可选。
 - `option.heartbeat_interval_time`：心跳记录刷新时间。 类型：Number ，单位：秒 ，默认：5，范围：大于 0，可选。
+- `option.max_duration`：最大页面浏览时长。 类型：Number ，单位：秒 ，默认：432000  (5天) ，范围：大于 0，可选。
 
 ## 变动
 - 新增事件：`$WebPageLeave`，页面离开事件。

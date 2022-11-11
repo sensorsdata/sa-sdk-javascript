@@ -3071,7 +3071,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.2';
+  var sdkversion_placeholder = '1.24.3';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -8102,7 +8102,7 @@
               source: 'sa-web-sdk',
               type: 'v-is-vtrack',
               data: {
-                sdkversion: '1.24.2'
+                sdkversion: '1.24.3'
               }
             },
             '*'
@@ -10008,6 +10008,7 @@
   }
 
   var page_hidden_status_refresh_time = 5000;
+  var MAX_DURATION = 432000;
 
   function PageLeave() {
     this.sd = null;
@@ -10023,12 +10024,12 @@
     this.heartbeat_interval_timer = null;
     this.page_id = null;
     this.storage_name = 'sawebjssdkpageleave';
+    this.max_duration = MAX_DURATION;
   }
   PageLeave.prototype.init = function(sd, option) {
     if (sd) {
       this.sd = sd;
       this._ = this.sd._;
-      var _this = this;
       if (option) {
         this.option = option;
 
@@ -10036,14 +10037,19 @@
         if (heartbeat_interval_time && (this._.isNumber(heartbeat_interval_time) || this._.isNumber(heartbeat_interval_time * 1)) && heartbeat_interval_time * 1 > 0) {
           this.heartbeat_interval_time = heartbeat_interval_time * 1000;
         }
+
+        var max_duration = option.max_duration;
+        if (max_duration && (this._.isNumber(max_duration) || this._.isNumber(max_duration * 1)) && max_duration * 1 > 0) {
+          this.max_duration = max_duration;
+        }
       }
 
       this.page_id = Number(String(this._.getRandom()).slice(2, 5) + String(this._.getRandom()).slice(2, 4) + String(new Date().getTime()).slice(-4));
-      _this.addEventListener();
+      this.addEventListener();
       if (document.hidden === true) {
         this.page_show_status = false;
       } else {
-        _this.addHeartBeatInterval();
+        this.addHeartBeatInterval();
       }
       this.log('PageLeave初始化完毕');
     } else {
@@ -10236,7 +10242,7 @@
   };
   PageLeave.prototype.getPageLeaveProperties = function() {
     var duration = (+new Date() - this.start_time) / 1000;
-    if (isNaN(duration) || duration < 0) {
+    if (isNaN(duration) || duration < 0 || duration > this.max_duration) {
       duration = 0;
     }
     duration = Number(duration.toFixed(3));
@@ -10633,34 +10639,33 @@
     }
   };
 
-  siteLinker.setRefferId = function() {
+  siteLinker.setRefferId = function(option) {
     var distinct_id = this.store.getDistinctId();
     var urlId = this.getUrlId();
-    if (urlId === '') {
-      return false;
+    if (!urlId || urlId === '') {
+      return;
     }
     var isAnonymousId = urlId.substring(0, 1) === 'a' || urlId.substring(0, 1) === 'd';
     urlId = urlId.substring(1);
 
     if (urlId === distinct_id) {
-      return false;
+      return;
     }
-    if (urlId && isAnonymousId && this.store.getFirstId()) {
+
+    if (isAnonymousId) {
       this.sd.identify(urlId, true);
-      this.sd.saEvent.send({
-          original_id: urlId,
-          distinct_id: distinct_id,
-          type: 'track_signup',
-          event: '$SignUp',
-          properties: {}
-        },
-        null
-      );
-    }
-    if (urlId && isAnonymousId && !this.store.getFirstId()) {
-      this.sd.identify(urlId, true);
-    }
-    if (urlId && !isAnonymousId && !this.store.getFirstId()) {
+      if (this.store.getFirstId()) {
+        this.sd.saEvent.send({
+            original_id: urlId,
+            distinct_id: distinct_id,
+            type: 'track_signup',
+            event: '$SignUp',
+            properties: {}
+          },
+          null
+        );
+      }
+    } else if (!this.store.getFirstId() || option.re_login) {
       this.sd.login(urlId);
     }
   };
@@ -10702,7 +10707,7 @@
     this.store = sd.store;
     this.para = sd.para;
     if (this._.isObject(option) && this._.isArray(option.linker) && option.linker.length > 0) {
-      this.setRefferId();
+      this.setRefferId(option);
       this.addListen();
     } else {
       sd.log('请配置打通域名参数！');
