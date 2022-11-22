@@ -3069,7 +3069,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.4';
+  var sdkversion_placeholder = '1.24.5';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -6202,7 +6202,8 @@
     sdkAfterInitPara: ['sdk', 'afterInitPara'],
     sdkBeforeInit: ['sdk', 'beforeInit'],
     sdkAfterInit: ['sdk', 'afterInit'],
-    sdkReady: ['sdk', 'ready']
+    sdkReady: ['sdk', 'ready'],
+    sdkInitAPI: ['sdk', 'initAPI']
   };
 
   function eventEmitterFacade(event_type, callback) {
@@ -8100,7 +8101,7 @@
               source: 'sa-web-sdk',
               type: 'v-is-vtrack',
               data: {
-                sdkversion: '1.24.4'
+                sdkversion: '1.24.5'
               }
             },
             '*'
@@ -8295,6 +8296,11 @@
           sd._q.push([method, arguments]);
           return false;
         }
+
+        if (isFunction(sd.getDisabled) && sd.getDisabled()) {
+          return;
+        }
+
         if (!sd.readyState.getState()) {
           try {
             console.error('请先初始化神策JS SDK');
@@ -8871,6 +8877,7 @@
 
     if (is_compliance_enabled) {
       implementCore(true);
+      checkState();
     }
 
     ee.initSystemEvent();
@@ -8895,32 +8902,6 @@
     implementCore(true);
     checkState();
   }
-
-  var _sd = sd;
-  try {
-    if (typeof window['sensorsDataAnalytic201505'] === 'string') {
-      sd.para = window[sensorsDataAnalytic201505].para;
-      sd._q = window[sensorsDataAnalytic201505]._q;
-
-      window[sensorsDataAnalytic201505] = sd;
-      window['sensorsDataAnalytic201505'] = sd;
-      sd.init();
-    } else if (typeof window['sensorsDataAnalytic201505'] === 'undefined') {
-      window['sensorsDataAnalytic201505'] = sd;
-    } else {
-      _sd = window['sensorsDataAnalytic201505'];
-    }
-  } catch (err) {
-    if (typeof console === 'object' && console.log) {
-      try {
-        console.log(err);
-      } catch (e) {
-        sd.log(e);
-      }
-    }
-  }
-
-  var sd$1 = _sd;
 
   function wrapPluginInitFn(plugin, name, lifeCycle) {
     var initFn = plugin.init;
@@ -9042,13 +9023,13 @@
   var anBridge;
   var anTrack;
   var anServerUrl;
-  var sd$2, _$1, log;
+  var sd$1, _$1, log;
 
   var AndroidBridge = {
     init: function(sensors) {
-      sd$2 = sensors;
-      _$1 = sd$2 && sd$2._;
-      log = (sd$2 && sd$2.log) || (console && console.log) || function() {};
+      sd$1 = sensors;
+      _$1 = sd$1 && sd$1._;
+      log = (sd$1 && sd$1.log) || (console && console.log) || function() {};
       initBridge();
     },
     handleCommand: handleCommand
@@ -9059,29 +9040,29 @@
     anTrack = anBridge && anBridge.sensorsdata_track;
     anServerUrl = anTrack && anBridge.sensorsdata_get_server_url && anBridge.sensorsdata_get_server_url();
 
-    if (!sd$2 || sd$2.bridge.activeBridge || !anServerUrl) {
+    if (!sd$1 || sd$1.bridge.activeBridge || !anServerUrl) {
       return;
     }
 
-    sd$2.bridge.activeBridge = AndroidBridge;
+    sd$1.bridge.activeBridge = AndroidBridge;
 
-    if (sd$2.para.app_js_bridge && !sd$2.para.app_js_bridge.is_mui) {
-      sd$2.bridge.is_verify_success = anServerUrl && sd$2.bridge.validateAppUrl(anServerUrl);
+    if (sd$1.para.app_js_bridge && !sd$1.para.app_js_bridge.is_mui) {
+      sd$1.bridge.is_verify_success = anServerUrl && sd$1.bridge.validateAppUrl(anServerUrl);
     }
 
-    sd$2.bridge.bridge_info = {
+    sd$1.bridge.bridge_info = {
       touch_app_bridge: true,
       platform: 'android',
-      verify_success: sd$2.bridge.is_verify_success ? 'success' : 'fail',
+      verify_success: sd$1.bridge.is_verify_success ? 'success' : 'fail',
       support_two_way_call: anBridge.sensorsdata_js_call_app ? true : false
     };
 
-    if (!sd$2.para.app_js_bridge) {
+    if (!sd$1.para.app_js_bridge) {
       log('app_js_bridge is not configured, data will not be sent by android bridge.');
       return;
     }
 
-    sd$2.registerInterceptor('sendStage', {
+    sd$1.registerInterceptor('sendStage', {
       send: {
         priority: 0,
         entry: sendData
@@ -9092,22 +9073,22 @@
   }
 
   function sendData(rqData, ctx) {
-    if (sd$2.para.app_js_bridge.is_mui) {
+    if (sd$1.para.app_js_bridge.is_mui) {
       return rqData;
     }
 
     var callback = rqData.callback;
-    if (sd$2.bridge.is_verify_success) {
+    if (sd$1.bridge.is_verify_success) {
       anTrack && anTrack.call(anBridge, JSON.stringify(_$1.extend({
-        server_url: sd$2.para.server_url
+        server_url: sd$1.para.server_url
       }, rqData.data)));
       _$1.isFunction(callback) && callback();
       ctx.cancellationToken.cancel();
       return rqData;
     }
 
-    if (sd$2.para.app_js_bridge.is_send) {
-      sd$2.debug.apph5({
+    if (sd$1.para.app_js_bridge.is_send) {
+      sd$1.debug.apph5({
         data: rqData.data,
         step: '4.2',
         output: 'all'
@@ -9182,13 +9163,13 @@
   var anTrack$1;
   var anVerify;
   var anVisualVerify;
-  var sd$3, _$2, log$1;
+  var sd$2, _$2, log$1;
 
   var AndroidObsoleteBridge = {
     init: function(sensors) {
-      sd$3 = sensors;
-      _$2 = sd$3 && sd$3._;
-      log$1 = (sd$3 && sd$3.log) || (console && console.log) || function() {};
+      sd$2 = sensors;
+      _$2 = sd$2 && sd$2._;
+      log$1 = (sd$2 && sd$2.log) || (console && console.log) || function() {};
       initBridge$1();
     },
     handleCommand: handleCommand$1
@@ -9200,31 +9181,31 @@
     anVerify = anBridge$1 && anBridge$1.sensorsdata_verify;
     anVisualVerify = anBridge$1 && anBridge$1.sensorsdata_visual_verify;
 
-    if (!sd$3 || sd$3.bridge.activeBridge || !(anVerify || anTrack$1 || anVisualVerify)) {
+    if (!sd$2 || sd$2.bridge.activeBridge || !(anVerify || anTrack$1 || anVisualVerify)) {
       return;
     }
 
-    sd$3.bridge.activeBridge = AndroidObsoleteBridge;
+    sd$2.bridge.activeBridge = AndroidObsoleteBridge;
 
     var verifyOk = anVerify || anTrack$1;
     if (anVisualVerify) {
       verifyOk = anVisualVerify.call(anBridge$1, JSON.stringify({
-        server_url: sd$3.para.server_url
+        server_url: sd$2.para.server_url
       })) ? true : false;
     }
 
-    sd$3.bridge.bridge_info = {
+    sd$2.bridge.bridge_info = {
       touch_app_bridge: true,
       platform: 'android',
       verify_success: verifyOk ? 'success' : 'fail'
     };
 
-    if (!sd$3.para.app_js_bridge) {
+    if (!sd$2.para.app_js_bridge) {
       log$1('app_js_bridge is not configured, data will not be sent by android obsolete bridge.');
       return;
     }
 
-    sd$3.registerInterceptor('sendStage', {
+    sd$2.registerInterceptor('sendStage', {
       send: {
         priority: 0,
         entry: sendData$1
@@ -9235,21 +9216,21 @@
   }
 
   function sendData$1(rqData, ctx) {
-    if (sd$3.para.app_js_bridge.is_mui) {
+    if (sd$2.para.app_js_bridge.is_mui) {
       return rqData;
     }
     var callback = rqData.callback;
     if (anVerify) {
       var success = anVerify && anVerify.call(anBridge$1, JSON.stringify(_$2.extend({
-        server_url: sd$3.para.server_url
+        server_url: sd$2.para.server_url
       }, rqData.data)));
       if (success) {
         _$2.isFunction(callback) && callback();
         ctx.cancellationToken.cancel();
         return rqData;
       }
-      if (sd$3.para.app_js_bridge.is_send) {
-        sd$3.debug.apph5({
+      if (sd$2.para.app_js_bridge.is_send) {
+        sd$2.debug.apph5({
           data: rqData.data,
           step: '3.1',
           output: 'all'
@@ -9262,7 +9243,7 @@
     }
 
     anTrack$1 && anTrack$1.call(anBridge$1, JSON.stringify(_$2.extend({
-      server_url: sd$3.para.server_url
+      server_url: sd$2.para.server_url
     }, rqData.data)));
     _$2.isFunction(callback) && callback();
     ctx.cancellationToken.cancel();
@@ -9299,7 +9280,7 @@
   }
 
   var _$3;
-  var sd$4;
+  var sd$3;
   var store$1;
   var cookie_name;
   var Channel = {
@@ -9307,22 +9288,22 @@
     latest_event_initial_time: null,
     max_save_time: 1000 * 60 * 60 * 24 * 30,
     init: function(sa, option) {
-      if (sd$4 || !sa) {
+      if (sd$3 || !sa) {
         return false;
       }
       option = option || {};
       cookie_name = option.cookie_name || 'sensorsdata2015jssdkchannel';
-      sd$4 = sa;
+      sd$3 = sa;
       var that = this;
       initChannelPlugin();
 
       function initChannelPlugin() {
-        _$3 = sd$4._;
-        store$1 = sd$4.store;
+        _$3 = sd$3._;
+        store$1 = sd$3.store;
         if (!_$3.localStorage.isSupport()) {
           return false;
         }
-        sd$4.para.max_string_length = 1024;
+        sd$3.para.max_string_length = 1024;
         that.eventList.init();
         that.addLatestChannelUrl();
         that.addIsChannelCallbackEvent();
@@ -9330,7 +9311,7 @@
     },
 
     addIsChannelCallbackEvent: function() {
-      sd$4.registerPage({
+      sd$3.registerPage({
         $is_channel_callback_event: function(data) {
           if (_$3.isObject(data) && data.event) {
             if (!(data.event === '$WebClick' || data.event === '$pageview' || data.event === '$WebStay' || data.event === '$SignUp')) {
@@ -9367,17 +9348,17 @@
         }
       } else {
         if (!cookie_prop) {
-          sd$4.registerPage({
+          sd$3.registerPage({
             _sa_channel_landing_url: '',
             _sa_channel_landing_url_error: '取值异常'
           });
         } else {
-          sd$4.registerPage(cookie_prop);
+          sd$3.registerPage(cookie_prop);
         }
       }
     },
     registerAndSave: function(prop) {
-      sd$4.registerPage(prop);
+      sd$3.registerPage(prop);
       this.cookie.saveChannel(prop);
     },
     cookie: {
@@ -9393,7 +9374,7 @@
           prop: obj
         };
         var stateStr = JSON.stringify(data);
-        if (sd$4.para.encrypt_cookie) {
+        if (sd$3.para.encrypt_cookie) {
           stateStr = _$3.encrypt(stateStr);
         }
         _$3.cookie.set(cookie_name, stateStr);
@@ -9401,7 +9382,7 @@
     },
     channelLinkHandler: function() {
       this.eventList.reset();
-      sd$4.track('$ChannelLinkReaching');
+      sd$3.track('$ChannelLinkReaching');
     },
     getUrlDomain: function() {
       var url_domain = _$3.info.pageProp.url_domain;
@@ -9431,7 +9412,7 @@
         try {
           data = store$1.readObjectVal('sawebjssdkchannel');
         } catch (error) {
-          sd$4.log(error);
+          sd$3.log(error);
         }
         return data;
       },
@@ -9762,12 +9743,12 @@
   var iosServerUrl;
   var iosTracker;
 
-  var sd$5, _$4, log$2;
+  var sd$4, _$4, log$2;
   var IOSBridge = {
     init: function(sensors) {
-      sd$5 = sensors;
-      _$4 = sd$5 && sd$5._;
-      log$2 = (sd$5 && sd$5.log) || (console && console.log) || function() {};
+      sd$4 = sensors;
+      _$4 = sd$4 && sd$4._;
+      log$2 = (sd$4 && sd$4.log) || (console && console.log) || function() {};
       initBridge$2();
     },
     handleCommand: handleCommand$2
@@ -9779,28 +9760,28 @@
       return window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sensorsdataNativeTracker;
     };
 
-    if (!sd$5 || sd$5.bridge.activeBridge || !iosTracker() || !iosTracker().postMessage) {
+    if (!sd$4 || sd$4.bridge.activeBridge || !iosTracker() || !iosTracker().postMessage) {
       return;
     }
 
-    sd$5.bridge.activeBridge = IOSBridge;
-    if (sd$5.para.app_js_bridge && !sd$5.para.app_js_bridge.is_mui) {
-      sd$5.bridge.is_verify_success = iosServerUrl && sd$5.bridge.validateAppUrl(iosServerUrl);
+    sd$4.bridge.activeBridge = IOSBridge;
+    if (sd$4.para.app_js_bridge && !sd$4.para.app_js_bridge.is_mui) {
+      sd$4.bridge.is_verify_success = iosServerUrl && sd$4.bridge.validateAppUrl(iosServerUrl);
     }
 
-    sd$5.bridge.bridge_info = {
+    sd$4.bridge.bridge_info = {
       touch_app_bridge: true,
       platform: 'ios',
-      verify_success: sd$5.bridge.is_verify_success ? 'success' : 'fail',
+      verify_success: sd$4.bridge.is_verify_success ? 'success' : 'fail',
       support_two_way_call: true
     };
 
-    if (!sd$5.para.app_js_bridge) {
+    if (!sd$4.para.app_js_bridge) {
       log$2('app_js_bridge is not configured, data will not be sent by iOS bridge.');
       return;
     }
 
-    sd$5.registerInterceptor('sendStage', {
+    sd$4.registerInterceptor('sendStage', {
       send: {
         priority: 0,
         entry: sendData$2
@@ -9811,17 +9792,17 @@
   }
 
   function sendData$2(rqData, ctx) {
-    if (sd$5.para.app_js_bridge.is_mui) {
+    if (sd$4.para.app_js_bridge.is_mui) {
       return rqData;
     }
     var callback = rqData.callback;
-    if (sd$5.bridge.is_verify_success) {
+    if (sd$4.bridge.is_verify_success) {
       iosTracker() &&
         iosTracker().postMessage(
           JSON.stringify({
             callType: 'app_h5_track',
             data: _$4.extend({
-              server_url: sd$5.para.server_url
+              server_url: sd$4.para.server_url
             }, rqData.data)
           })
         );
@@ -9830,8 +9811,8 @@
       return rqData;
     }
 
-    if (sd$5.para.app_js_bridge.is_send) {
-      sd$5.debug.apph5({
+    if (sd$4.para.app_js_bridge.is_send) {
+      sd$4.debug.apph5({
         data: rqData.data,
         step: '4.1',
         output: 'all'
@@ -9846,7 +9827,7 @@
 
   function handleCommand$2(request) {
     var callType = request.callType;
-    if ((callType === 'page_info' || callType === 'visualized_track') && !sd$5.bridge.hasVisualModeBridge()) {
+    if ((callType === 'page_info' || callType === 'visualized_track') && !sd$4.bridge.hasVisualModeBridge()) {
       return null;
     }
 
@@ -9876,34 +9857,34 @@
     return plugin;
   }
 
-  var sd$6, _$5, log$3;
+  var sd$5, _$5, log$3;
   var IOSObsoleteBridge = {
     init: function(sensors) {
-      sd$6 = sensors;
-      _$5 = sd$6 && sd$6._;
-      log$3 = (sd$6 && sd$6.log) || (console && console.log) || function() {};
+      sd$5 = sensors;
+      _$5 = sd$5 && sd$5._;
+      log$3 = (sd$5 && sd$5.log) || (console && console.log) || function() {};
       initBridge$3();
     }
   };
 
   function initBridge$3() {
-    if (!sd$6 || sd$6.bridge.activeBridge || !hasBridge()) {
+    if (!sd$5 || sd$5.bridge.activeBridge || !hasBridge()) {
       return;
     }
 
-    sd$6.bridge.activeBridge = IOSObsoleteBridge;
-    sd$6.bridge.bridge_info = {
+    sd$5.bridge.activeBridge = IOSObsoleteBridge;
+    sd$5.bridge.bridge_info = {
       touch_app_bridge: true,
       platform: 'ios',
       verify_success: verifyIOSObsoleteBridge() ? 'success' : 'fail'
     };
 
-    if (!sd$6.para.app_js_bridge) {
+    if (!sd$5.para.app_js_bridge) {
       log$3('app_js_bridge is not configured, data will not be sent by iOS obsolete bridge.');
       return;
     }
 
-    sd$6.registerInterceptor('sendStage', {
+    sd$5.registerInterceptor('sendStage', {
       send: {
         priority: 0,
         entry: sendData$3
@@ -9925,10 +9906,10 @@
         var hostname = null;
         var project = null;
         try {
-          hostname = _$5.URL(sd$6.para.server_url).hostname;
-          project = _$5.URL(sd$6.para.server_url).searchParams.get('project') || 'default';
+          hostname = _$5.URL(sd$5.para.server_url).hostname;
+          project = _$5.URL(sd$5.para.server_url).searchParams.get('project') || 'default';
         } catch (e) {
-          sd$6.log(e);
+          sd$5.log(e);
         }
         if (hostname && hostname === match[0] && project && project === match[1]) {
           return true;
@@ -9946,21 +9927,21 @@
   }
 
   function sendData$3(rqData, ctx) {
-    if (sd$6.para.app_js_bridge.is_mui) {
+    if (sd$5.para.app_js_bridge.is_mui) {
       return rqData;
     }
     var callback = rqData.callback;
 
     function checkURL(originData) {
       var data = JSON.stringify(_$5.extend({
-        server_url: sd$6.para.server_url
+        server_url: sd$5.para.server_url
       }, originData));
       data = data.replace(/\r\n/g, '');
       data = encodeURIComponent(data);
       return 'sensorsanalytics://trackEvent?event=' + data;
     }
 
-    if (sd$6.bridge.bridge_info.verify_success) {
+    if (sd$5.bridge.bridge_info.verify_success) {
       var iframe = document.createElement('iframe');
       var newurl = checkURL(rqData.data);
       iframe.setAttribute('src', newurl);
@@ -9972,8 +9953,8 @@
       return true;
     }
 
-    if (sd$6.para.app_js_bridge.is_send) {
-      sd$6.debug.apph5({
+    if (sd$5.para.app_js_bridge.is_send) {
+      sd$5.debug.apph5({
         data: rqData.data,
         step: '3.2',
         output: 'all'
@@ -10468,7 +10449,7 @@
     return plugin;
   }
 
-  var _sd$1,
+  var _sd,
     _oldBuildData,
     _log = (window.console && window.console.log) || function() {};
 
@@ -10480,25 +10461,25 @@
         var prop = {
           $page_height: Math.max(viewportHeightValue, scrollHeightValue) || 0
         };
-        p.properties = _sd$1._.extend(p.properties || {}, prop);
+        p.properties = _sd._.extend(p.properties || {}, prop);
       }
     } catch (e) {
       _log('页面高度获取异常。');
     }
-    return _oldBuildData.call(_sd$1.kit, p);
+    return _oldBuildData.call(_sd.kit, p);
   }
 
   var RegisterPropertyPageHeight = {
     init: function(sd) {
-      _sd$1 = sd;
-      _log = (_sd$1 && _sd$1.log) || _log;
+      _sd = sd;
+      _log = (_sd && _sd.log) || _log;
 
       if (!sd || !sd.kit || !sd.kit.buildData) {
         _log('RegisterPropertyPageHeight 插件初始化失败,当前主sdk不支持 RegisterPropertyPageHeight 插件，请升级主sdk');
         return;
       }
-      _oldBuildData = _sd$1.kit.buildData;
-      _sd$1.kit.buildData = buildData;
+      _oldBuildData = _sd.kit.buildData;
+      _sd.kit.buildData = buildData;
       _log('RegisterPropertyPageHeight 插件初始化完成');
     }
   };
@@ -10750,15 +10731,15 @@
     return plugin;
   }
 
-  var sd$7;
+  var sd$6;
   var utm = {
     name: 'Utm',
     init: function(sa) {
-      if (!sa || sd$7) {
+      if (!sa || sd$6) {
         return;
       }
-      sd$7 = sa;
-      sd$7.registerInterceptor('businessStage', {
+      sd$6 = sa;
+      sd$6.registerInterceptor('businessStage', {
         getUtmData: {
           priority: 0,
           entry: function() {
@@ -10771,12 +10752,12 @@
         var campaign_keywords = source_channel_standard$1.split(' '),
           kw = '',
           params = {};
-        if (sd$7._.isArray(sd$7.para.source_channel) && sd$7.para.source_channel.length > 0) {
-          campaign_keywords = campaign_keywords.concat(sd$7.para.source_channel);
-          campaign_keywords = sd$7._.unique(campaign_keywords);
+        if (sd$6._.isArray(sd$6.para.source_channel) && sd$6.para.source_channel.length > 0) {
+          campaign_keywords = campaign_keywords.concat(sd$6.para.source_channel);
+          campaign_keywords = sd$6._.unique(campaign_keywords);
         }
-        sd$7._.each(campaign_keywords, function(kwkey) {
-          kw = sd$7._.getQueryParam(location.href, kwkey);
+        sd$6._.each(campaign_keywords, function(kwkey) {
+          kw = sd$6._.getQueryParam(location.href, kwkey);
           if (kw.length) {
             params[kwkey] = kw;
           }
@@ -10787,27 +10768,96 @@
   };
   wrapPluginInitFn$b(utm, 'Utm', 'sdkAfterInitPara');
 
-  sd$1.modules = sd$1.modules || {};
+  function wrapPluginInitFn$c(plugin, name, lifeCycle) {
+    var initFn = plugin.init;
+    if (name) {
+      plugin.name = name;
+    }
+    plugin.init = function(sd, option) {
+      if (sd.readyState && sd.readyState.state >= 3 || !sd.on) {
+        return initPlugin();
+      }
+      sd.on(lifeCycle, initPlugin);
 
-  var builtinPlugins = [amp, AndroidBridge, AndroidObsoleteBridge, Channel, SADeepLink, IOSBridge, IOSObsoleteBridge, pageLeave, PageLoad, instance, RegisterPropertyPageHeight, siteLinker, utm];
-  var autoUsePlugins = [AndroidBridge, IOSBridge, AndroidObsoleteBridge, IOSObsoleteBridge, utm];
+      function initPlugin() {
+        initFn.call(plugin, sd, option);
+      }
+    };
+    return plugin;
+  }
+
+  var isDisabled = false;
+  var sd$7 = null;
+  var disableSDKPlugin = {
+    init: function(sensors) {
+      sd$7 = sensors;
+      sd$7.disableSDK = disableSDK;
+      sd$7.enableSDK = enableSDK;
+      sd$7.getDisabled = getDisabled;
+    }
+  };
+
+  function disableSDK() {
+    isDisabled = true;
+  }
+
+  function enableSDK() {
+    isDisabled = false;
+  }
+
+  function getDisabled() {
+    return isDisabled;
+  }
+
+  wrapPluginInitFn$c(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
+
+  sd.modules = sd.modules || {};
+
+  var builtinPlugins = [amp, AndroidBridge, AndroidObsoleteBridge, Channel, SADeepLink, IOSBridge, IOSObsoleteBridge, pageLeave, PageLoad, instance, RegisterPropertyPageHeight, siteLinker, utm, disableSDKPlugin];
+  var autoUsePlugins = [AndroidBridge, IOSBridge, AndroidObsoleteBridge, IOSObsoleteBridge, utm, disableSDKPlugin];
 
   for (var i = 0; i < builtinPlugins.length; i++) {
     var p = builtinPlugins[i];
-    if (sd$1._.isString(p.name)) {
-      sd$1.modules[p.name] = p;
+    if (sd._.isString(p.name)) {
+      sd.modules[p.name] = p;
     } else {
-      sd$1._.isArray(p.name) &&
-        sd$1._.each(p.name, function(v) {
-          sd$1.modules[v] = p;
+      sd._.isArray(p.name) &&
+        sd._.each(p.name, function(v) {
+          sd.modules[v] = p;
         });
     }
   }
 
   for (i = 0; i < autoUsePlugins.length; i++) {
-    sd$1.use(autoUsePlugins[i]);
+    sd.use(autoUsePlugins[i]);
   }
 
-  return sd$1;
+  var _sd$1 = sd;
+  try {
+    if (typeof window['sensorsDataAnalytic201505'] === 'string') {
+      sd.para = window[sensorsDataAnalytic201505].para;
+      sd._q = window[sensorsDataAnalytic201505]._q;
+
+      window[sensorsDataAnalytic201505] = sd;
+      window['sensorsDataAnalytic201505'] = sd;
+      sd.init();
+    } else if (typeof window['sensorsDataAnalytic201505'] === 'undefined') {
+      window['sensorsDataAnalytic201505'] = sd;
+    } else {
+      _sd$1 = window['sensorsDataAnalytic201505'];
+    }
+  } catch (err) {
+    if (typeof console === 'object' && console.log) {
+      try {
+        console.log(err);
+      } catch (e) {
+        sd.log(e);
+      }
+    }
+  }
+
+  var sd$8 = _sd$1;
+
+  return sd$8;
 
 })));

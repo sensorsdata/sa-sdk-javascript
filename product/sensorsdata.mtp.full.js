@@ -3067,7 +3067,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.4';
+  var sdkversion_placeholder = '1.24.5';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -6200,7 +6200,8 @@
     sdkAfterInitPara: ['sdk', 'afterInitPara'],
     sdkBeforeInit: ['sdk', 'beforeInit'],
     sdkAfterInit: ['sdk', 'afterInit'],
-    sdkReady: ['sdk', 'ready']
+    sdkReady: ['sdk', 'ready'],
+    sdkInitAPI: ['sdk', 'initAPI']
   };
 
   function eventEmitterFacade(event_type, callback) {
@@ -7086,6 +7087,11 @@
           sd._q.push([method, arguments]);
           return false;
         }
+
+        if (isFunction(sd.getDisabled) && sd.getDisabled()) {
+          return;
+        }
+
         if (!sd.readyState.getState()) {
           try {
             console.error('请先初始化神策JS SDK');
