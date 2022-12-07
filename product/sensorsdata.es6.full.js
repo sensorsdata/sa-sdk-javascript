@@ -1201,8 +1201,8 @@ function _URL(url) {
   var isURLAPIWorking = function() {
     var url;
     try {
-      url = new URL('http://modernizr.com/');
-      return url.href === 'http://modernizr.com/';
+      url = new URL('https://www.sensorsdata.cn/');
+      return url.href === 'https://www.sensorsdata.cn/';
     } catch (e) {
       return false;
     }
@@ -2692,9 +2692,9 @@ function rot13defs(str) {
 }
 
 function searchObjDate(o) {
-  if (isObject(o)) {
+  if (isObject(o) || isArray(o)) {
     each(o, function(a, b) {
-      if (isObject(a)) {
+      if (isObject(a) || isArray(a)) {
         searchObjDate(o[b]);
       } else {
         if (isDate(a)) {
@@ -3063,7 +3063,7 @@ function encrypt(v) {
 }
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.24.5';
+var sdkversion_placeholder = '1.24.6';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -8095,7 +8095,7 @@ var vtrackMode = {
             source: 'sa-web-sdk',
             type: 'v-is-vtrack',
             data: {
-              sdkversion: '1.24.5'
+              sdkversion: '1.24.6'
             }
           },
           '*'
@@ -8345,9 +8345,7 @@ function InterceptorContext(data, pos, sd) {
   var originalData = null;
   try {
     originalData = JSON.parse(JSON.stringify(data || null));
-  } catch (e) {
-    sdLog(e);
-  }
+  } catch (e) {}
   this.getOriginalData = function() {
     return originalData;
   };
@@ -8644,13 +8642,29 @@ function strip_sa_properties(p, ignores) {
       each(v, function(arrv) {
         if (isString(arrv)) {
           temp.push(arrv);
+        } else if (isUndefined(arrv)) {
+          temp.push('null');
         } else {
-          sdLog('您的数据-', k, v, '的数组里的值必须是字符串,已经将其删除');
+          try {
+            temp.push(JSON.stringify(arrv));
+          } catch (e) {
+            sdLog('您的数据-', k, v, '数组里值有错误,已将其删除');
+          }
         }
       });
       p[k] = temp;
     }
-    if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option') && indexOf(ignores || [], k) === -1) {
+
+    var isIgnoreIllegal = indexOf(ignores || [], k) > -1;
+
+    if (isObject(v) && k !== '$option' && !isIgnoreIllegal) {
+      try {
+        p[k] = JSON.stringify(v);
+      } catch (e) {
+        delete p[k];
+        sdLog('您的数据-', k, v, '数据值有错误，已将其删除');
+      }
+    } else if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option' || isIgnoreIllegal)) {
       sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
       delete p[k];
     }
@@ -8765,6 +8779,8 @@ function formatProperties(p, ignore) {
 function formatData(data) {
   var p = data.properties;
 
+  searchObjDate(data);
+
   if (isObject(p)) {
     strip_sa_properties(p);
 
@@ -8778,8 +8794,6 @@ function formatData(data) {
   } else if ('properties' in data) {
     data.properties = {};
   }
-
-  searchObjDate(data);
 
   formatItem(data);
 }
