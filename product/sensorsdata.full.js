@@ -2234,19 +2234,6 @@
     }
   }
 
-  function getQueryParam(url, key) {
-    key = key.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-    url = _decodeURIComponent(url);
-    var regexS = '[\\?&]' + key + '=([^&#]*)',
-      regex = new RegExp(regexS),
-      results = regex.exec(url);
-    if (results === null || (results && typeof results[1] !== 'string' && results[1].length)) {
-      return '';
-    } else {
-      return _decodeURIComponent(results[1]);
-    }
-  }
-
 
   function getQueryParamsFromUrl(url) {
     var result = {};
@@ -2255,6 +2242,21 @@
     if (queryString) {
       result = getURLSearchParams('?' + queryString);
     }
+    return result;
+  }
+
+  function getQueryParam(url, key) {
+    var urlParts = _URL(url);
+    var result = urlParts.searchParams.get(key) || '';
+
+    if (!result) {
+      var hash = urlParts.hash;
+      if (hash) {
+        var results = getQueryParamsFromUrl(hash);
+        result = results[key] || '';
+      }
+    }
+
     return result;
   }
 
@@ -3071,7 +3073,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.6';
+  var sdkversion_placeholder = '1.24.7';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3766,9 +3768,6 @@
     var isNotProfileType = !data.type || data.type.slice(0, 7) !== 'profile';
     var defaultHost = '取值异常';
     if (isObject(data.properties)) {
-      if (data.properties.$first_referrer) {
-        data.properties.$first_referrer_host = getHostname(data.properties.$first_referrer, defaultHost);
-      }
       if (isNotProfileType) {
         if ('$referrer' in data.properties) {
           data.properties.$referrer_host = data.properties.$referrer === '' ? '' : getHostname(data.properties.$referrer, defaultHost);
@@ -5927,10 +5926,12 @@
         eqidObj['$search_keyword_id_hash'] = hashCode53(eqidObj['$search_keyword_id']);
       }
 
+      var referrer = getReferrer(null, fullReferrer);
       setOnceProfileFn(
         extend({
             $first_visit_time: new Date(),
-            $first_referrer: getReferrer(null, fullReferrer),
+            $first_referrer: referrer,
+            $first_referrer_host: referrer ? getHostname(referrer, '取值异常') : '',
             $first_browser_language: isString(navigator.language) ? navigator.language.toLowerCase() : '取值异常',
             $first_browser_charset: isString(document.charset) ? document.charset.toUpperCase() : '取值异常',
             $first_traffic_source_type: getSourceFromReferrer(),
@@ -8103,7 +8104,7 @@
               source: 'sa-web-sdk',
               type: 'v-is-vtrack',
               data: {
-                sdkversion: '1.24.6'
+                sdkversion: '1.24.7'
               }
             },
             '*'
