@@ -1,4 +1,4 @@
-## SAT 广告预置属性补丁
+## SAT - 预置属性补丁
 ## 功能
 将采集数据中的 
 _latest_wx_ad_click_id 替换为 $latest_wx_ad_click_id

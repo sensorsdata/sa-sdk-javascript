@@ -2985,13 +2985,9 @@
     cross_subdomain: true,
     show_log: false,
     is_debug: false,
-    debug_mode: false,
-    debug_mode_upload: false,
 
     source_channel: [],
     sdk_id: '',
-
-    send_type: 'image',
 
     vtrack_ignore: {},
 
@@ -3069,7 +3065,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.7';
+  var sdkversion_placeholder = '1.24.8';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3830,6 +3826,339 @@
     return ajax(para);
   }
 
+  function optimizeServerUrl(server_url) {
+    if (typeof server_url === 'string') {
+      server_url = trim(server_url);
+      if (server_url) {
+        if (server_url.slice(0, 3) === '://') {
+          server_url = location.protocol.slice(0, -1) + server_url;
+        } else if (server_url.slice(0, 2) === '//') {
+          server_url = location.protocol + server_url;
+        } else if (server_url.slice(0, 4) !== 'http') {
+          server_url = '';
+        }
+      }
+    }
+    if (isArray(server_url) && server_url.length) {
+      for (var i = 0; i < server_url.length; i++) {
+        if (!/sa\.gif[^\/]*$/.test(server_url[i])) {
+          server_url[i] = server_url[i].replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
+        }
+      }
+    } else if (!/sa\.gif[^\/]*$/.test(server_url) && typeof server_url === 'string') {
+      server_url = server_url.replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
+    }
+    return server_url;
+  }
+
+  function encodeTrackData(data) {
+    if (!isString(data)) {
+      data = JSON.stringify(data);
+    }
+    var dataStr = base64Encode(data);
+    var crc = 'crc=' + hashCode(dataStr);
+    return 'data=' + encodeURIComponent(dataStr) + '&ext=' + encodeURIComponent(crc);
+  }
+
+  var AjaxSend = function(para) {
+    this.callback = para.callback;
+    this.server_url = para.server_url;
+    this.data = para.data;
+  };
+
+  AjaxSend.prototype.start = function() {
+    var me = this;
+    ajax$1({
+      url: this.server_url,
+      type: 'POST',
+      data: this.data,
+      credentials: false,
+      timeout: sdPara.datasend_timeout,
+      cors: true,
+      success: function() {
+        me.end();
+      },
+      error: function() {
+        me.end();
+      }
+    });
+  };
+
+  AjaxSend.prototype.end = function() {
+    this.callback && this.callback();
+  };
+
+  var dataStoragePrefix = 'sawebjssdk-';
+  var tabStoragePrefix = 'tab-sawebjssdk-';
+
+  function BatchSend() {
+    this.sendTimeStamp = 0;
+    this.timer = null;
+    this.serverUrl = '';
+    this.hasTabStorage = false;
+  }
+
+  BatchSend.prototype = {
+    batchInterval: function() {
+      if (this.serverUrl === '') this.getServerUrl();
+      if (!this.hasTabStorage) {
+        this.generateTabStorage();
+        this.hasTabStorage = true;
+      }
+      var self = this;
+      self.timer = setTimeout(function() {
+        self.updateExpireTime();
+        self.recycle();
+        self.send();
+        clearTimeout(self.timer);
+        self.batchInterval();
+      }, sdPara.batch_send.send_interval);
+    },
+
+    getServerUrl: function() {
+      if ((isString(sdPara.server_url) && sdPara.server_url !== '') || (isArray(sdPara.server_url) && sdPara.server_url.length)) {
+        this.serverUrl = isArray(sdPara.server_url) ? sdPara.server_url[0] : sdPara.server_url;
+      } else {
+        return sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
+      }
+    },
+
+    send: function() {
+      if (this.sendTimeStamp && now() - this.sendTimeStamp < sdPara.batch_send.datasend_timeout) return;
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        this.sendTimeStamp = now();
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+        if (tabStorage.data.length) {
+          var data = [];
+          for (var i = 0; i < tabStorage.data.length; i++) {
+            data.push(sd.store.readObjectVal(tabStorage.data[i]));
+          }
+          this.request(data, tabStorage.data);
+        }
+      }
+    },
+
+    updateExpireTime: function() {
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+        tabStorage.expireTime = now() + sdPara.batch_send.send_interval * 2;
+        tabStorage.serverUrl = this.serverUrl;
+        _localStorage.set(this.tabKey, JSON.stringify(tabStorage));
+      }
+    },
+
+    request: function(data, dataKeys) {
+      var self = this;
+      ajax$1({
+        url: this.serverUrl,
+        type: 'POST',
+        data: 'data_list=' + encodeURIComponent(base64Encode(JSON.stringify(data))),
+        credentials: false,
+        timeout: sdPara.batch_send.datasend_timeout,
+        cors: true,
+        success: function() {
+          self.remove(dataKeys);
+          self.sendTimeStamp = 0;
+        },
+        error: function() {
+          self.sendTimeStamp = 0;
+        }
+      });
+    },
+
+    remove: function(dataKeys) {
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage) {
+        var tabStorageData = (safeJSONParse(tabStorage) || this.generateTabStorageVal()).data;
+        for (var i = 0; i < dataKeys.length; i++) {
+          var idx = indexOf(tabStorageData, dataKeys[i]);
+          if (idx > -1) {
+            tabStorageData.splice(idx, 1);
+          }
+          _localStorage.remove(dataKeys[i]);
+        }
+        _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal(tabStorageData)));
+      }
+    },
+
+    add: function(data) {
+      var dataKey = dataStoragePrefix + String(getRandom());
+      var tabStorage = _localStorage.get(this.tabKey);
+      if (tabStorage === null) {
+        this.tabKey = tabStoragePrefix + String(getRandom());
+        tabStorage = this.generateTabStorageVal();
+      } else {
+        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
+      }
+      tabStorage.data.push(dataKey);
+      tabStorage.expireTime = now() + sdPara.batch_send.send_interval * 2;
+      _localStorage.set(this.tabKey, JSON.stringify(tabStorage));
+      sd.store.saveObjectVal(dataKey, data);
+      if (data.type === 'track_signup' || data.event === '$pageview') {
+        this.sendImmediately();
+      }
+    },
+
+    generateTabStorage: function() {
+      this.tabKey = tabStoragePrefix + String(getRandom());
+      _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal()));
+    },
+
+    generateTabStorageVal: function(data) {
+      data = data || [];
+      return {
+        data: data,
+        expireTime: now() + sdPara.batch_send.send_interval * 2,
+        serverUrl: this.serverUrl
+      };
+    },
+
+    sendImmediately: function() {
+      this.send();
+    },
+
+    recycle: function() {
+      var notSendMap = {},
+        lockTimeout = 10000,
+        lockPrefix = 'sajssdk-lock-get-';
+      for (var i = 0; i < localStorage.length; i++) {
+        var item = localStorage.key(i),
+          self = this;
+        if (item.indexOf(tabStoragePrefix) === 0) {
+          var tabStorage = safeJSONParse(_localStorage.get(item)) || this.generateTabStorageVal();
+          for (var j = 0; j < tabStorage.data.length; j++) {
+            notSendMap[tabStorage.data[j]] = true;
+          }
+          if (now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
+            var concurrentStorage = new ConcurrentStorage(lockPrefix);
+            concurrentStorage.get(item, lockTimeout, 1000, function(data) {
+              if (data) {
+                if (_localStorage.get(self.tabKey) === null) {
+                  self.generateTabStorage();
+                }
+                var recycleData = safeJSONParse(data) || self.generateTabStorageVal();
+                _localStorage.set(self.tabKey, JSON.stringify(self.generateTabStorageVal((safeJSONParse(_localStorage.get(self.tabKey)) || this.generateTabStorageVal()).data.concat(recycleData.data))));
+              }
+            });
+          }
+        } else if (item.indexOf(lockPrefix) === 0) {
+          var lock = safeJSONParse(_localStorage.get(item)) || {
+            expireTime: 0
+          };
+          if (now() - lock.expireTime > lockTimeout) {
+            _localStorage.remove(item);
+          }
+        }
+      }
+      for (var n = 0; n < localStorage.length; n++) {
+        var key1 = localStorage.key(n);
+        if (key1.indexOf(dataStoragePrefix) === 0 && !notSendMap[key1]) {
+          _localStorage.remove(key1);
+        }
+      }
+    }
+  };
+
+  var BeaconSend = function(para) {
+    this.callback = para.callback;
+    this.server_url = para.server_url;
+    this.data = para.data;
+  };
+
+  BeaconSend.prototype.start = function() {
+    var me = this;
+    if (typeof navigator === 'object' && typeof navigator.sendBeacon === 'function') {
+      navigator.sendBeacon(this.server_url, this.data);
+    }
+    setTimeout(function() {
+      me.end();
+    }, 40);
+  };
+  BeaconSend.prototype.end = function() {
+    this.callback && this.callback();
+  };
+
+
+  function getUA$1() {
+    var Sys = {};
+    var ua = navigator.userAgent.toLowerCase();
+    var s;
+    if ((s = ua.match(/ qq\/([\d.]+)/))) {
+      Sys.qqBuildinBrowser = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/mqqbrowser\/([\d.]+)/))) {
+      Sys.qqBrowser = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/opera.([\d.]+)/))) {
+      Sys.opera = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/msie ([\d.]+)/))) {
+      Sys.ie = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/edge.([\d.]+)/))) {
+      Sys.edge = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/firefox\/([\d.]+)/))) {
+      Sys.firefox = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/chrome\/([\d.]+)/))) {
+      Sys.chrome = Number(s[1].split('.')[0]);
+    } else if ((s = ua.match(/version\/([\d.]+).*safari/))) {
+      Sys.safari = Number(s[1].match(/^\d*.\d*/));
+    } else if ((s = ua.match(/trident\/([\d.]+)/))) {
+      Sys.ie = 11;
+    }
+    return Sys;
+  }
+
+  var ImageSend = function(para) {
+    this.callback = para.callback;
+    this.img = document.createElement('img');
+    this.img.width = 1;
+    this.img.height = 1;
+    if (sdPara.img_use_crossorigin) {
+      this.img.crossOrigin = 'anonymous';
+    }
+    this.server_url = para.data;
+  };
+
+  ImageSend.prototype.start = function() {
+    var me = this;
+    if (sdPara.ignore_oom) {
+      this.img.onload = function() {
+        this.onload = null;
+        this.onerror = null;
+        this.onabort = null;
+        me.end();
+      };
+      this.img.onerror = function() {
+        this.onload = null;
+        this.onerror = null;
+        this.onabort = null;
+        me.end();
+      };
+      this.img.onabort = function() {
+        this.onload = null;
+        this.onerror = null;
+        this.onabort = null;
+        me.end();
+      };
+    }
+    this.img.src = this.server_url;
+  };
+
+  ImageSend.prototype.lastClear = function() {
+    var sys = getUA$1();
+    if (sys.ie !== undefined) {
+      this.img.src = 'about:blank';
+    } else {
+      this.img.src = '';
+    }
+  };
+  ImageSend.prototype.end = function() {
+    this.callback && this.callback();
+    var self = this;
+    setTimeout(function() {
+      self.lastClear && self.lastClear();
+    }, sdPara.datasend_timeout - sdPara.callback_timeout);
+  };
+
 
 
   var business = {
@@ -3856,7 +4185,13 @@
     strip_empty_properties: strip_empty_properties,
     getEleInfo: getEleInfo,
     getElementContent: getElementContent$1,
-    ajax: ajax$1
+    ajax: ajax$1,
+    optimizeServerUrl: optimizeServerUrl,
+    encodeTrackData: encodeTrackData,
+    AjaxSend: AjaxSend,
+    BatchSend: BatchSend,
+    BeaconSend: BeaconSend,
+    ImageSend: ImageSend
   };
 
   var events = new EventEmitterSa();
@@ -4448,136 +4783,179 @@
     return true;
   }
 
-  var dataStageImpl = {
-    stage: null,
-    init: function(stage) {
-      this.stage = stage;
+  function strip_sa_properties(p, ignores) {
+    if (!isObject(p)) {
+      return p;
     }
-  };
+    each(p, function(v, k) {
+      if (isArray(v)) {
+        var temp = [];
+        each(v, function(arrv) {
+          if (isString(arrv)) {
+            temp.push(arrv);
+          } else if (isUndefined(arrv)) {
+            temp.push('null');
+          } else {
+            try {
+              temp.push(JSON.stringify(arrv));
+            } catch (e) {
+              sdLog('您的数据-', k, v, '数组里值有错误,已将其删除');
+            }
+          }
+        });
+        p[k] = temp;
+      }
 
-  function processAddCustomProps(data) {
-    return dataStageImpl.stage.process('addCustomProps', data);
-  }
+      var isIgnoreIllegal = indexOf(ignores || [], k) > -1;
 
-  function processFormatData(data) {
-    return dataStageImpl.stage.process('formatData', data);
-  }
-
-  var saEvent = {};
-
-  saEvent.check = check;
-
-  saEvent.sendItem = function(p) {
-    var data = {
-      lib: {
-        $lib: 'js',
-        $lib_method: 'code',
-        $lib_version: String(sd.lib_version)
-      },
-      time: new Date() * 1
-    };
-
-    extend(data, p);
-    dataStageImpl.stage.process('formatData', data);
-    sd.kit.sendData(data);
-  };
-
-  saEvent.send = function(p, callback) {
-    var data = sd.kit.buildData(p);
-    sd.kit.sendData(data, callback);
-  };
-
-  saEvent.debugPath = function(data) {
-    var _data = data;
-    var url = '';
-    if (sd.para.debug_mode_url.indexOf('?') !== -1) {
-      url = sd.para.debug_mode_url + '&' + sd.kit.encodeTrackData(data);
-    } else {
-      url = sd.para.debug_mode_url + '?' + sd.kit.encodeTrackData(data);
-    }
-
-    ajax$1({
-      url: url,
-      type: 'GET',
-      cors: true,
-      header: {
-        'Dry-Run': String(sd.para.debug_mode_upload)
-      },
-      success: function(data) {
-        isEmptyObject(data) === true ? alert('debug数据发送成功' + _data) : alert('debug失败 错误原因' + JSON.stringify(data));
+      if (isObject(v) && k !== '$option' && !isIgnoreIllegal) {
+        try {
+          p[k] = JSON.stringify(v);
+        } catch (e) {
+          delete p[k];
+          sdLog('您的数据-', k, v, '数据值有错误，已将其删除');
+        }
+      } else if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option' || isIgnoreIllegal)) {
+        sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
+        delete p[k];
       }
     });
-  };
+    return p;
+  }
 
-  function trackLinkByCustomTrackFunc(obj, event_name, event_prop, trackFn) {
-    obj = obj || {};
-    var link = null;
-    if (obj.ele) {
-      link = obj.ele;
+  function formatString(str, maxLen) {
+    if (isNumber(maxLen) && str.length > maxLen) {
+      sdLog('字符串长度超过限制，已经做截取--' + str);
+      return str.slice(0, maxLen);
+    } else {
+      return str;
     }
-    if (obj.event) {
-      if (obj.target) {
-        link = obj.target;
+  }
+
+  function filterReservedProperties(obj, ignore) {
+    var reservedFields = ['distinct_id', 'user_id', 'id', 'date', 'datetime', 'event', 'events', 'first_id', 'original_id', 'device_id', 'properties', 'second_id', 'time', 'users'];
+    if (!isObject(obj)) {
+      return;
+    }
+    each(reservedFields, function(key, index) {
+      if (!(key in obj)) {
+        return;
+      }
+
+      if (indexOf(ignore || [], key) > -1) {
+        return;
+      }
+      if (index < 3) {
+        delete obj[key];
+        sdLog('您的属性- ' + key + '是保留字段，我们已经将其删除');
       } else {
-        link = obj.event.target;
+        sdLog('您的属性- ' + key + '是保留字段，请避免其作为属性名');
       }
-    }
+    });
+  }
 
-    event_prop = event_prop || {};
-    if (!link || typeof link !== 'object') {
-      return false;
-    }
-    if (!link.href || /^javascript/.test(link.href) || link.target || link.download || link.onclick) {
-      trackFn(event_name, event_prop);
-      return false;
-    }
-
-    function linkFunc(e) {
-      e.stopPropagation();
-      e.preventDefault();
-      var hasCalled = false;
-
-      function track_a_click() {
-        if (!hasCalled) {
-          hasCalled = true;
-          location.href = link.href;
+  function searchObjString(o) {
+    var white_list = ['$element_selector', '$element_path'];
+    var infinite_list = ['sensorsdata_app_visual_properties'];
+    if (isObject(o)) {
+      each(o, function(a, b) {
+        if (isObject(a)) {
+          searchObjString(o[b]);
+        } else {
+          if (isString(a)) {
+            if (indexOf(infinite_list, b) > -1) {
+              return;
+            }
+            o[b] = formatString(a, indexOf(white_list, b) > -1 ? 1024 : sdPara.max_string_length);
+          }
         }
-      }
-      setTimeout(track_a_click, 1000);
-      trackFn(event_name, event_prop, track_a_click);
-    }
-    if (obj.event) {
-      linkFunc(obj.event);
-    }
-    if (obj.ele) {
-      saAddEvent(obj.ele, 'click', function(e) {
-        linkFunc(e);
       });
     }
   }
 
-  function getSafeHttpProtocol() {
-    var protocol = location.protocol;
-    if (protocol === 'http:' || protocol === 'https:') {
-      return protocol;
-    } else {
-      return 'http:';
+  function searchZZAppStyle(data) {
+    if (typeof data.properties.$project !== 'undefined') {
+      data.project = data.properties.$project;
+      delete data.properties.$project;
+    }
+    if (typeof data.properties.$token !== 'undefined') {
+      data.token = data.properties.$token;
+      delete data.properties.$token;
     }
   }
 
-  var viewStageImpl = {
-    stage: null,
-    init: function(stage) {
-      this.stage = stage;
-    }
-  };
+  function formatItem(data) {
+    if ('item_type' in data) {
+      var item_type = data['item_type'];
 
-  function processWebClickEvent(data) {
-    return viewStageImpl.stage.process('webClickEvent', data);
+      var typeOnComplete = function(status) {
+        if (!status) {
+          delete data['item_type'];
+        }
+        return true;
+      };
+
+      check({
+        item_type: item_type
+      }, typeOnComplete);
+    }
+    if ('item_id' in data) {
+      var item_id = data['item_id'];
+      var idOnComplete = function(status, val, rule) {
+        if (!status && rule === 'string') {
+          delete data['item_id'];
+        }
+        return true;
+      };
+      check({
+        item_id: item_id
+      }, idOnComplete);
+    }
   }
 
-  function processWebStayEvent(data) {
-    return viewStageImpl.stage.process('webStayEvent', data);
+  function formatProperties(p, ignore) {
+    each(p, function(val, key) {
+      var onComplete = function(status, value, rule_type) {
+        if (!status && rule_type !== 'keyLength') {
+          delete p[key];
+        }
+        return true;
+      };
+      indexOf(ignore || [], key) === -1 && check({
+        propertyKey: key
+      }, onComplete);
+    });
+  }
+
+  function formatData(data) {
+    var p = data.properties;
+
+    searchObjDate(data);
+
+    if (isObject(p)) {
+      strip_sa_properties(p);
+
+      filterReservedProperties(p);
+
+      searchZZAppStyle(data);
+
+      formatProperties(p);
+
+      searchObjString(p);
+    } else if ('properties' in data) {
+      data.properties = {};
+    }
+
+    formatItem(data);
+  }
+
+  function addFinalData(data, context) {
+    var sd = context.sensors;
+    data._track_id = Number(String(getRandom()).slice(2, 5) + String(getRandom()).slice(2, 4) + String(new Date().getTime()).slice(-4));
+    data._flush_time = new Date().getTime();
+
+    sd.events.tempAdd('send', data);
+    return data;
   }
 
   var vtrackBase = {};
@@ -4852,6 +5230,175 @@
     });
 
     return arr;
+  };
+
+  var vapph5CustomProp = {
+    events: [],
+    getAssignConfigs: vtrackBase.getAssignConfigs,
+    filterConfig: vtrackBase.filterConfig,
+    getProp: vtrackBase.getProp,
+    initUrl: vtrackBase.initUrl,
+    updateEvents: function(events) {
+      if (!isArray(events)) {
+        return;
+      }
+      this.events = events;
+    },
+    init: function() {
+      this.initAppGetPropsBridge();
+    },
+    geth5Props: function(data) {
+      var props = {};
+      var name_arr = [];
+      var that = this;
+      if (!this.events.length) {
+        return {};
+      }
+      if (data.event === '$WebClick') {
+        var events = this.filterConfig(data, this.events);
+        if (!events.length) {
+          return {};
+        } else {
+          each(events, function(event) {
+            if (!isObject(event)) {
+              return;
+            }
+            if (isArray(event.properties) && event.properties.length > 0) {
+              each(event.properties, function(propConf) {
+                if (!isObject(propConf)) {
+                  return;
+                }
+                if (propConf.h5 === false) {
+                  if (!isArray(props.sensorsdata_app_visual_properties)) {
+                    props.sensorsdata_app_visual_properties = [];
+                  }
+                  props.sensorsdata_app_visual_properties.push(propConf);
+                } else {
+                  var prop = that.getProp(propConf, data);
+                  if (isObject(prop)) {
+                    props = extend(props, prop);
+                  }
+                }
+              });
+            }
+            if (isString(event.event_name)) {
+              name_arr.push(event.event_name);
+            }
+          });
+
+          if (sd.bridge.hasVisualModeBridge()) {
+            props.sensorsdata_web_visual_eventName = name_arr;
+          }
+        }
+      }
+      if (props.sensorsdata_app_visual_properties) {
+        props.sensorsdata_app_visual_properties = base64Encode(JSON.stringify(props.sensorsdata_app_visual_properties));
+      }
+
+      return props;
+    },
+
+    initAppGetPropsBridge: function() {
+      var that = this;
+      var bridgeCall = new sd.SDKJSBridge('getJSVisualProperties');
+
+      bridgeCall.onAppNotify(function(data) {
+        var props = {};
+        try {
+          data = JSON.parse(base64Decode(data));
+        } catch (error) {
+          sd.log('getJSVisualProperties data parse error!');
+        }
+        if (isObject(data)) {
+          var confs = data.sensorsdata_js_visual_properties;
+          var url_info = that.initUrl();
+          if (url_info) {
+            url_info = url_info.page_url;
+            if (isArray(confs) && confs.length > 0) {
+              each(confs, function(propConf) {
+                if (!isObject(propConf)) {
+                  return;
+                }
+                if (propConf.url_host === url_info.host && propConf.url_path === url_info.pathname) {
+                  if (propConf.h5) {
+                    var prop = that.getProp(propConf);
+                    if (isObject(prop)) {
+                      props = extend(props, prop);
+                    }
+                  }
+                }
+              });
+            }
+          }
+        }
+        var platform = sd.bridge.bridge_info.platform;
+        if (platform === 'android') {
+          bridgeCall.notifyApp({
+            data: props
+          }, data.message_id);
+        }
+        return props;
+      });
+
+      return bridgeCall;
+    }
+  };
+
+  var vapph5collect = {
+    events: [],
+    customProp: vapph5CustomProp,
+    getAssignConfigs: vtrackBase.getAssignConfigs,
+    initUrl: vtrackBase.initUrl,
+    init: function() {
+      if (!this.initUrl()) {
+        return;
+      }
+      var result = this.getConfigFromApp();
+      if (result) {
+        this.updateConfigs(result);
+      }
+      this.customProp.init();
+      this.initAppUpdateConfigBridge();
+    },
+    initAppUpdateConfigBridge: function() {
+      var _this = this;
+      return new sd.SDKJSBridge('updateH5VisualConfig').onAppNotify(function(data) {
+        if (data) {
+          try {
+            data = JSON.parse(base64Decode(data));
+          } catch (error) {
+            sd.log('updateH5VisualConfig result parse error！');
+            return;
+          }
+          _this.updateConfigs(data);
+        }
+      });
+    },
+    getConfigFromApp: function() {
+      var result = new sd.SDKJSBridge('sensorsdata_get_app_visual_config').notifyApp();
+      if (result) {
+        try {
+          result = JSON.parse(base64Decode(result));
+        } catch (error) {
+          result = null;
+          sd.log('getAppVisualConfig result parse error！');
+        }
+      }
+      return result;
+    },
+    updateConfigs: function(config) {
+      this.events = this.filterConfigs(config);
+      this.customProp.updateEvents(this.events);
+    },
+    filterConfigs: function(config) {
+      return this.getAssignConfigs(function(event) {
+        if (isObject(event) && event.h5 !== false) {
+          return true;
+        } else {
+          return false;
+        }
+      }, config);
+    }
   };
 
   var unlimitedDiv = {
@@ -5135,6 +5682,233 @@
 
     configIsMatch: vtrackBase.configIsMatch
   };
+
+  function addBasicProps(p, context) {
+    var sd = context.sensors;
+    var identities = {};
+    if (isObject(p) && isObject(p.identities) && !isEmptyObject(p.identities)) {
+      extend(identities, p.identities);
+    } else {
+      extend(identities, store._state.identities);
+    }
+
+    var data = {
+      identities: identities,
+      distinct_id: store.getDistinctId(),
+      lib: {
+        $lib: 'js',
+        $lib_method: 'code',
+        $lib_version: String(sd.lib_version)
+      },
+      properties: {}
+    };
+
+    if (isObject(p) && isObject(p.properties) && !isEmptyObject(p.properties)) {
+      if (p.properties.$lib_detail) {
+        data.lib.$lib_detail = p.properties.$lib_detail;
+        delete p.properties.$lib_detail;
+      }
+      if (p.properties.$lib_method) {
+        data.lib.$lib_method = p.properties.$lib_method;
+        delete p.properties.$lib_method;
+      }
+    }
+
+    extend2Lev(data, store.getUnionId(), p);
+
+
+    if (isObject(p.properties) && !isEmptyObject(p.properties)) {
+      extend(data.properties, p.properties);
+    }
+
+    if (!p.type || p.type.slice(0, 7) !== 'profile') {
+
+      data.properties = extend({}, pageInfo.properties(), store.getProps(), store.getSessionProps(), pageInfo.currentProps, data.properties);
+      if (sd.para.preset_properties.latest_referrer && !isString(data.properties.$latest_referrer)) {
+        data.properties.$latest_referrer = '取值异常';
+      }
+      if (sd.para.preset_properties.latest_search_keyword && !isString(data.properties.$latest_search_keyword)) {
+        if (!sd.para.preset_properties.search_keyword_baidu || !isString(data.properties.$search_keyword_id) || !isNumber(data.properties.$search_keyword_id_hash) || !isString(data.properties.$search_keyword_id_type)) {
+          data.properties.$latest_search_keyword = '取值异常';
+        }
+      }
+      if (sd.para.preset_properties.latest_traffic_source_type && !isString(data.properties.$latest_traffic_source_type)) {
+        data.properties.$latest_traffic_source_type = '取值异常';
+      }
+      if (sd.para.preset_properties.latest_landing_page && !isString(data.properties.$latest_landing_page)) {
+        data.properties.$latest_landing_page = '取值异常';
+      }
+      if (sd.para.preset_properties.latest_wx_ad_click_id === 'not_collect') {
+        delete data.properties._latest_wx_ad_click_id;
+        delete data.properties._latest_wx_ad_hash_key;
+        delete data.properties._latest_wx_ad_callbacks;
+      } else if (sd.para.preset_properties.latest_wx_ad_click_id && !isString(data.properties._latest_wx_ad_click_id)) {
+        data.properties._latest_wx_ad_click_id = '取值异常';
+        data.properties._latest_wx_ad_hash_key = '取值异常';
+        data.properties._latest_wx_ad_callbacks = '取值异常';
+      }
+      if (isString(data.properties._latest_wx_ad_click_id)) {
+        data.properties.$url = getURL();
+      }
+    }
+
+    if (data.properties.$time && isDate(data.properties.$time)) {
+      data.time = data.properties.$time * 1;
+      delete data.properties.$time;
+    } else {
+      data.time = new Date() * 1;
+    }
+
+    (function addVtrackProps(data) {
+      if (sd.bridge && sd.bridge.bridge_info.verify_success === 'success') {
+        var h5_props = vapph5collect.customProp.geth5Props(JSON.parse(JSON.stringify(data)));
+        if (isObject(h5_props) && !isEmptyObject(h5_props)) {
+          data.properties = extend(data.properties, h5_props);
+        }
+      }
+      var props = vtrackcollect.customProp.getVtrackProps(JSON.parse(JSON.stringify(data)));
+      if (isObject(props) && !isEmptyObject(props)) {
+        data.properties = extend(data.properties, props);
+      }
+    })(data);
+
+    parseSuperProperties(data);
+
+    saNewUser.checkIsAddSign(data);
+    saNewUser.checkIsFirstTime(data);
+
+    addReferrerHost(data);
+    addPropsHook(data);
+
+    return data;
+  }
+
+  var interceptors = {
+    basicProps: {
+      priority: 0,
+      entry: addBasicProps
+    },
+    formatData: {
+      priority: 0,
+      entry: formatData
+    },
+    finalAdjustData: {
+      priority: 0,
+      entry: addFinalData
+    }
+  };
+
+  var buildDataStageImpl = {
+    stage: null,
+    init: function(stage) {
+      this.stage = stage;
+    },
+    interceptor: interceptors
+  };
+
+  function processBasicProps(data) {
+    return buildDataStageImpl.stage.process('basicProps', data);
+  }
+
+  function processFormatData(data) {
+    return buildDataStageImpl.stage.process('formatData', data);
+  }
+
+  var saEvent = {};
+
+  saEvent.check = check;
+
+  saEvent.sendItem = function(p) {
+    var data = {
+      lib: {
+        $lib: 'js',
+        $lib_method: 'code',
+        $lib_version: String(sd.lib_version)
+      },
+      time: new Date() * 1
+    };
+
+    extend(data, p);
+    processFormatData(data);
+
+    sd.kit.sendData(data);
+  };
+
+  saEvent.send = function(p, callback) {
+    var data = sd.kit.buildData(p);
+    sd.kit.sendData(data, callback);
+  };
+
+  function trackLinkByCustomTrackFunc(obj, event_name, event_prop, trackFn) {
+    obj = obj || {};
+    var link = null;
+    if (obj.ele) {
+      link = obj.ele;
+    }
+    if (obj.event) {
+      if (obj.target) {
+        link = obj.target;
+      } else {
+        link = obj.event.target;
+      }
+    }
+
+    event_prop = event_prop || {};
+    if (!link || typeof link !== 'object') {
+      return false;
+    }
+    if (!link.href || /^javascript/.test(link.href) || link.target || link.download || link.onclick) {
+      trackFn(event_name, event_prop);
+      return false;
+    }
+
+    function linkFunc(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      var hasCalled = false;
+
+      function track_a_click() {
+        if (!hasCalled) {
+          hasCalled = true;
+          location.href = link.href;
+        }
+      }
+      setTimeout(track_a_click, 1000);
+      trackFn(event_name, event_prop, track_a_click);
+    }
+    if (obj.event) {
+      linkFunc(obj.event);
+    }
+    if (obj.ele) {
+      saAddEvent(obj.ele, 'click', function(e) {
+        linkFunc(e);
+      });
+    }
+  }
+
+  function getSafeHttpProtocol() {
+    var protocol = location.protocol;
+    if (protocol === 'http:' || protocol === 'https:') {
+      return protocol;
+    } else {
+      return 'http:';
+    }
+  }
+
+  var viewStageImpl = {
+    stage: null,
+    init: function(stage) {
+      this.stage = stage;
+    }
+  };
+
+  function processWebClickEvent(data) {
+    return viewStageImpl.stage.process('webClickEvent', data);
+  }
+
+  function processWebStayEvent(data) {
+    return viewStageImpl.stage.process('webStayEvent', data);
+  }
 
 
   var UNLIMITED_TAGS_MAP = {
@@ -5678,227 +6452,6 @@
     }
   };
 
-  function getSendUrl(url, data) {
-    var dataStr = sd.kit.encodeTrackData(data);
-    if (url.indexOf('?') !== -1) {
-      return url + '&' + dataStr;
-    }
-    return url + '?' + dataStr;
-  }
-
-  function getSendData(data) {
-    return sd.kit.encodeTrackData(data);
-  }
-
-
-  function getUA$1() {
-    var Sys = {};
-    var ua = navigator.userAgent.toLowerCase();
-    var s;
-    if ((s = ua.match(/ qq\/([\d.]+)/))) {
-      Sys.qqBuildinBrowser = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/mqqbrowser\/([\d.]+)/))) {
-      Sys.qqBrowser = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/opera.([\d.]+)/))) {
-      Sys.opera = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/msie ([\d.]+)/))) {
-      Sys.ie = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/edge.([\d.]+)/))) {
-      Sys.edge = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/firefox\/([\d.]+)/))) {
-      Sys.firefox = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/chrome\/([\d.]+)/))) {
-      Sys.chrome = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/version\/([\d.]+).*safari/))) {
-      Sys.safari = Number(s[1].match(/^\d*.\d*/));
-    } else if ((s = ua.match(/trident\/([\d.]+)/))) {
-      Sys.ie = 11;
-    }
-    return Sys;
-  }
-
-  var ImageSender = function(para) {
-    this.callback = para.callback;
-    this.img = document.createElement('img');
-    this.img.width = 1;
-    this.img.height = 1;
-    if (sd.para.img_use_crossorigin) {
-      this.img.crossOrigin = 'anonymous';
-    }
-    this.data = para.data;
-    this.server_url = getSendUrl(para.server_url, para.data);
-  };
-
-  ImageSender.prototype.start = function() {
-    var me = this;
-    if (sd.para.ignore_oom) {
-      this.img.onload = function() {
-        this.onload = null;
-        this.onerror = null;
-        this.onabort = null;
-        me.isEnd();
-      };
-      this.img.onerror = function() {
-        this.onload = null;
-        this.onerror = null;
-        this.onabort = null;
-        me.isEnd();
-      };
-      this.img.onabort = function() {
-        this.onload = null;
-        this.onerror = null;
-        this.onabort = null;
-        me.isEnd();
-      };
-    }
-    this.img.src = this.server_url;
-  };
-
-  ImageSender.prototype.lastClear = function() {
-    var sys = getUA$1();
-    if (sys.ie !== undefined) {
-      this.img.src = 'about:blank';
-    } else {
-      this.img.src = '';
-    }
-  };
-
-  var AjaxSender = function(para) {
-    this.callback = para.callback;
-    this.server_url = para.server_url;
-    this.data = getSendData(para.data);
-  };
-
-  AjaxSender.prototype.start = function() {
-    var me = this;
-    ajax$1({
-      url: this.server_url,
-      type: 'POST',
-      data: this.data,
-      credentials: false,
-      timeout: sd.para.datasend_timeout,
-      cors: true,
-      success: function() {
-        me.isEnd();
-      },
-      error: function() {
-        me.isEnd();
-      }
-    });
-  };
-
-  var BeaconSender = function(para) {
-    this.callback = para.callback;
-    this.server_url = para.server_url;
-    this.data = getSendData(para.data);
-  };
-
-  BeaconSender.prototype.start = function() {
-    var me = this;
-    if (typeof navigator === 'object' && typeof navigator.sendBeacon === 'function') {
-      navigator.sendBeacon(this.server_url, this.data);
-    }
-    setTimeout(function() {
-      me.isEnd();
-    }, 40);
-  };
-
-  function getSendType(data) {
-    var supportedSendTypes = ['image', 'ajax', 'beacon'];
-    var sendType = supportedSendTypes[0];
-
-    if (data.config && indexOf(supportedSendTypes, data.config.send_type) > -1) {
-      sendType = data.config.send_type;
-    } else {
-      sendType = sd.para.send_type;
-    }
-
-    if (sendType === 'beacon' && isSupportBeaconSend() === false) {
-      sendType = 'image';
-    }
-
-    if (sendType === 'ajax' && isSupportCors() === false) {
-      sendType = 'image';
-    }
-
-    return sendType;
-  }
-
-  function getSender(data) {
-    var sendType = getSendType(data);
-    switch (sendType) {
-      case 'image':
-        return new ImageSender(data);
-      case 'ajax':
-        return new AjaxSender(data);
-      case 'beacon':
-        return new BeaconSender(data);
-      default:
-        return new ImageSender(data);
-    }
-  }
-
-  function getRealtimeInstance(data) {
-    var obj = getSender(data);
-    var start = obj.start;
-    obj.start = function() {
-      var me = this;
-      start.apply(this, arguments);
-      setTimeout(function() {
-        me.isEnd(true);
-      }, sd.para.callback_timeout);
-    };
-    obj.end = function() {
-      this.callback && this.callback();
-      var self = this;
-      setTimeout(function() {
-        self.lastClear && self.lastClear();
-      }, sd.para.datasend_timeout - sd.para.callback_timeout);
-    };
-    obj.isEnd = function() {
-      if (!this.received) {
-        this.received = true;
-        this.end();
-      }
-    };
-    return obj;
-  }
-
-  function prepareServerUrl(requestData) {
-    if (typeof requestData.config === 'object' && requestData.config.server_url) {
-      sendCall(requestData, requestData.config.server_url, requestData.callback);
-    } else if (isArray(sd.para.server_url) && sd.para.server_url.length) {
-      for (var i = 0; i < sd.para.server_url.length; i++) {
-        sendCall(requestData, sd.para.server_url[i]);
-      }
-    } else if (typeof sd.para.server_url === 'string' && sd.para.server_url !== '') {
-      sendCall(requestData, sd.para.server_url, requestData.callback);
-    } else {
-      sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
-    }
-  }
-
-  function sendCall(requestData, server_url, callback) {
-    var data = {
-      server_url: server_url,
-      data: JSON.stringify(requestData.data),
-      callback: callback,
-      config: requestData.config
-    };
-    if (isObject(sd.para.jsapp) && !sd.para.jsapp.isOnline && typeof sd.para.jsapp.setData === 'function') {
-      delete data.callback;
-      data = JSON.stringify(data);
-      sd.para.jsapp.setData(data);
-    } else {
-      realtimeSend(data);
-    }
-  }
-
-  function realtimeSend(data) {
-    var instance = getRealtimeInstance(data);
-    instance.start();
-  }
-
   function getClassifiedUtms() {
     var utms = pageInfo.campaignParams();
     var $utms = {};
@@ -5942,21 +6495,6 @@
   }
 
   var commonWays = {
-    setOnlineState: function(state) {
-      if (state === true && isObject(sd.para.jsapp) && typeof sd.para.jsapp.getData === 'function') {
-        sd.para.jsapp.isOnline = true;
-        var arr = sd.para.jsapp.getData();
-        if (isArray(arr) && arr.length > 0) {
-          each(arr, function(str) {
-            if (isJSONString(str)) {
-              realtimeSend(JSON.parse(str));
-            }
-          });
-        }
-      } else {
-        sd.para.jsapp.isOnline = false;
-      }
-    },
     autoTrackIsUsed: false,
     isReady: function(callback) {
       callback();
@@ -6198,11 +6736,13 @@
 
   ee.EVENT_LIST = {
     spaSwitch: ['spa', 'switch'],
-    sdkAfterInitPara: ['sdk', 'afterInitPara'],
     sdkBeforeInit: ['sdk', 'beforeInit'],
+    sdkInitPara: ['sdk', 'initPara'],
+    sdkAfterInitPara: ['sdk', 'afterInitPara'],
+    sdkInitAPI: ['sdk', 'initAPI'],
+    sdkAfterInitAPI: ['sdk', 'afterInitAPI'],
     sdkAfterInit: ['sdk', 'afterInit'],
-    sdkReady: ['sdk', 'ready'],
-    sdkInitAPI: ['sdk', 'initAPI']
+    sdkReady: ['sdk', 'ready']
   };
 
   function eventEmitterFacade(event_type, callback) {
@@ -6301,7 +6841,6 @@
 
   function setInitVar() {
     sd._t = sd._t || 1 * new Date();
-    sd.lib_version = sdkversion_placeholder;
     sd.is_first_visitor = false;
     sd.source_channel_standard = source_channel_standard;
   }
@@ -6325,18 +6864,6 @@
         sd.para[i] = defaultPara[i];
       }
     }
-    if (typeof sd.para.server_url === 'string') {
-      sd.para.server_url = trim(sd.para.server_url);
-      if (sd.para.server_url) {
-        if (sd.para.server_url.slice(0, 3) === '://') {
-          sd.para.server_url = location.protocol.slice(0, -1) + sd.para.server_url;
-        } else if (sd.para.server_url.slice(0, 2) === '//') {
-          sd.para.server_url = location.protocol + sd.para.server_url;
-        } else if (sd.para.server_url.slice(0, 4) !== 'http') {
-          sd.para.server_url = '';
-        }
-      }
-    }
 
     if (typeof sd.para.web_url === 'string' && (sd.para.web_url.slice(0, 3) === '://' || sd.para.web_url.slice(0, 2) === '//')) {
       if (sd.para.web_url.slice(0, 3) === '://') {
@@ -6346,28 +6873,9 @@
       }
     }
 
-    if (sd.para.send_type !== 'image' && sd.para.send_type !== 'ajax' && sd.para.send_type !== 'beacon') {
-      sd.para.send_type = 'image';
-    }
-
     debug.protocol.serverUrl();
 
     sd.bridge && sd.bridge.initPara();
-
-    var batch_send_default = {
-      datasend_timeout: 6000,
-      send_interval: 6000
-    };
-
-    if (_localStorage.isSupport() && isSupportCors() && typeof localStorage === 'object') {
-      if (sd.para.batch_send === true) {
-        sd.para.batch_send = extend({}, batch_send_default);
-      } else if (typeof sd.para.batch_send === 'object') {
-        sd.para.batch_send = extend({}, batch_send_default, sd.para.batch_send);
-      }
-    } else {
-      sd.para.batch_send = false;
-    }
 
     var utm_type = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
     var search_type = ['www.baidu.', 'm.baidu.', 'm.sm.cn', 'so.com', 'sogou.com', 'youdao.com', 'google.', 'yahoo.com/', 'bing.com/', 'ask.com/'];
@@ -6442,18 +6950,9 @@
         sd.para.heatmap.collect_tags = collect_tags_default;
       }
     }
-    if (isArray(sd.para.server_url) && sd.para.server_url.length) {
-      for (i = 0; i < sd.para.server_url.length; i++) {
-        if (!/sa\.gif[^\/]*$/.test(sd.para.server_url[i])) {
-          sd.para.server_url[i] = sd.para.server_url[i].replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
-        }
-      }
-    } else if (!/sa\.gif[^\/]*$/.test(sd.para.server_url) && typeof sd.para.server_url === 'string') {
-      sd.para.server_url = sd.para.server_url.replace(/\/sa$/, '/sa.gif').replace(/(\/sa)(\?[^\/]+)$/, '/sa.gif$2');
-    }
-    if (typeof sd.para.server_url === 'string') {
-      sd.para.debug_mode_url = sd.para.debug_mode_url || sd.para.server_url.replace('sa.gif', 'debug');
-    }
+
+    sd.para.server_url = optimizeServerUrl(sd.para.server_url);
+
     if (sd.para.noCache === true) {
       sd.para.noCache = '?' + new Date().getTime();
     } else {
@@ -6508,18 +7007,20 @@
     }
   }
 
+  var nonameCount = 1;
 
   function use(plugin, option) {
+    var log = sd.log || function() {};
     if (!isString(plugin) && !isObject(plugin)) {
-      sd.log('use\'s first arguments must be string or object.');
-      return;
+      log('use\'s first arguments must be string or object.');
+      return false;
     }
 
     var curPlugin;
     if (isObject(plugin)) {
-      var m = sd.modules && sd.modules[plugin.name];
+      var m = sd.modules && sd.modules[plugin.plugin_name];
       if (m && m !== plugin) {
-        sd.log(plugin.name + ' is conflict with builtin plugin, and sdk uses builtin plugin.');
+        log(plugin.plugin_name + ' plugin_name is conflict with loaded plugin, sdk uses loaded plugin.');
       }
       curPlugin = m || plugin;
     }
@@ -6535,20 +7036,29 @@
     }
 
     if (!curPlugin || !isFunction(curPlugin.init)) {
-      sd.log(plugin + ' is not found or it\'s not a valid plugin。Please check sensorsdata official documents.');
-      return;
-    }
-
-    function initPlugin() {
-      !curPlugin.is_init && curPlugin.init(sd, option);
-      curPlugin.is_init = true;
-      sd.modules = sd.modules || {};
-      sd.modules[curPlugin.name || plugin] = curPlugin;
+      log((plugin.plugin_name || plugin) + ' is not found or it\'s not a standard plugin. Please check sensorsdata official documents.');
       return curPlugin;
     }
 
-    if (curPlugin.is_init) {
-      sd.log(plugin + ' is initiated.');
+    if (curPlugin.plugin_is_init) {
+      return curPlugin;
+    }
+
+    if (!curPlugin.plugin_name) {
+      log('warning: invalid plugin, plugin_name required.');
+    }
+
+    if (!curPlugin.plugin_version) {
+      log('warning: invalid plugin, plugin version required.');
+    } else if (curPlugin.plugin_version !== sd.lib_version) {
+      log('warning: plugin version not match SDK version. plugin may not work correctly. ');
+    }
+
+    function initPlugin() {
+      !curPlugin.plugin_is_init && curPlugin.init(sd, option);
+      curPlugin.plugin_is_init = true;
+      sd.modules = sd.modules || {};
+      sd.modules[curPlugin.plugin_name || 'unnamed_' + nonameCount++] = curPlugin;
       return curPlugin;
     }
 
@@ -7106,175 +7616,6 @@
     });
   }
 
-  var vapph5CustomProp = {
-    events: [],
-    getAssignConfigs: vtrackBase.getAssignConfigs,
-    filterConfig: vtrackBase.filterConfig,
-    getProp: vtrackBase.getProp,
-    initUrl: vtrackBase.initUrl,
-    updateEvents: function(events) {
-      if (!isArray(events)) {
-        return;
-      }
-      this.events = events;
-    },
-    init: function() {
-      this.initAppGetPropsBridge();
-    },
-    geth5Props: function(data) {
-      var props = {};
-      var name_arr = [];
-      var that = this;
-      if (!this.events.length) {
-        return {};
-      }
-      if (data.event === '$WebClick') {
-        var events = this.filterConfig(data, this.events);
-        if (!events.length) {
-          return {};
-        } else {
-          each(events, function(event) {
-            if (!isObject(event)) {
-              return;
-            }
-            if (isArray(event.properties) && event.properties.length > 0) {
-              each(event.properties, function(propConf) {
-                if (!isObject(propConf)) {
-                  return;
-                }
-                if (propConf.h5 === false) {
-                  if (!isArray(props.sensorsdata_app_visual_properties)) {
-                    props.sensorsdata_app_visual_properties = [];
-                  }
-                  props.sensorsdata_app_visual_properties.push(propConf);
-                } else {
-                  var prop = that.getProp(propConf, data);
-                  if (isObject(prop)) {
-                    props = extend(props, prop);
-                  }
-                }
-              });
-            }
-            if (isString(event.event_name)) {
-              name_arr.push(event.event_name);
-            }
-          });
-
-          if (sd.bridge.hasVisualModeBridge()) {
-            props.sensorsdata_web_visual_eventName = name_arr;
-          }
-        }
-      }
-      if (props.sensorsdata_app_visual_properties) {
-        props.sensorsdata_app_visual_properties = base64Encode(JSON.stringify(props.sensorsdata_app_visual_properties));
-      }
-
-      return props;
-    },
-
-    initAppGetPropsBridge: function() {
-      var that = this;
-      var bridgeCall = new sd.SDKJSBridge('getJSVisualProperties');
-
-      bridgeCall.onAppNotify(function(data) {
-        var props = {};
-        try {
-          data = JSON.parse(base64Decode(data));
-        } catch (error) {
-          sd.log('getJSVisualProperties data parse error!');
-        }
-        if (isObject(data)) {
-          var confs = data.sensorsdata_js_visual_properties;
-          var url_info = that.initUrl();
-          if (url_info) {
-            url_info = url_info.page_url;
-            if (isArray(confs) && confs.length > 0) {
-              each(confs, function(propConf) {
-                if (!isObject(propConf)) {
-                  return;
-                }
-                if (propConf.url_host === url_info.host && propConf.url_path === url_info.pathname) {
-                  if (propConf.h5) {
-                    var prop = that.getProp(propConf);
-                    if (isObject(prop)) {
-                      props = extend(props, prop);
-                    }
-                  }
-                }
-              });
-            }
-          }
-        }
-        var platform = sd.bridge.bridge_info.platform;
-        if (platform === 'android') {
-          bridgeCall.notifyApp({
-            data: props
-          }, data.message_id);
-        }
-        return props;
-      });
-
-      return bridgeCall;
-    }
-  };
-
-  var vapph5collect = {
-    events: [],
-    customProp: vapph5CustomProp,
-    getAssignConfigs: vtrackBase.getAssignConfigs,
-    initUrl: vtrackBase.initUrl,
-    init: function() {
-      if (!this.initUrl()) {
-        return;
-      }
-      var result = this.getConfigFromApp();
-      if (result) {
-        this.updateConfigs(result);
-      }
-      this.customProp.init();
-      this.initAppUpdateConfigBridge();
-    },
-    initAppUpdateConfigBridge: function() {
-      var _this = this;
-      return new sd.SDKJSBridge('updateH5VisualConfig').onAppNotify(function(data) {
-        if (data) {
-          try {
-            data = JSON.parse(base64Decode(data));
-          } catch (error) {
-            sd.log('updateH5VisualConfig result parse error！');
-            return;
-          }
-          _this.updateConfigs(data);
-        }
-      });
-    },
-    getConfigFromApp: function() {
-      var result = new sd.SDKJSBridge('sensorsdata_get_app_visual_config').notifyApp();
-      if (result) {
-        try {
-          result = JSON.parse(base64Decode(result));
-        } catch (error) {
-          result = null;
-          sd.log('getAppVisualConfig result parse error！');
-        }
-      }
-      return result;
-    },
-    updateConfigs: function(config) {
-      this.events = this.filterConfigs(config);
-      this.customProp.updateEvents(this.events);
-    },
-    filterConfigs: function(config) {
-      return this.getAssignConfigs(function(event) {
-        if (isObject(event) && event.h5 !== false) {
-          return true;
-        } else {
-          return false;
-        }
-      }, config);
-    }
-  };
-
   function initLatestProps() {
     var url_domain = pageInfo.pageProp.url_domain;
 
@@ -7387,181 +7728,6 @@
     register(latestObj);
   }
 
-  var dataStoragePrefix = 'sawebjssdk-';
-  var tabStoragePrefix = 'tab-sawebjssdk-';
-
-  function BatchSend() {
-    this.sendTimeStamp = 0;
-    this.timer = null;
-    this.serverUrl = '';
-    this.hasTabStorage = false;
-  }
-
-  BatchSend.prototype = {
-    batchInterval: function() {
-      if (this.serverUrl === '') this.getServerUrl();
-      if (!this.hasTabStorage) {
-        this.generateTabStorage();
-        this.hasTabStorage = true;
-      }
-      var self = this;
-      self.timer = setTimeout(function() {
-        self.updateExpireTime();
-        self.recycle();
-        self.send();
-        clearTimeout(self.timer);
-        self.batchInterval();
-      }, sd.para.batch_send.send_interval);
-    },
-
-    getServerUrl: function() {
-      if ((isString(sd.para.server_url) && sd.para.server_url !== '') || (isArray(sd.para.server_url) && sd.para.server_url.length)) {
-        this.serverUrl = isArray(sd.para.server_url) ? sd.para.server_url[0] : sd.para.server_url;
-      } else {
-        return sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
-      }
-    },
-
-    send: function() {
-      if (this.sendTimeStamp && now() - this.sendTimeStamp < sd.para.batch_send.datasend_timeout) return;
-      var tabStorage = _localStorage.get(this.tabKey);
-      if (tabStorage) {
-        this.sendTimeStamp = now();
-        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
-        if (tabStorage.data.length) {
-          var data = [];
-          for (var i = 0; i < tabStorage.data.length; i++) {
-            data.push(store.readObjectVal(tabStorage.data[i]));
-          }
-          this.request(data, tabStorage.data);
-        }
-      }
-    },
-
-    updateExpireTime: function() {
-      var tabStorage = _localStorage.get(this.tabKey);
-      if (tabStorage) {
-        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
-        tabStorage.expireTime = now() + sd.para.batch_send.send_interval * 2;
-        tabStorage.serverUrl = this.serverUrl;
-        _localStorage.set(this.tabKey, JSON.stringify(tabStorage));
-      }
-    },
-
-    request: function(data, dataKeys) {
-      var self = this;
-      ajax$1({
-        url: this.serverUrl,
-        type: 'POST',
-        data: 'data_list=' + encodeURIComponent(base64Encode(JSON.stringify(data))),
-        credentials: false,
-        timeout: sd.para.batch_send.datasend_timeout,
-        cors: true,
-        success: function() {
-          self.remove(dataKeys);
-          self.sendTimeStamp = 0;
-        },
-        error: function() {
-          self.sendTimeStamp = 0;
-        }
-      });
-    },
-
-    remove: function(dataKeys) {
-      var tabStorage = _localStorage.get(this.tabKey);
-      if (tabStorage) {
-        var tabStorageData = (safeJSONParse(tabStorage) || this.generateTabStorageVal()).data;
-        for (var i = 0; i < dataKeys.length; i++) {
-          var idx = indexOf(tabStorageData, dataKeys[i]);
-          if (idx > -1) {
-            tabStorageData.splice(idx, 1);
-          }
-          _localStorage.remove(dataKeys[i]);
-        }
-        _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal(tabStorageData)));
-      }
-    },
-
-    add: function(data) {
-      var dataKey = dataStoragePrefix + String(getRandom());
-      var tabStorage = _localStorage.get(this.tabKey);
-      if (tabStorage === null) {
-        this.tabKey = tabStoragePrefix + String(getRandom());
-        tabStorage = this.generateTabStorageVal();
-      } else {
-        tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
-      }
-      tabStorage.data.push(dataKey);
-      tabStorage.expireTime = now() + sd.para.batch_send.send_interval * 2;
-      _localStorage.set(this.tabKey, JSON.stringify(tabStorage));
-      store.saveObjectVal(dataKey, data);
-      if (data.type === 'track_signup' || data.event === '$pageview') {
-        this.sendImmediately();
-      }
-    },
-
-    generateTabStorage: function() {
-      this.tabKey = tabStoragePrefix + String(getRandom());
-      _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal()));
-    },
-
-    generateTabStorageVal: function(data) {
-      data = data || [];
-      return {
-        data: data,
-        expireTime: now() + sd.para.batch_send.send_interval * 2,
-        serverUrl: this.serverUrl
-      };
-    },
-
-    sendImmediately: function() {
-      this.send();
-    },
-
-    recycle: function() {
-      var notSendMap = {},
-        lockTimeout = 10000,
-        lockPrefix = 'sajssdk-lock-get-';
-      for (var i = 0; i < localStorage.length; i++) {
-        var item = localStorage.key(i),
-          self = this;
-        if (item.indexOf(tabStoragePrefix) === 0) {
-          var tabStorage = safeJSONParse(_localStorage.get(item)) || this.generateTabStorageVal();
-          for (var j = 0; j < tabStorage.data.length; j++) {
-            notSendMap[tabStorage.data[j]] = true;
-          }
-          if (now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
-            var concurrentStorage = new ConcurrentStorage(lockPrefix);
-            concurrentStorage.get(item, lockTimeout, 1000, function(data) {
-              if (data) {
-                if (_localStorage.get(self.tabKey) === null) {
-                  self.generateTabStorage();
-                }
-                var recycleData = safeJSONParse(data) || self.generateTabStorageVal();
-                _localStorage.set(self.tabKey, JSON.stringify(self.generateTabStorageVal((safeJSONParse(_localStorage.get(self.tabKey)) || this.generateTabStorageVal()).data.concat(recycleData.data))));
-              }
-            });
-          }
-        } else if (item.indexOf(lockPrefix) === 0) {
-          var lock = safeJSONParse(_localStorage.get(item)) || {
-            expireTime: 0
-          };
-          if (now() - lock.expireTime > lockTimeout) {
-            _localStorage.remove(item);
-          }
-        }
-      }
-      for (var n = 0; n < localStorage.length; n++) {
-        var key1 = localStorage.key(n);
-        if (key1.indexOf(dataStoragePrefix) === 0 && !notSendMap[key1]) {
-          _localStorage.remove(key1);
-        }
-      }
-    }
-  };
-
-  var batchSend = new BatchSend();
-
   function listenSinglePage(trackFn) {
     if (sd.para.is_track_single_page) {
       spa.on('switch', function(last_url) {
@@ -7617,12 +7783,18 @@
     enterFullTrack();
   }
 
-  function CancellationToken(canceled) {
+  function CancellationToken(canceled, stopped) {
     this.cancel = function() {
       canceled = true;
     };
     this.getCanceled = function() {
       return canceled || false;
+    };
+    this.stop = function() {
+      stopped = true;
+    };
+    this.getStopped = function() {
+      return stopped || false;
     };
   }
 
@@ -7662,13 +7834,15 @@
         total: itcptrs.length
       };
       var context = new InterceptorContext(data, pos, sd);
-
       for (var i = 0; i < itcptrs.length; i++) {
         try {
           pos.current = i + 1;
           data = itcptrs[i].call(null, data, context) || data;
           if (context.cancellationToken.getCanceled()) {
             break;
+          }
+          if (context.cancellationToken.getStopped()) {
+            return;
           }
         } catch (e) {
           sdLog('interceptor error:' + e);
@@ -7699,7 +7873,6 @@
       if (!itcptr || !isObject(itcptr) || !isFunction(itcptr.entry)) {
         continue;
       }
-
       if (!isNumber(itcptr.priority)) {
         itcptr.priority = Number.MAX_VALUE;
       }
@@ -7719,19 +7892,19 @@
   };
 
   var processDef = {
-    addCustomProps: null,
-    formatData: null
+    basicProps: 'extendProps',
+    extendProps: 'formatData',
+    formatData: 'finalAdjustData',
+    finalAdjustData: null
   };
 
-  var dataStage = new Stage(processDef);
+  var buildDataStage = new Stage(processDef);
 
   var processDef$1 = {
-    beforeSend: 'send',
-    send: 'afterSend',
-    afterSend: null
+    send: null
   };
 
-  var sendStage = new Stage(processDef$1);
+  var sendDataStage = new Stage(processDef$1);
 
   var processDef$2 = {
     getUtmData: null,
@@ -7748,21 +7921,21 @@
   var viewStage = new Stage(processDef$3);
 
   function registerFeature(feature) {
-    feature && feature.dataStage && dataStage.registerStageImplementation(feature.dataStage);
+    feature && feature.buildDataStage && buildDataStage.registerStageImplementation(feature.buildDataStage);
     feature && feature.businessStage && businessStage.registerStageImplementation(feature.businessStage);
-    feature && feature.sendStage && sendStage.registerStageImplementation(feature.sendStage);
+    feature && feature.sendDataStage && sendDataStage.registerStageImplementation(feature.sendDataStage);
     feature && feature.viewStage && viewStage.registerStageImplementation(feature.viewStage);
   }
 
   var interceptorRegisters = {
-    dataStage: function registerDataStageInterceptor(interceptor) {
-      interceptor && dataStage.registerInterceptor(interceptor);
+    buildDataStage: function registerDataStageInterceptor(interceptor) {
+      interceptor && buildDataStage.registerInterceptor(interceptor);
     },
     businessStage: function registerBusinessInterceptor(interceptor) {
       interceptor && businessStage.registerInterceptor(interceptor);
     },
-    sendStage: function registerSendStageInterceptor(interceptor) {
-      interceptor && sendStage.registerInterceptor(interceptor);
+    sendDataStage: function registerSendStageInterceptor(interceptor) {
+      interceptor && sendDataStage.registerInterceptor(interceptor);
     },
     viewStage: function registerViewInterceptor(interceptor) {
       interceptor && viewStage.registerInterceptor(interceptor);
@@ -7786,226 +7959,44 @@
     return businessStageImpl.stage && businessStageImpl.stage.process('getUtmData');
   }
 
-  var sendStageImpl = {
+  var sendDataStageImpl = {
     stage: null,
     init: function(stage) {
       this.stage = stage;
     },
     interceptor: {
       send: {
-        entry: function(data, context) {
-          var sd = context.sensors;
-          var callback = data.callback;
-
-          if (!sd.para.app_js_bridge) {
-            debug.apph5({
-              data: data.data,
-              step: '1',
-              output: 'code'
-            });
-            prepareServerUrl(data);
-            return data;
-          }
-
-          if (!sd.para.app_js_bridge.is_mui) {
-            if (sd.para.app_js_bridge.is_send === true) {
-              debug.apph5({
-                data: data.data,
-                step: '2',
-                output: 'all'
-              });
-              prepareServerUrl(data);
-              return data;
-            }
-            sd._.isFunction(callback) && callback();
-            return data;
-          }
-
-          if (sd.para.app_js_bridge.is_mui) {
-            if (window.plus && window.plus.SDAnalytics && window.plus.SDAnalytics.trackH5Event) {
-              window.plus.SDAnalytics.trackH5Event(data);
-              sd._.isFunction(callback) && callback();
-              return data;
-            }
-
-            if (sd.para.app_js_bridge.is_send === true) {
-              prepareServerUrl(data);
-              return data;
-            }
-
-            sd._.isFunction(callback) && callback();
-            return data;
-          }
+        entry: function(data) {
+          return data;
         }
       }
     }
   };
 
-  function processBeforeSend(requestData) {
-    sendStageImpl.stage && sendStageImpl.stage.process('beforeSend', requestData);
+  function processSend(data) {
+    return sendDataStageImpl.stage.process('send', data);
   }
-
-
-  var sendState = {};
-
-  sendState.getSendCall = function(data, config, callback) {
-    if (sd.is_heatmap_render_mode) {
-      return false;
-    }
-
-    if (sd.readyState && sd.readyState.state < 3) {
-      sd.log('初始化没有完成');
-      return false;
-    }
-
-    data._track_id = Number(String(getRandom()).slice(2, 5) + String(getRandom()).slice(2, 4) + String(new Date().getTime()).slice(-4));
-    data._flush_time = new Date().getTime();
-
-    var originData = data;
-
-    data = JSON.stringify(data);
-
-    var requestData = {
-      data: originData,
-      config: config,
-      callback: callback
-    };
-
-    events.tempAdd('send', originData);
-
-    if (!sd.para.app_js_bridge && sd.para.batch_send && _localStorage.isSupport() && localStorage.length < 100) {
-      sd.log(originData);
-      batchSend.add(requestData.data);
-      return false;
-    }
-    if (originData.type === 'item_set' || originData.type === 'item_delete') {
-      prepareServerUrl(requestData);
-    } else {
-      processBeforeSend(requestData);
-    }
-    sd.log(originData);
-  };
-  sendState.prepareServerUrl = prepareServerUrl;
-  sendState.sendCall = sendCall;
-  sendState.realtimeSend = realtimeSend;
 
   var kit = {};
 
   kit.buildData = function(p) {
-    var identities = {};
-    if (isObject(p) && isObject(p.identities) && !isEmptyObject(p.identities)) {
-      extend(identities, p.identities);
-    } else {
-      extend(identities, store._state.identities);
-    }
-
-    var data = {
-      identities: identities,
-      distinct_id: store.getDistinctId(),
-      lib: {
-        $lib: 'js',
-        $lib_method: 'code',
-        $lib_version: String(sd.lib_version)
-      },
-      properties: {}
-    };
-
-    if (isObject(p) && isObject(p.properties) && !isEmptyObject(p.properties)) {
-      if (p.properties.$lib_detail) {
-        data.lib.$lib_detail = p.properties.$lib_detail;
-        delete p.properties.$lib_detail;
-      }
-      if (p.properties.$lib_method) {
-        data.lib.$lib_method = p.properties.$lib_method;
-        delete p.properties.$lib_method;
-      }
-    }
-
-    extend2Lev(data, store.getUnionId(), p);
-
-    processAddCustomProps(data);
-
-    if (isObject(p.properties) && !isEmptyObject(p.properties)) {
-      extend(data.properties, p.properties);
-    }
-
-    if (!p.type || p.type.slice(0, 7) !== 'profile') {
-
-      data.properties = extend({}, pageInfo.properties(), store.getProps(), store.getSessionProps(), pageInfo.currentProps, data.properties);
-      if (sd.para.preset_properties.latest_referrer && !isString(data.properties.$latest_referrer)) {
-        data.properties.$latest_referrer = '取值异常';
-      }
-      if (sd.para.preset_properties.latest_search_keyword && !isString(data.properties.$latest_search_keyword)) {
-        if (!sd.para.preset_properties.search_keyword_baidu || !isString(data.properties.$search_keyword_id) || !isNumber(data.properties.$search_keyword_id_hash) || !isString(data.properties.$search_keyword_id_type)) {
-          data.properties.$latest_search_keyword = '取值异常';
-        }
-      }
-      if (sd.para.preset_properties.latest_traffic_source_type && !isString(data.properties.$latest_traffic_source_type)) {
-        data.properties.$latest_traffic_source_type = '取值异常';
-      }
-      if (sd.para.preset_properties.latest_landing_page && !isString(data.properties.$latest_landing_page)) {
-        data.properties.$latest_landing_page = '取值异常';
-      }
-      if (sd.para.preset_properties.latest_wx_ad_click_id === 'not_collect') {
-        delete data.properties._latest_wx_ad_click_id;
-        delete data.properties._latest_wx_ad_hash_key;
-        delete data.properties._latest_wx_ad_callbacks;
-      } else if (sd.para.preset_properties.latest_wx_ad_click_id && !isString(data.properties._latest_wx_ad_click_id)) {
-        data.properties._latest_wx_ad_click_id = '取值异常';
-        data.properties._latest_wx_ad_hash_key = '取值异常';
-        data.properties._latest_wx_ad_callbacks = '取值异常';
-      }
-      if (isString(data.properties._latest_wx_ad_click_id)) {
-        data.properties.$url = getURL();
-      }
-    }
-
-    if (data.properties.$time && isDate(data.properties.$time)) {
-      data.time = data.properties.$time * 1;
-      delete data.properties.$time;
-    } else {
-      data.time = new Date() * 1;
-    }
-
-    (function addVtrackProps(data) {
-      if (sd.bridge && sd.bridge.bridge_info.verify_success === 'success') {
-        var h5_props = vapph5collect.customProp.geth5Props(JSON.parse(JSON.stringify(data)));
-        if (isObject(h5_props) && !isEmptyObject(h5_props)) {
-          data.properties = extend(data.properties, h5_props);
-        }
-      }
-      var props = vtrackcollect.customProp.getVtrackProps(JSON.parse(JSON.stringify(data)));
-      if (isObject(props) && !isEmptyObject(props)) {
-        data.properties = extend(data.properties, props);
-      }
-    })(data);
-
-    parseSuperProperties(data);
-
-    saNewUser.checkIsAddSign(data);
-    saNewUser.checkIsFirstTime(data);
-
-    addReferrerHost(data);
-    addPropsHook(data);
-
-    processFormatData(data);
-    return data;
+    return processBasicProps(p);
   };
 
   kit.sendData = function(data, callback) {
     var data_config = searchConfigData(data.properties);
-    if (sd.para.debug_mode === true) {
-      sd.log(data);
-      saEvent.debugPath(JSON.stringify(data), callback);
-    } else {
-      sendState.getSendCall(data, data_config, callback);
-    }
+    var requestData = {
+      server_url: sd.para.server_url,
+      data: data,
+      config: data_config || {},
+      callback: callback
+    };
+    processSend(requestData);
+    sd.log(data);
   };
 
   kit.encodeTrackData = function(data) {
-    var dataStr = base64Encode(data);
-    var crc = 'crc=' + hashCode(dataStr);
-    return 'data=' + encodeURIComponent(dataStr) + '&ext=' + encodeURIComponent(crc);
+    return encodeTrackData(data);
   };
 
   kit.getUtmData = function() {
@@ -8015,192 +8006,13 @@
   function CoreFeature(sd) {
     sd.kit = kit;
     sd.saEvent = saEvent;
-    this.dataStage = dataStageImpl;
-    this.sendStage = sendStageImpl;
+    this.buildDataStage = buildDataStageImpl;
+    this.sendDataStage = sendDataStageImpl;
     this.businessStage = businessStageImpl;
   }
 
-  function strip_sa_properties(p, ignores) {
-    if (!isObject(p)) {
-      return p;
-    }
-    each(p, function(v, k) {
-      if (isArray(v)) {
-        var temp = [];
-        each(v, function(arrv) {
-          if (isString(arrv)) {
-            temp.push(arrv);
-          } else if (isUndefined(arrv)) {
-            temp.push('null');
-          } else {
-            try {
-              temp.push(JSON.stringify(arrv));
-            } catch (e) {
-              sdLog('您的数据-', k, v, '数组里值有错误,已将其删除');
-            }
-          }
-        });
-        p[k] = temp;
-      }
-
-      var isIgnoreIllegal = indexOf(ignores || [], k) > -1;
-
-      if (isObject(v) && k !== '$option' && !isIgnoreIllegal) {
-        try {
-          p[k] = JSON.stringify(v);
-        } catch (e) {
-          delete p[k];
-          sdLog('您的数据-', k, v, '数据值有错误，已将其删除');
-        }
-      } else if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option' || isIgnoreIllegal)) {
-        sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
-        delete p[k];
-      }
-    });
-    return p;
-  }
-
-  function formatString(str, maxLen) {
-    if (isNumber(maxLen) && str.length > maxLen) {
-      sdLog('字符串长度超过限制，已经做截取--' + str);
-      return str.slice(0, maxLen);
-    } else {
-      return str;
-    }
-  }
-
-  function filterReservedProperties(obj, ignore) {
-    var reservedFields = ['distinct_id', 'user_id', 'id', 'date', 'datetime', 'event', 'events', 'first_id', 'original_id', 'device_id', 'properties', 'second_id', 'time', 'users'];
-    if (!isObject(obj)) {
-      return;
-    }
-    each(reservedFields, function(key, index) {
-      if (!(key in obj)) {
-        return;
-      }
-
-      if (indexOf(ignore || [], key) > -1) {
-        return;
-      }
-      if (index < 3) {
-        delete obj[key];
-        sdLog('您的属性- ' + key + '是保留字段，我们已经将其删除');
-      } else {
-        sdLog('您的属性- ' + key + '是保留字段，请避免其作为属性名');
-      }
-    });
-  }
-
-  function searchObjString(o) {
-    var white_list = ['$element_selector', '$element_path'];
-    var infinite_list = ['sensorsdata_app_visual_properties'];
-    if (isObject(o)) {
-      each(o, function(a, b) {
-        if (isObject(a)) {
-          searchObjString(o[b]);
-        } else {
-          if (isString(a)) {
-            if (indexOf(infinite_list, b) > -1) {
-              return;
-            }
-            o[b] = formatString(a, indexOf(white_list, b) > -1 ? 1024 : sdPara.max_string_length);
-          }
-        }
-      });
-    }
-  }
-
-  function searchZZAppStyle(data) {
-    if (typeof data.properties.$project !== 'undefined') {
-      data.project = data.properties.$project;
-      delete data.properties.$project;
-    }
-    if (typeof data.properties.$token !== 'undefined') {
-      data.token = data.properties.$token;
-      delete data.properties.$token;
-    }
-  }
-
-  function formatItem(data) {
-    if ('item_type' in data) {
-      var item_type = data['item_type'];
-
-      var typeOnComplete = function(status) {
-        if (!status) {
-          delete data['item_type'];
-        }
-        return true;
-      };
-
-      check({
-        item_type: item_type
-      }, typeOnComplete);
-    }
-    if ('item_id' in data) {
-      var item_id = data['item_id'];
-      var idOnComplete = function(status, val, rule) {
-        if (!status && rule === 'string') {
-          delete data['item_id'];
-        }
-        return true;
-      };
-      check({
-        item_id: item_id
-      }, idOnComplete);
-    }
-  }
-
-  function formatProperties(p, ignore) {
-    each(p, function(val, key) {
-      var onComplete = function(status, value, rule_type) {
-        if (!status && rule_type !== 'keyLength') {
-          delete p[key];
-        }
-        return true;
-      };
-      indexOf(ignore || [], key) === -1 && check({
-        propertyKey: key
-      }, onComplete);
-    });
-  }
-
-  function formatData(data) {
-    var p = data.properties;
-
-    searchObjDate(data);
-
-    if (isObject(p)) {
-      strip_sa_properties(p);
-
-      filterReservedProperties(p);
-
-      searchZZAppStyle(data);
-
-      formatProperties(p);
-
-      searchObjString(p);
-    } else if ('properties' in data) {
-      data.properties = {};
-    }
-
-    formatItem(data);
-  }
-
-  var dataStageImpl$1 = {
-    init: function() {},
-    interceptor: {
-      formatData: {
-        priority: 0,
-        entry: function(data) {
-          formatData(data);
-          return data;
-        }
-      }
-    }
-  };
-
-  function DataFormatFeature() {
-    this.dataStage = dataStageImpl$1;
+  function BuildDataFeature() {
+    this.buildDataStage = buildDataStageImpl;
   }
 
   function HeatCollectFeature(sd) {
@@ -8265,14 +8077,10 @@
 
   function JSBridge() {}
 
-  var batchSend$1 = {
+  var batchSend = {
     add: function(data) {
       sd.para.batch_send = false;
-      var data_config = searchConfigData(data.properties);
-      prepareServerUrl({
-        data: data,
-        config: data_config
-      });
+      sd.kit.sendData(data);
     }
   };
 
@@ -8288,11 +8096,11 @@
 
   sd.bridge = bridge;
   sd.JSBridge = JSBridge;
-  sd.batchSend = batchSend$1;
+  sd.batchSend = batchSend;
   sd.use = use$1;
 
   registerFeature(new CoreFeature(sd));
-  registerFeature(new DataFormatFeature(sd));
+  registerFeature(new BuildDataFeature(sd));
   registerFeature(new HeatCollectFeature(sd));
   registerInterceptor('viewStage', heatCollectInterceptor);
 
