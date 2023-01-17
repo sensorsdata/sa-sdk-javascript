@@ -3067,7 +3067,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.9';
+  var sdkversion_placeholder = '1.24.10';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3931,10 +3931,12 @@
       if (tabStorage) {
         this.sendTimeStamp = now();
         tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
-        if (tabStorage.data.length) {
+
+        var dataToSendKeys = unique(tabStorage.data);
+        if (dataToSendKeys.length) {
           var data = [];
-          for (var i = 0; i < tabStorage.data.length; i++) {
-            data.push(sd.store.readObjectVal(tabStorage.data[i]));
+          for (var i = 0; i < dataToSendKeys.length; i++) {
+            data.push(sd.store.readObjectVal(dataToSendKeys[i]));
           }
           this.request(data, tabStorage.data);
         }
@@ -3981,6 +3983,8 @@
           }
           _localStorage.remove(dataKeys[i]);
         }
+
+        tabStorageData = unique(tabStorageData);
         _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal(tabStorageData)));
       }
     },
@@ -4033,7 +4037,8 @@
           for (var j = 0; j < tabStorage.data.length; j++) {
             notSendMap[tabStorage.data[j]] = true;
           }
-          if (now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
+
+          if (item !== self.tabKey && now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
             var concurrentStorage = new ConcurrentStorage(lockPrefix);
             concurrentStorage.get(item, lockTimeout, 1000, function(data) {
               if (data) {
@@ -4041,7 +4046,9 @@
                   self.generateTabStorage();
                 }
                 var recycleData = safeJSONParse(data) || self.generateTabStorageVal();
-                _localStorage.set(self.tabKey, JSON.stringify(self.generateTabStorageVal((safeJSONParse(_localStorage.get(self.tabKey)) || this.generateTabStorageVal()).data.concat(recycleData.data))));
+                var curTabData = safeJSONParse(_localStorage.get(self.tabKey)) || self.generateTabStorageVal();
+                curTabData.data = unique(curTabData.data.concat(recycleData.data));
+                _localStorage.set(self.tabKey, JSON.stringify(curTabData));
               }
             });
           }
@@ -4379,13 +4386,8 @@
 
         var unionId = store.getOriginUnionId(state);
 
-        if (state.identities && isObject(state.identities) && !isEmptyObject(state.identities)) {
-          if (state.identities.$identity_anonymous_id && state.identities.$identity_anonymous_id !== unionId.anonymous_id) {
-            state.identities.$identity_anonymous_id = unionId.anonymous_id;
-          }
-        } else {
+        if (!state.identities || !isObject(state.identities) || isEmptyObject(state.identities)) {
           state.identities = {};
-          state.identities.$identity_anonymous_id = unionId.anonymous_id;
           state.identities.$identity_cookie_id = UUID();
         }
 
@@ -7295,12 +7297,6 @@
     if (typeof id === 'number') {
       id = String(id);
     }
-
-    function saveIdentities(id) {
-      store._state.identities.$identity_anonymous_id = id;
-      store.save();
-    }
-
     var firstId = store.getFirstId();
     if (typeof id === 'undefined') {
       var uuid = UUID();
@@ -7309,7 +7305,6 @@
       } else {
         store.set('distinct_id', uuid);
       }
-      saveIdentities(uuid);
     } else if (check({
         distinct_id: id
       })) {
@@ -7326,7 +7321,6 @@
           store.change('distinct_id', id);
         }
       }
-      saveIdentities(id);
     }
   }
 
@@ -8722,7 +8716,7 @@
     checkState();
   }
 
-  var sdkversion_placeholder$1 = '1.24.9';
+  var sdkversion_placeholder$1 = '1.24.10';
 
   function wrapPluginInitFn(plugin, name, lifeCycle) {
     if (name) {
@@ -8831,7 +8825,7 @@
     }
   };
 
-  var sdkversion_placeholder$2 = '1.24.9';
+  var sdkversion_placeholder$2 = '1.24.10';
 
   function wrapPluginInitFn$1(plugin, name, lifeCycle) {
     if (name) {
@@ -8980,7 +8974,7 @@
     }
   };
 
-  var sdkversion_placeholder$3 = '1.24.9';
+  var sdkversion_placeholder$3 = '1.24.10';
 
   function wrapPluginInitFn$2(plugin, name, lifeCycle) {
     if (name) {
@@ -9110,7 +9104,7 @@
   }
   var index$2 = createPlugin$2(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$4 = '1.24.9';
+  var sdkversion_placeholder$4 = '1.24.10';
 
   function wrapPluginInitFn$3(plugin, name, lifeCycle) {
     if (name) {
@@ -9305,7 +9299,7 @@
 
   var index$3 = createPlugin$3(Channel, 'SensorsChannel', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$5 = '1.24.9';
+  var sdkversion_placeholder$5 = '1.24.10';
 
   function wrapPluginInitFn$4(plugin, name, lifeCycle) {
     if (name) {
@@ -9591,7 +9585,7 @@
   };
   var index$4 = createPlugin$4(SADeepLink, 'Deeplink', 'sdkReady');
 
-  var sdkversion_placeholder$6 = '1.24.9';
+  var sdkversion_placeholder$6 = '1.24.10';
 
   function wrapPluginInitFn$5(plugin, name, lifeCycle) {
     if (name) {
@@ -9718,7 +9712,7 @@
   }
   var index$5 = createPlugin$5(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$7 = '1.24.9';
+  var sdkversion_placeholder$7 = '1.24.10';
 
   function wrapPluginInitFn$6(plugin, name, lifeCycle) {
     if (name) {
@@ -9857,7 +9851,7 @@
   }
   var index$6 = createPlugin$6(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$8 = '1.24.9';
+  var sdkversion_placeholder$8 = '1.24.10';
 
   function wrapPluginInitFn$7(plugin, name, lifeCycle) {
     if (name) {
@@ -10146,7 +10140,7 @@
   var pageLeave = new PageLeave();
   var index$7 = createPlugin$7(pageLeave, 'PageLeave', 'sdkReady');
 
-  var sdkversion_placeholder$9 = '1.24.9';
+  var sdkversion_placeholder$9 = '1.24.10';
 
   function wrapPluginInitFn$8(plugin, name, lifeCycle) {
     if (name) {
@@ -10325,7 +10319,7 @@
     }
   };
 
-  var sdkversion_placeholder$a = '1.24.9';
+  var sdkversion_placeholder$a = '1.24.10';
 
   function wrapPluginInitFn$9(plugin, name, lifeCycle) {
     if (name) {
@@ -10358,7 +10352,7 @@
 
   var index$9 = createPlugin$9(instance);
 
-  var sdkversion_placeholder$b = '1.24.9';
+  var sdkversion_placeholder$b = '1.24.10';
 
   function wrapPluginInitFn$a(plugin, name, lifeCycle) {
     if (name) {
@@ -10422,7 +10416,7 @@
   };
   var index$a = createPlugin$a(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-  var sdkversion_placeholder$c = '1.24.9';
+  var sdkversion_placeholder$c = '1.24.10';
 
   function wrapPluginInitFn$b(plugin, name, lifeCycle) {
     if (name) {
@@ -10659,7 +10653,7 @@
   var index$b = createPlugin$b(siteLinker, 'SiteLinker', 'sdkReady');
 
   var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder$d = '1.24.9';
+  var sdkversion_placeholder$d = '1.24.10';
 
   function wrapPluginInitFn$c(plugin, name, lifeCycle) {
     if (name) {
@@ -10723,7 +10717,7 @@
   };
   var index$c = createPlugin$c(utm, 'Utm', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$e = '1.24.9';
+  var sdkversion_placeholder$e = '1.24.10';
 
   function wrapPluginInitFn$d(plugin, name, lifeCycle) {
     if (name) {
@@ -10776,7 +10770,7 @@
 
   var index$d = createPlugin$d(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-  var sdkversion_placeholder$f = '1.24.9';
+  var sdkversion_placeholder$f = '1.24.10';
 
   function wrapPluginInitFn$e(plugin, name, lifeCycle) {
     if (name) {
@@ -10877,7 +10871,7 @@
   };
   var index$e = createPlugin$e(DebugSender);
 
-  var sdkversion_placeholder$g = '1.24.9';
+  var sdkversion_placeholder$g = '1.24.10';
 
   function wrapPluginInitFn$f(plugin, name, lifeCycle) {
     if (name) {
@@ -10959,7 +10953,7 @@
 
   var index$f = createPlugin$f(JsappSender);
 
-  var sdkversion_placeholder$h = '1.24.9';
+  var sdkversion_placeholder$h = '1.24.10';
 
   function wrapPluginInitFn$g(plugin, name, lifeCycle) {
     if (name) {
@@ -11047,7 +11041,7 @@
   };
   var index$g = createPlugin$g(BatchSender);
 
-  var sdkversion_placeholder$i = '1.24.9';
+  var sdkversion_placeholder$i = '1.24.10';
 
   function wrapPluginInitFn$h(plugin, name, lifeCycle) {
     if (name) {
@@ -11133,7 +11127,7 @@
 
   var index$h = createPlugin$h(BeaconSender);
 
-  var sdkversion_placeholder$j = '1.24.9';
+  var sdkversion_placeholder$j = '1.24.10';
 
   function wrapPluginInitFn$i(plugin, name, lifeCycle) {
     if (name) {
@@ -11219,7 +11213,7 @@
 
   var index$i = createPlugin$i(AjaxSender);
 
-  var sdkversion_placeholder$k = '1.24.9';
+  var sdkversion_placeholder$k = '1.24.10';
 
   function wrapPluginInitFn$j(plugin, name, lifeCycle) {
     if (name) {

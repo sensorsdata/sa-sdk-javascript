@@ -3065,7 +3065,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.9';
+  var sdkversion_placeholder = '1.24.10';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3929,10 +3929,12 @@
       if (tabStorage) {
         this.sendTimeStamp = now();
         tabStorage = safeJSONParse(tabStorage) || this.generateTabStorageVal();
-        if (tabStorage.data.length) {
+
+        var dataToSendKeys = unique(tabStorage.data);
+        if (dataToSendKeys.length) {
           var data = [];
-          for (var i = 0; i < tabStorage.data.length; i++) {
-            data.push(sd.store.readObjectVal(tabStorage.data[i]));
+          for (var i = 0; i < dataToSendKeys.length; i++) {
+            data.push(sd.store.readObjectVal(dataToSendKeys[i]));
           }
           this.request(data, tabStorage.data);
         }
@@ -3979,6 +3981,8 @@
           }
           _localStorage.remove(dataKeys[i]);
         }
+
+        tabStorageData = unique(tabStorageData);
         _localStorage.set(this.tabKey, JSON.stringify(this.generateTabStorageVal(tabStorageData)));
       }
     },
@@ -4031,7 +4035,8 @@
           for (var j = 0; j < tabStorage.data.length; j++) {
             notSendMap[tabStorage.data[j]] = true;
           }
-          if (now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
+
+          if (item !== self.tabKey && now() > tabStorage.expireTime && this.serverUrl === tabStorage.serverUrl) {
             var concurrentStorage = new ConcurrentStorage(lockPrefix);
             concurrentStorage.get(item, lockTimeout, 1000, function(data) {
               if (data) {
@@ -4039,7 +4044,9 @@
                   self.generateTabStorage();
                 }
                 var recycleData = safeJSONParse(data) || self.generateTabStorageVal();
-                _localStorage.set(self.tabKey, JSON.stringify(self.generateTabStorageVal((safeJSONParse(_localStorage.get(self.tabKey)) || this.generateTabStorageVal()).data.concat(recycleData.data))));
+                var curTabData = safeJSONParse(_localStorage.get(self.tabKey)) || self.generateTabStorageVal();
+                curTabData.data = unique(curTabData.data.concat(recycleData.data));
+                _localStorage.set(self.tabKey, JSON.stringify(curTabData));
               }
             });
           }
@@ -4377,13 +4384,8 @@
 
         var unionId = store.getOriginUnionId(state);
 
-        if (state.identities && isObject(state.identities) && !isEmptyObject(state.identities)) {
-          if (state.identities.$identity_anonymous_id && state.identities.$identity_anonymous_id !== unionId.anonymous_id) {
-            state.identities.$identity_anonymous_id = unionId.anonymous_id;
-          }
-        } else {
+        if (!state.identities || !isObject(state.identities) || isEmptyObject(state.identities)) {
           state.identities = {};
-          state.identities.$identity_anonymous_id = unionId.anonymous_id;
           state.identities.$identity_cookie_id = UUID();
         }
 
@@ -7293,12 +7295,6 @@
     if (typeof id === 'number') {
       id = String(id);
     }
-
-    function saveIdentities(id) {
-      store._state.identities.$identity_anonymous_id = id;
-      store.save();
-    }
-
     var firstId = store.getFirstId();
     if (typeof id === 'undefined') {
       var uuid = UUID();
@@ -7307,7 +7303,6 @@
       } else {
         store.set('distinct_id', uuid);
       }
-      saveIdentities(uuid);
     } else if (check({
         distinct_id: id
       })) {
@@ -7324,7 +7319,6 @@
           store.change('distinct_id', id);
         }
       }
-      saveIdentities(id);
     }
   }
 
