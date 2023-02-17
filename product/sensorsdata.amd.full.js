@@ -3041,33 +3041,8 @@
     }
   }
 
-  var flag = 'data:enc;';
-  var flag_dfm = 'dfm-enc-';
-
-  function decrypt(v) {
-    if (v.indexOf(flag) === 0) {
-      v = v.substring(flag.length);
-      v = rot13defs(v);
-    } else if (v.indexOf(flag_dfm) === 0) {
-      v = v.substring(flag_dfm.length);
-      v = dfmapping(v);
-    }
-    return v;
-  }
-
-  function decryptIfNeeded(cross) {
-    if (isString(cross) && (cross.indexOf(flag) === 0 || cross.indexOf(flag_dfm) === 0)) {
-      cross = decrypt(cross);
-    }
-    return cross;
-  }
-
-  function encrypt(v) {
-    return flag_dfm + dfmapping(v);
-  }
-
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.12';
+  var sdkversion_placeholder = '1.24.13';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3545,7 +3520,7 @@
     setDeviceId: function(uuid, store) {
       var device_id = null;
       var ds = saCookie.get('sensorsdata2015jssdkcross' + sd.para.sdk_id);
-      ds = decryptIfNeeded(ds);
+      ds = sd.kit.userDecryptIfNeeded(ds);
       var state = {};
       if (ds != null && isJSONString(ds)) {
         state = JSON.parse(ds);
@@ -3562,7 +3537,7 @@
         state.$device_id = device_id;
         state = JSON.stringify(state);
         if (sd.para.encrypt_cookie) {
-          state = encrypt(state);
+          state = sd.kit.userEncrypt(state);
         }
         saCookie.set('sensorsdata2015jssdkcross' + sd.para.sdk_id, state, null, true);
       }
@@ -4174,8 +4149,6 @@
     __proto__: null,
     addEvent: saAddEvent,
     EventEmitterSa: EventEmitterSa,
-    encrypt: encrypt,
-    decryptIfNeeded: decryptIfNeeded,
     cookie: saCookie,
     info: pageInfo,
     getReferrer: getReferrer,
@@ -4253,7 +4226,7 @@
     },
     initSessionState: function() {
       var ds = saCookie.get('sensorsdata2015session');
-      ds = decryptIfNeeded(ds);
+      ds = sd.kit.userDecryptIfNeeded(ds);
       var state = null;
       if (ds !== null && typeof(state = safeJSONParse(ds)) === 'object') {
         this._sessionState = state || {};
@@ -4283,11 +4256,15 @@
       this._state['_' + name] = value;
     },
     setSessionProps: function(newp) {
+      sd.log('initSessionState 方法已经弃用，请不要使用该功能，如有需求联系技术顾问');
+
       var props = this._sessionState;
       extend(props, newp);
       this.sessionSave(props);
     },
     setSessionPropsOnce: function(newp) {
+      sd.log('initSessionState 方法已经弃用，请不要使用该功能，如有需求联系技术顾问');
+
       var props = this._sessionState;
       coverExtend(props, newp);
       this.sessionSave(props);
@@ -4333,10 +4310,12 @@
       this.save();
     },
     sessionSave: function(props) {
+      sd.log('initSessionState 方法已经弃用，请不要使用该功能，如有需求联系技术顾问');
+
       this._sessionState = props;
       var sessionStateStr = JSON.stringify(this._sessionState);
       if (sd.para.encrypt_cookie) {
-        sessionStateStr = encrypt(sessionStateStr);
+        sessionStateStr = sd.kit.userEncrypt(sessionStateStr);
       }
       saCookie.set('sensorsdata2015session', sessionStateStr, 0);
     },
@@ -4351,7 +4330,7 @@
 
       var stateStr = JSON.stringify(copyState);
       if (sd.para.encrypt_cookie) {
-        stateStr = encrypt(stateStr);
+        stateStr = sd.kit.userEncrypt(stateStr);
       }
       saCookie.set(this.getCookieName(), stateStr, 73000, sd.para.cross_subdomain);
     },
@@ -4459,7 +4438,7 @@
       var cross, cookieJSON;
       if (saCookie.isSupport()) {
         cross = saCookie.get(this.getCookieName());
-        cross = decryptIfNeeded(cross);
+        cross = sd.kit.userDecryptIfNeeded(cross);
         cookieJSON = safeJSONParse(cross);
       }
       if (!saCookie.isSupport() || cross === null || !isJSONString(cross) || !isObject(cookieJSON) || (isObject(cookieJSON) && !cookieJSON.distinct_id)) {
@@ -4477,14 +4456,14 @@
         value = JSON.stringify(value);
       }
       if (sd.para.encrypt_cookie == true) {
-        value = encrypt(value);
+        value = sd.kit.userEncrypt(value);
       }
       _localStorage.set(name, value);
     },
     readObjectVal: function(name) {
       var value = _localStorage.get(name);
       if (!value) return null;
-      value = decryptIfNeeded(value);
+      value = sd.kit.userDecryptIfNeeded(value);
       return safeJSONParse(value);
     }
   };
@@ -7402,6 +7381,7 @@
   }
 
   function registerSession(props) {
+    sd.log('registerSession 方法已经弃用，有问题联系技术顾问');
     if (check({
         properties: props
       })) {
@@ -7412,6 +7392,7 @@
   }
 
   function registerSessionOnce(props) {
+    sd.log('registerSessionOnce 方法已经弃用，有问题联系技术顾问');
     if (check({
         properties: props
       })) {
@@ -8700,10 +8681,12 @@
     sd.initPara(para);
     ee.sdk.emit('initPara');
     ee.sdk.emit('afterInitPara');
-    sd.detectMode();
-    iOSWebClickPolyfill();
+
     ee.sdk.emit('initAPI');
     ee.sdk.emit('afterInitAPI');
+
+    sd.detectMode();
+    iOSWebClickPolyfill();
 
     ee.sdk.emit('afterInit');
     ee.sdk.emit('ready');
@@ -8716,7 +8699,7 @@
     checkState();
   }
 
-  var sdkversion_placeholder$1 = '1.24.12';
+  var sdkversion_placeholder$1 = '1.24.13';
 
   function wrapPluginInitFn(plugin, name, lifeCycle) {
     if (name) {
@@ -8741,6 +8724,70 @@
   function createPlugin(plugin, name, lifeCycle) {
     wrapPluginInitFn(plugin, name, lifeCycle);
     plugin.plugin_version = sdkversion_placeholder$1;
+    return plugin;
+  }
+
+  var userEncryptDefault = {
+    init: function(sd) {
+      var isString = sd._.isString;
+      var rot13defs = sd._.rot13defs;
+      var dfmapping = sd._.dfmapping;
+
+      var flag = 'data:enc;';
+      var flag_dfm = 'dfm-enc-';
+
+      sd.ee.sdk.on('afterInitPara', function() {
+        sd.kit.userEncrypt = function(v) {
+          return flag_dfm + dfmapping(v);
+        };
+        sd.kit.userDecrypt = function(v) {
+          if (v.indexOf(flag) === 0) {
+            v = v.substring(flag.length);
+            v = rot13defs(v);
+          } else if (v.indexOf(flag_dfm) === 0) {
+            v = v.substring(flag_dfm.length);
+            v = dfmapping(v);
+          }
+          return v;
+        };
+        sd.kit.userDecryptIfNeeded = function(cross) {
+          if (isString(cross) && (cross.indexOf(flag) === 0 || cross.indexOf(flag_dfm) === 0)) {
+            cross = sd.kit.userDecrypt(cross);
+          }
+          return cross;
+        };
+      });
+    },
+    plugin_name: 'UserEncryptDefault'
+  };
+
+  var index = createPlugin(userEncryptDefault);
+
+  var sdkversion_placeholder$2 = '1.24.13';
+
+  function wrapPluginInitFn$1(plugin, name, lifeCycle) {
+    if (name) {
+      plugin.plugin_name = name;
+    }
+    if (lifeCycle && plugin.init) {
+      var initFn = plugin.init;
+      plugin.init = function(sd, option) {
+        if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
+          return initPlugin();
+        }
+        sd.on(lifeCycle, initPlugin);
+
+        function initPlugin() {
+          initFn.call(plugin, sd, option);
+        }
+      };
+    }
+    return plugin;
+  }
+
+  function createPlugin$1(plugin, name, lifeCycle) {
+    wrapPluginInitFn$1(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$2;
     return plugin;
   }
 
@@ -8794,7 +8841,7 @@
       this.sd._.cookie.set('sensors_amp_id', id);
     }
   };
-  var index = createPlugin(amp, 'Amp', 'sdkReady');
+  var index$1 = createPlugin$1(amp, 'Amp', 'sdkReady');
 
   var vbridge = window.SensorsData_App_Visual_Bridge;
   var vmode = vbridge && vbridge.sensorsdata_visualized_mode;
@@ -8825,9 +8872,9 @@
     }
   };
 
-  var sdkversion_placeholder$2 = '1.24.12';
+  var sdkversion_placeholder$3 = '1.24.13';
 
-  function wrapPluginInitFn$1(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$2(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -8847,9 +8894,9 @@
     return plugin;
   }
 
-  function createPlugin$1(plugin, name, lifeCycle) {
-    wrapPluginInitFn$1(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$2;
+  function createPlugin$2(plugin, name, lifeCycle) {
+    wrapPluginInitFn$2(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$3;
     return plugin;
   }
 
@@ -8943,7 +8990,7 @@
       anBridge.sensorsdata_js_call_app(JSON.stringify(request));
     }
   }
-  var index$1 = createPlugin$1(AndroidBridge, 'AndroidBridge', 'sdkAfterInitPara');
+  var index$2 = createPlugin$2(AndroidBridge, 'AndroidBridge', 'sdkAfterInitPara');
 
   var vbridge$2 = window.SensorsData_App_Visual_Bridge;
   var vmode$1 = vbridge$2 && vbridge$2.sensorsdata_visualized_mode;
@@ -8974,9 +9021,9 @@
     }
   };
 
-  var sdkversion_placeholder$3 = '1.24.12';
+  var sdkversion_placeholder$4 = '1.24.13';
 
-  function wrapPluginInitFn$2(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$3(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -8996,9 +9043,9 @@
     return plugin;
   }
 
-  function createPlugin$2(plugin, name, lifeCycle) {
-    wrapPluginInitFn$2(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$3;
+  function createPlugin$3(plugin, name, lifeCycle) {
+    wrapPluginInitFn$3(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$4;
     return plugin;
   }
 
@@ -9102,11 +9149,11 @@
       return anBridge$1.sensorsdata_js_call_app(JSON.stringify(request));
     }
   }
-  var index$2 = createPlugin$2(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
+  var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$4 = '1.24.12';
+  var sdkversion_placeholder$5 = '1.24.13';
 
-  function wrapPluginInitFn$3(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$4(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -9126,9 +9173,9 @@
     return plugin;
   }
 
-  function createPlugin$3(plugin, name, lifeCycle) {
-    wrapPluginInitFn$3(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$4;
+  function createPlugin$4(plugin, name, lifeCycle) {
+    wrapPluginInitFn$4(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$5;
     return plugin;
   }
 
@@ -9216,7 +9263,7 @@
     },
     cookie: {
       getChannel: function() {
-        var value = _$3.decryptIfNeeded(_$3.cookie.get(cookie_name));
+        var value = sd$3.kit.userDecryptIfNeeded(_$3.cookie.get(cookie_name));
 
         value = _$3.safeJSONParse(value);
 
@@ -9228,7 +9275,7 @@
         };
         var stateStr = JSON.stringify(data);
         if (sd$3.para.encrypt_cookie) {
-          stateStr = _$3.encrypt(stateStr);
+          stateStr = sd$3.kit.userEncrypt(stateStr);
         }
         _$3.cookie.set(cookie_name, stateStr);
       }
@@ -9297,11 +9344,11 @@
     }
   };
 
-  var index$3 = createPlugin$3(Channel, 'SensorsChannel', 'sdkAfterInitPara');
+  var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-  var sdkversion_placeholder$5 = '1.24.12';
+  var sdkversion_placeholder$6 = '1.24.13';
 
-  function wrapPluginInitFn$4(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$5(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -9325,9 +9372,9 @@
     return plugin;
   }
 
-  function createPlugin$4(plugin, name, lifeCycle) {
-    wrapPluginInitFn$4(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$5;
+  function createPlugin$5(plugin, name, lifeCycle) {
+    wrapPluginInitFn$5(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$6;
     return plugin;
   }
 
@@ -9583,11 +9630,11 @@
       }.bind(this), false);
     }
   };
-  var index$4 = createPlugin$4(SADeepLink, 'Deeplink', 'sdkReady');
+  var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-  var sdkversion_placeholder$6 = '1.24.12';
+  var sdkversion_placeholder$7 = '1.24.13';
 
-  function wrapPluginInitFn$5(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$6(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -9607,9 +9654,9 @@
     return plugin;
   }
 
-  function createPlugin$5(plugin, name, lifeCycle) {
-    wrapPluginInitFn$5(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$6;
+  function createPlugin$6(plugin, name, lifeCycle) {
+    wrapPluginInitFn$6(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$7;
     return plugin;
   }
 
@@ -9710,11 +9757,11 @@
 
     return iosTracker() && iosTracker().postMessage(JSON.stringify(request));
   }
-  var index$5 = createPlugin$5(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
+  var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$7 = '1.24.12';
+  var sdkversion_placeholder$8 = '1.24.13';
 
-  function wrapPluginInitFn$6(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$7(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -9734,9 +9781,9 @@
     return plugin;
   }
 
-  function createPlugin$6(plugin, name, lifeCycle) {
-    wrapPluginInitFn$6(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$7;
+  function createPlugin$7(plugin, name, lifeCycle) {
+    wrapPluginInitFn$7(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$8;
     return plugin;
   }
 
@@ -9849,11 +9896,11 @@
     ctx.cancellationToken.cancel();
     return rqData;
   }
-  var index$6 = createPlugin$6(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
+  var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$8 = '1.24.12';
+  var sdkversion_placeholder$9 = '1.24.13';
 
-  function wrapPluginInitFn$7(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$8(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -9873,9 +9920,9 @@
     return plugin;
   }
 
-  function createPlugin$7(plugin, name, lifeCycle) {
-    wrapPluginInitFn$7(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$8;
+  function createPlugin$8(plugin, name, lifeCycle) {
+    wrapPluginInitFn$8(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$9;
     return plugin;
   }
 
@@ -10138,11 +10185,11 @@
   };
 
   var pageLeave = new PageLeave();
-  var index$7 = createPlugin$7(pageLeave, 'PageLeave', 'sdkReady');
+  var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-  var sdkversion_placeholder$9 = '1.24.12';
+  var sdkversion_placeholder$a = '1.24.13';
 
-  function wrapPluginInitFn$8(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$9(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -10162,9 +10209,9 @@
     return plugin;
   }
 
-  function createPlugin$8(plugin, name, lifeCycle) {
-    wrapPluginInitFn$8(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$9;
+  function createPlugin$9(plugin, name, lifeCycle) {
+    wrapPluginInitFn$9(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$a;
     return plugin;
   }
 
@@ -10229,7 +10276,7 @@
       }
     }
   };
-  var index$8 = createPlugin$8(PageLoad, 'PageLoad', 'sdkReady');
+  var index$9 = createPlugin$9(PageLoad, 'PageLoad', 'sdkReady');
 
   function addProperties(data, instance) {
     if (data.type !== 'track') return data;
@@ -10319,40 +10366,7 @@
     }
   };
 
-  var sdkversion_placeholder$a = '1.24.12';
-
-  function wrapPluginInitFn$9(plugin, name, lifeCycle) {
-    if (name) {
-      plugin.plugin_name = name;
-    }
-    if (lifeCycle && plugin.init) {
-      var initFn = plugin.init;
-      plugin.init = function(sd, option) {
-        if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
-          return initPlugin();
-        }
-        sd.on(lifeCycle, initPlugin);
-
-        function initPlugin() {
-          initFn.call(plugin, sd, option);
-        }
-      };
-    }
-    return plugin;
-  }
-
-  function createPlugin$9(plugin, name, lifeCycle) {
-    wrapPluginInitFn$9(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$a;
-    return plugin;
-  }
-
-  RegisterProperties.prototype.plugin_name = 'RegisterProperties';
-  var instance = new RegisterProperties();
-
-  var index$9 = createPlugin$9(instance);
-
-  var sdkversion_placeholder$b = '1.24.12';
+  var sdkversion_placeholder$b = '1.24.13';
 
   function wrapPluginInitFn$a(plugin, name, lifeCycle) {
     if (name) {
@@ -10377,6 +10391,39 @@
   function createPlugin$a(plugin, name, lifeCycle) {
     wrapPluginInitFn$a(plugin, name, lifeCycle);
     plugin.plugin_version = sdkversion_placeholder$b;
+    return plugin;
+  }
+
+  RegisterProperties.prototype.plugin_name = 'RegisterProperties';
+  var instance = new RegisterProperties();
+
+  var index$a = createPlugin$a(instance);
+
+  var sdkversion_placeholder$c = '1.24.13';
+
+  function wrapPluginInitFn$b(plugin, name, lifeCycle) {
+    if (name) {
+      plugin.plugin_name = name;
+    }
+    if (lifeCycle && plugin.init) {
+      var initFn = plugin.init;
+      plugin.init = function(sd, option) {
+        if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
+          return initPlugin();
+        }
+        sd.on(lifeCycle, initPlugin);
+
+        function initPlugin() {
+          initFn.call(plugin, sd, option);
+        }
+      };
+    }
+    return plugin;
+  }
+
+  function createPlugin$b(plugin, name, lifeCycle) {
+    wrapPluginInitFn$b(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$c;
     return plugin;
   }
 
@@ -10414,11 +10461,11 @@
       _log('RegisterPropertyPageHeight 插件初始化完成');
     }
   };
-  var index$a = createPlugin$a(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
+  var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-  var sdkversion_placeholder$c = '1.24.12';
+  var sdkversion_placeholder$d = '1.24.13';
 
-  function wrapPluginInitFn$b(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$c(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -10438,9 +10485,9 @@
     return plugin;
   }
 
-  function createPlugin$b(plugin, name, lifeCycle) {
-    wrapPluginInitFn$b(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$c;
+  function createPlugin$c(plugin, name, lifeCycle) {
+    wrapPluginInitFn$c(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$d;
     return plugin;
   }
 
@@ -10650,12 +10697,12 @@
     }
   };
 
-  var index$b = createPlugin$b(siteLinker, 'SiteLinker', 'sdkReady');
+  var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
   var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder$d = '1.24.12';
+  var sdkversion_placeholder$e = '1.24.13';
 
-  function wrapPluginInitFn$c(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$d(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -10675,9 +10722,9 @@
     return plugin;
   }
 
-  function createPlugin$c(plugin, name, lifeCycle) {
-    wrapPluginInitFn$c(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$d;
+  function createPlugin$d(plugin, name, lifeCycle) {
+    wrapPluginInitFn$d(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$e;
     return plugin;
   }
 
@@ -10715,11 +10762,11 @@
       }
     }
   };
-  var index$c = createPlugin$c(utm, 'Utm', 'sdkAfterInitPara');
+  var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$e = '1.24.12';
+  var sdkversion_placeholder$f = '1.24.13';
 
-  function wrapPluginInitFn$d(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$e(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -10739,9 +10786,9 @@
     return plugin;
   }
 
-  function createPlugin$d(plugin, name, lifeCycle) {
-    wrapPluginInitFn$d(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$e;
+  function createPlugin$e(plugin, name, lifeCycle) {
+    wrapPluginInitFn$e(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$f;
     return plugin;
   }
 
@@ -10768,11 +10815,11 @@
     return isDisabled;
   }
 
-  var index$d = createPlugin$d(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
+  var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-  var sdkversion_placeholder$f = '1.24.12';
+  var sdkversion_placeholder$g = '1.24.13';
 
-  function wrapPluginInitFn$e(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$f(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -10792,9 +10839,9 @@
     return plugin;
   }
 
-  function createPlugin$e(plugin, name, lifeCycle) {
-    wrapPluginInitFn$e(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$f;
+  function createPlugin$f(plugin, name, lifeCycle) {
+    wrapPluginInitFn$f(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$g;
     return plugin;
   }
 
@@ -10869,11 +10916,11 @@
       senderInit();
     }
   };
-  var index$e = createPlugin$e(DebugSender);
+  var index$f = createPlugin$f(DebugSender);
 
-  var sdkversion_placeholder$g = '1.24.12';
+  var sdkversion_placeholder$h = '1.24.13';
 
-  function wrapPluginInitFn$f(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$g(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -10893,9 +10940,9 @@
     return plugin;
   }
 
-  function createPlugin$f(plugin, name, lifeCycle) {
-    wrapPluginInitFn$f(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$g;
+  function createPlugin$g(plugin, name, lifeCycle) {
+    wrapPluginInitFn$g(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$h;
     return plugin;
   }
 
@@ -10951,11 +10998,11 @@
     }
   };
 
-  var index$f = createPlugin$f(JsappSender);
+  var index$g = createPlugin$g(JsappSender);
 
-  var sdkversion_placeholder$h = '1.24.12';
+  var sdkversion_placeholder$i = '1.24.13';
 
-  function wrapPluginInitFn$g(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$h(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -10975,9 +11022,9 @@
     return plugin;
   }
 
-  function createPlugin$g(plugin, name, lifeCycle) {
-    wrapPluginInitFn$g(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$h;
+  function createPlugin$h(plugin, name, lifeCycle) {
+    wrapPluginInitFn$h(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$i;
     return plugin;
   }
 
@@ -11039,11 +11086,11 @@
       senderInit$2();
     }
   };
-  var index$g = createPlugin$g(BatchSender);
+  var index$h = createPlugin$h(BatchSender);
 
-  var sdkversion_placeholder$i = '1.24.12';
+  var sdkversion_placeholder$j = '1.24.13';
 
-  function wrapPluginInitFn$h(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$i(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -11063,9 +11110,9 @@
     return plugin;
   }
 
-  function createPlugin$h(plugin, name, lifeCycle) {
-    wrapPluginInitFn$h(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$i;
+  function createPlugin$i(plugin, name, lifeCycle) {
+    wrapPluginInitFn$i(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$j;
     return plugin;
   }
 
@@ -11125,11 +11172,11 @@
     }
   };
 
-  var index$h = createPlugin$h(BeaconSender);
+  var index$i = createPlugin$i(BeaconSender);
 
-  var sdkversion_placeholder$j = '1.24.12';
+  var sdkversion_placeholder$k = '1.24.13';
 
-  function wrapPluginInitFn$i(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$j(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -11149,9 +11196,9 @@
     return plugin;
   }
 
-  function createPlugin$i(plugin, name, lifeCycle) {
-    wrapPluginInitFn$i(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$j;
+  function createPlugin$j(plugin, name, lifeCycle) {
+    wrapPluginInitFn$j(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$k;
     return plugin;
   }
 
@@ -11211,11 +11258,11 @@
     }
   };
 
-  var index$i = createPlugin$i(AjaxSender);
+  var index$j = createPlugin$j(AjaxSender);
 
-  var sdkversion_placeholder$k = '1.24.12';
+  var sdkversion_placeholder$l = '1.24.13';
 
-  function wrapPluginInitFn$j(plugin, name, lifeCycle) {
+  function wrapPluginInitFn$k(plugin, name, lifeCycle) {
     if (name) {
       plugin.plugin_name = name;
     }
@@ -11235,9 +11282,9 @@
     return plugin;
   }
 
-  function createPlugin$j(plugin, name, lifeCycle) {
-    wrapPluginInitFn$j(plugin, name, lifeCycle);
-    plugin.plugin_version = sdkversion_placeholder$k;
+  function createPlugin$k(plugin, name, lifeCycle) {
+    wrapPluginInitFn$k(plugin, name, lifeCycle);
+    plugin.plugin_version = sdkversion_placeholder$l;
     return plugin;
   }
 
@@ -11303,12 +11350,12 @@
     }
   };
 
-  var index$j = createPlugin$j(ImageSender);
+  var index$k = createPlugin$k(ImageSender);
 
   sd.modules = sd.modules || {};
 
-  var builtinPlugins = [index, index$1, index$2, index$3, index$4, index$5, index$6, index$7, index$8, index$9, index$a, index$b, index$c, index$d, index$e, index$f, index$g, index$h, index$i, index$j];
-  var autoUsePlugins = [index$c, index$d, index$f, index$e, index$1, index$5, index$2, index$6, index$g, index$h, index$i, index$j];
+  var builtinPlugins = [index$1, index$2, index$3, index$4, index$5, index$6, index$7, index$8, index$9, index$a, index$b, index$c, index$d, index$e, index$f, index$g, index$h, index$i, index$j, index$k];
+  var autoUsePlugins = [index, index$d, index$e, index$g, index$f, index$2, index$6, index$3, index$7, index$h, index$i, index$j, index$k];
 
   for (var i = 0; i < builtinPlugins.length; i++) {
     var p = builtinPlugins[i];
