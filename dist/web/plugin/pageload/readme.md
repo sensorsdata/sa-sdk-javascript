@@ -7,8 +7,14 @@
 ### ES Module 方式
 ```javascript
 import pageload from '/dist/web/plugin/pageload/index.es6.js';
-sensors.use(pageload);
+// 见下文初始化参数说明
+sensors.use(pageload,{max_duration:120});
 ```
+
+### 初始化参数
+初始化参数对象属性：
+- `max_duration`：最大页面加载时长，超过这个时长将不再上报 `event_duration` 属性。 类型：Number ，单位：秒 ，默认：1800  (30分钟) ，范围：大于 0，可选。
+  
 ## 变动
 - 新增事件：$WebPageLoad，页面加载事件。
 - 新增属性：
@@ -17,7 +23,5 @@ sensors.use(pageload);
 
 
 ## ⚠️ 注意
-- 版本要求
-    - SCA v0.5.11736 及以上版本
  
 - 插件和 SDK 必须在同一个版本中，请勿混合不同版本的 SDK 和插件进行使用。

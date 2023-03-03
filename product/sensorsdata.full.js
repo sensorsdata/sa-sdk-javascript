@@ -3044,7 +3044,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.24.13';
+  var sdkversion_placeholder = '1.24.14';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -8701,7 +8701,7 @@
     checkState();
   }
 
-  var sdkversion_placeholder$1 = '1.24.13';
+  var sdkversion_placeholder$1 = '1.24.14';
 
   function wrapPluginInitFn(plugin, name, lifeCycle) {
     if (name) {
@@ -8765,7 +8765,7 @@
 
   var index = createPlugin(userEncryptDefault);
 
-  var sdkversion_placeholder$2 = '1.24.13';
+  var sdkversion_placeholder$2 = '1.24.14';
 
   function wrapPluginInitFn$1(plugin, name, lifeCycle) {
     if (name) {
@@ -8874,7 +8874,7 @@
     }
   };
 
-  var sdkversion_placeholder$3 = '1.24.13';
+  var sdkversion_placeholder$3 = '1.24.14';
 
   function wrapPluginInitFn$2(plugin, name, lifeCycle) {
     if (name) {
@@ -9023,7 +9023,7 @@
     }
   };
 
-  var sdkversion_placeholder$4 = '1.24.13';
+  var sdkversion_placeholder$4 = '1.24.14';
 
   function wrapPluginInitFn$3(plugin, name, lifeCycle) {
     if (name) {
@@ -9153,7 +9153,7 @@
   }
   var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$5 = '1.24.13';
+  var sdkversion_placeholder$5 = '1.24.14';
 
   function wrapPluginInitFn$4(plugin, name, lifeCycle) {
     if (name) {
@@ -9348,7 +9348,7 @@
 
   var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-  var sdkversion_placeholder$6 = '1.24.13';
+  var sdkversion_placeholder$6 = '1.24.14';
 
   function wrapPluginInitFn$5(plugin, name, lifeCycle) {
     if (name) {
@@ -9634,7 +9634,7 @@
   };
   var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-  var sdkversion_placeholder$7 = '1.24.13';
+  var sdkversion_placeholder$7 = '1.24.14';
 
   function wrapPluginInitFn$6(plugin, name, lifeCycle) {
     if (name) {
@@ -9761,7 +9761,7 @@
   }
   var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$8 = '1.24.13';
+  var sdkversion_placeholder$8 = '1.24.14';
 
   function wrapPluginInitFn$7(plugin, name, lifeCycle) {
     if (name) {
@@ -9900,7 +9900,7 @@
   }
   var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$9 = '1.24.13';
+  var sdkversion_placeholder$9 = '1.24.14';
 
   function wrapPluginInitFn$8(plugin, name, lifeCycle) {
     if (name) {
@@ -10189,7 +10189,7 @@
   var pageLeave = new PageLeave();
   var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-  var sdkversion_placeholder$a = '1.24.13';
+  var sdkversion_placeholder$a = '1.24.14';
 
   function wrapPluginInitFn$9(plugin, name, lifeCycle) {
     if (name) {
@@ -10217,8 +10217,9 @@
     return plugin;
   }
 
+  var eventSent = false;
   var PageLoad = {
-    init: function(sd) {
+    init: function(sd, para) {
       function getPageSize(p, prop) {
         if (p.getEntries && typeof p.getEntries === 'function') {
           var entries = p.getEntries();
@@ -10236,31 +10237,56 @@
         }
       }
 
-      function fn() {
-        var p = window.performance || window.webkitPerformance || window.msPerformance || window.mozPerformance;
+      function getDurationCompatible(p) {
         var duration = 0;
+        if (p.timing) {
+          var t = p.timing;
+          if (t.fetchStart === 0 || !sd._.isNumber(t.fetchStart) || t.domContentLoadedEventEnd === 0 || !sd._.isNumber(t.domContentLoadedEventEnd)) {
+            sd.log('performance 数据获取异常');
+          } else {
+            duration = t.domContentLoadedEventEnd - t.fetchStart;
+          }
+        }
+        return duration;
+      }
+
+      function getDuration(p) {
+        var duration = 0;
+        if (sd._.isFunction(p.getEntriesByType)) {
+          var entries = p.getEntriesByType('navigation') || [{}];
+          duration = (entries[0] || {}).domContentLoadedEventEnd || 0;
+        }
+        return duration;
+      }
+
+      function fn() {
+        var duration = 0;
+        var p = window.performance || window.webkitPerformance || window.msPerformance || window.mozPerformance;
         var prop = {
           $url: sd._.getURL(),
           $title: document.title,
           $url_path: sd._.getURLPath(),
           $referrer: sd._.getReferrer(null, true)
         };
-
-        if (!p || !p.timing) {
+        if (!p) {
           sd.log('浏览器未支持 performance API.');
         } else {
-          var t = p.timing;
-          if (t.fetchStart === 0 || t.domContentLoadedEventEnd === 0) {
-            sd.log('performance 数据获取异常');
-          } else {
-            duration = t.domContentLoadedEventEnd - t.fetchStart;
-          }
+          duration = getDuration(p) || getDurationCompatible(p);
           getPageSize(p, prop);
         }
+
         if (duration > 0) {
-          prop.event_duration = Number((duration / 1000).toFixed(3));
+          var maxDuration = (sd._.isObject(para) && para.max_duration) || 1800;
+          duration = Number((duration / 1000).toFixed(3));
+          if (!sd._.isNumber(maxDuration) || maxDuration <= 0 || duration <= maxDuration) {
+            prop.event_duration = duration;
+          }
         }
-        sd.track('$WebPageLoad', prop);
+
+        if (!eventSent) {
+          sd.track('$WebPageLoad', prop);
+          eventSent = true;
+        }
 
         if (window.removeEventListener) {
           window.removeEventListener('load', fn);
@@ -10368,7 +10394,7 @@
     }
   };
 
-  var sdkversion_placeholder$b = '1.24.13';
+  var sdkversion_placeholder$b = '1.24.14';
 
   function wrapPluginInitFn$a(plugin, name, lifeCycle) {
     if (name) {
@@ -10401,7 +10427,7 @@
 
   var index$a = createPlugin$a(instance);
 
-  var sdkversion_placeholder$c = '1.24.13';
+  var sdkversion_placeholder$c = '1.24.14';
 
   function wrapPluginInitFn$b(plugin, name, lifeCycle) {
     if (name) {
@@ -10465,7 +10491,7 @@
   };
   var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-  var sdkversion_placeholder$d = '1.24.13';
+  var sdkversion_placeholder$d = '1.24.14';
 
   function wrapPluginInitFn$c(plugin, name, lifeCycle) {
     if (name) {
@@ -10702,7 +10728,7 @@
   var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
   var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder$e = '1.24.13';
+  var sdkversion_placeholder$e = '1.24.14';
 
   function wrapPluginInitFn$d(plugin, name, lifeCycle) {
     if (name) {
@@ -10766,7 +10792,7 @@
   };
   var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$f = '1.24.13';
+  var sdkversion_placeholder$f = '1.24.14';
 
   function wrapPluginInitFn$e(plugin, name, lifeCycle) {
     if (name) {
@@ -10819,7 +10845,7 @@
 
   var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-  var sdkversion_placeholder$g = '1.24.13';
+  var sdkversion_placeholder$g = '1.24.14';
 
   function wrapPluginInitFn$f(plugin, name, lifeCycle) {
     if (name) {
@@ -10920,7 +10946,7 @@
   };
   var index$f = createPlugin$f(DebugSender);
 
-  var sdkversion_placeholder$h = '1.24.13';
+  var sdkversion_placeholder$h = '1.24.14';
 
   function wrapPluginInitFn$g(plugin, name, lifeCycle) {
     if (name) {
@@ -11002,7 +11028,7 @@
 
   var index$g = createPlugin$g(JsappSender);
 
-  var sdkversion_placeholder$i = '1.24.13';
+  var sdkversion_placeholder$i = '1.24.14';
 
   function wrapPluginInitFn$h(plugin, name, lifeCycle) {
     if (name) {
@@ -11090,7 +11116,7 @@
   };
   var index$h = createPlugin$h(BatchSender);
 
-  var sdkversion_placeholder$j = '1.24.13';
+  var sdkversion_placeholder$j = '1.24.14';
 
   function wrapPluginInitFn$i(plugin, name, lifeCycle) {
     if (name) {
@@ -11176,7 +11202,7 @@
 
   var index$i = createPlugin$i(BeaconSender);
 
-  var sdkversion_placeholder$k = '1.24.13';
+  var sdkversion_placeholder$k = '1.24.14';
 
   function wrapPluginInitFn$j(plugin, name, lifeCycle) {
     if (name) {
@@ -11262,7 +11288,7 @@
 
   var index$j = createPlugin$j(AjaxSender);
 
-  var sdkversion_placeholder$l = '1.24.13';
+  var sdkversion_placeholder$l = '1.24.14';
 
   function wrapPluginInitFn$k(plugin, name, lifeCycle) {
     if (name) {

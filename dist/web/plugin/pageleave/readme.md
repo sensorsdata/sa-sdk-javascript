@@ -35,10 +35,4 @@ sensors.use(pageleave,{
 
 ## ⚠️ 注意
 
-- 版本要求
-  - SCA v0.5.10375 及以上版本（SDG 版本 0.9 以下，升级 SCA 到 v0.5.10375 及以上版本后，需要手动执行 `scaadmin preset_metadata download` ，重启 Extractor 才会生效）
-
-- 单页面浏览时长版本要求
-  - SCA v0.5.11757 及以上或者 v0.6.1.9 及以上版本（SDG 版本 0.9 以下，升级 SCA 到 v0.5.10375 及以上版本后，需要手动执行 `scaadmin preset_metadata download` ，重启 Extractor 才会生效）
-
 - 插件和 SDK 必须在同一个版本中，请勿混合不同版本的 SDK 和插件进行使用。
