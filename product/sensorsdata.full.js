@@ -3044,7 +3044,7 @@
   }
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.25.1';
+  var sdkversion_placeholder = '1.25.2';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3762,7 +3762,7 @@
   }
 
   function getEleInfo(obj) {
-    if (!obj.target) {
+    if (!isElement(obj.target)) {
       return false;
     }
 
@@ -3864,7 +3864,14 @@
   };
 
   AjaxSend.prototype.end = function() {
-    this.callback && this.callback();
+    if (this.callback) {
+      sdLog('warning: sdk callback is deprecated.');
+      if (!isFunction(this.callback)) {
+        sdLog('error: sdk callback must be function.');
+        return;
+      }
+      this.callback();
+    }
   };
 
   var dataStoragePrefix = 'sawebjssdk-';
@@ -4063,35 +4070,15 @@
     }, 40);
   };
   BeaconSend.prototype.end = function() {
-    this.callback && this.callback();
-  };
-
-
-  function getUA$1() {
-    var Sys = {};
-    var ua = navigator.userAgent.toLowerCase();
-    var s;
-    if ((s = ua.match(/ qq\/([\d.]+)/))) {
-      Sys.qqBuildinBrowser = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/mqqbrowser\/([\d.]+)/))) {
-      Sys.qqBrowser = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/opera.([\d.]+)/))) {
-      Sys.opera = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/msie ([\d.]+)/))) {
-      Sys.ie = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/edge.([\d.]+)/))) {
-      Sys.edge = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/firefox\/([\d.]+)/))) {
-      Sys.firefox = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/chrome\/([\d.]+)/))) {
-      Sys.chrome = Number(s[1].split('.')[0]);
-    } else if ((s = ua.match(/version\/([\d.]+).*safari/))) {
-      Sys.safari = Number(s[1].match(/^\d*.\d*/));
-    } else if ((s = ua.match(/trident\/([\d.]+)/))) {
-      Sys.ie = 11;
+    if (this.callback) {
+      sdLog('warning: sdk callback is deprecated.');
+      if (!isFunction(this.callback)) {
+        sdLog('error: sdk callback must be function.');
+        return;
+      }
+      this.callback();
     }
-    return Sys;
-  }
+  };
 
   var ImageSend = function(para) {
     this.callback = para.callback;
@@ -4130,7 +4117,7 @@
   };
 
   ImageSend.prototype.lastClear = function() {
-    var sys = getUA$1();
+    var sys = getUA();
     if (sys.ie !== undefined) {
       this.img.src = 'about:blank';
     } else {
@@ -4138,7 +4125,15 @@
     }
   };
   ImageSend.prototype.end = function() {
-    this.callback && this.callback();
+    if (this.callback) {
+      sdLog('warning: sdk callback is deprecated.');
+      if (!isFunction(this.callback)) {
+        sdLog('error: sdk callback must be function.');
+        return;
+      }
+      this.callback();
+    }
+
     var self = this;
     setTimeout(function() {
       self.lastClear && self.lastClear();
@@ -5991,7 +5986,7 @@
     },
     getElementPath: function(element, ignoreID, rootElement) {
       var names = [];
-      while (element.parentNode) {
+      while (element.parentNode && isElement(element)) {
         if (element.id && !ignoreID && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(element.id)) {
           names.unshift(element.tagName.toLowerCase() + '#' + element.id);
           break;
@@ -6013,7 +6008,7 @@
     getClosestLi: function(element) {
       var getClosest = function(elem, selector) {
         for (; elem && elem !== document && elem.nodeType === 1; elem = elem.parentNode) {
-          if (elem.tagName.toLowerCase() === selector) {
+          if (elem.tagName && isFunction(elem.tagName.toLowerCase) && elem.tagName.toLowerCase() === selector) {
             return elem;
           }
         }
@@ -6023,7 +6018,7 @@
     },
     getElementPosition: function(element, elementPath, ignoreID) {
       var closestLi = sd.heatmap.getClosestLi(element);
-      if (!closestLi) {
+      if (!closestLi || !isElement(element)) {
         return null;
       }
       var tag = element.tagName.toLowerCase();
@@ -6482,6 +6477,10 @@
   var commonWays = {
     autoTrackIsUsed: false,
     isReady: function(callback) {
+      if (!isFunction(callback)) {
+        sd.log('error: isReady callback must be function');
+        return;
+      }
       callback();
     },
     getUtm: function() {
@@ -6538,7 +6537,7 @@
       });
     },
     trackHeatMap: function(target, props, callback) {
-      if (typeof target === 'object' && target.tagName) {
+      if (typeof target === 'object' && target.tagName && isElement(target.parentNode)) {
         var tagName = target.tagName.toLowerCase();
         var parent_ele = target.parentNode.tagName.toLowerCase();
         var trackAttrs = sd.para.heatmap && sd.para.heatmap.track_attr ? sd.para.heatmap.track_attr : ['data-sensors-click'];
@@ -8701,7 +8700,7 @@
     checkState();
   }
 
-  var sdkversion_placeholder$1 = '1.25.1';
+  var sdkversion_placeholder$1 = '1.25.2';
 
   function wrapPluginInitFn(plugin, name, lifeCycle) {
     if (name) {
@@ -8765,7 +8764,7 @@
 
   var index = createPlugin(userEncryptDefault);
 
-  var sdkversion_placeholder$2 = '1.25.1';
+  var sdkversion_placeholder$2 = '1.25.2';
 
   function wrapPluginInitFn$1(plugin, name, lifeCycle) {
     if (name) {
@@ -8874,7 +8873,7 @@
     }
   };
 
-  var sdkversion_placeholder$3 = '1.25.1';
+  var sdkversion_placeholder$3 = '1.25.2';
 
   function wrapPluginInitFn$2(plugin, name, lifeCycle) {
     if (name) {
@@ -9023,7 +9022,7 @@
     }
   };
 
-  var sdkversion_placeholder$4 = '1.25.1';
+  var sdkversion_placeholder$4 = '1.25.2';
 
   function wrapPluginInitFn$3(plugin, name, lifeCycle) {
     if (name) {
@@ -9153,7 +9152,7 @@
   }
   var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$5 = '1.25.1';
+  var sdkversion_placeholder$5 = '1.25.2';
 
   function wrapPluginInitFn$4(plugin, name, lifeCycle) {
     if (name) {
@@ -9348,7 +9347,7 @@
 
   var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-  var sdkversion_placeholder$6 = '1.25.1';
+  var sdkversion_placeholder$6 = '1.25.2';
 
   function wrapPluginInitFn$5(plugin, name, lifeCycle) {
     if (name) {
@@ -9634,7 +9633,7 @@
   };
   var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-  var sdkversion_placeholder$7 = '1.25.1';
+  var sdkversion_placeholder$7 = '1.25.2';
 
   function wrapPluginInitFn$6(plugin, name, lifeCycle) {
     if (name) {
@@ -9761,7 +9760,7 @@
   }
   var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$8 = '1.25.1';
+  var sdkversion_placeholder$8 = '1.25.2';
 
   function wrapPluginInitFn$7(plugin, name, lifeCycle) {
     if (name) {
@@ -9900,7 +9899,7 @@
   }
   var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$9 = '1.25.1';
+  var sdkversion_placeholder$9 = '1.25.2';
 
   function wrapPluginInitFn$8(plugin, name, lifeCycle) {
     if (name) {
@@ -10064,7 +10063,7 @@
           _this.current_page_url = _this.url;
           _this.pageStartHandler();
           _this.hiddenStatusHandler();
-          _this.startHeartBeatInterval();
+          _this.addHeartBeatInterval();
         }
       });
   };
@@ -10086,7 +10085,7 @@
       visible: function() {
         _this.pageStartHandler();
         _this.hiddenStatusHandler();
-        _this.startHeartBeatInterval();
+        _this.addHeartBeatInterval();
       },
       hidden: function() {
         _this.url = location.href;
@@ -10147,7 +10146,7 @@
     this.sd.store.saveObjectVal(this.storage_name + '-' + this.page_id, data);
   };
   PageLeave.prototype.delHeartBeatData = function(storage_key) {
-    this._.localStorage.remove(storage_key || this.storage_name + '-' + this.page_id);
+    this._.localStorage.isSupport() && this._.localStorage.remove(storage_key || this.storage_name + '-' + this.page_id);
   };
   PageLeave.prototype.reissueHeartBeatData = function() {
     var storage_length = window.localStorage.length;
@@ -10192,7 +10191,7 @@
   var pageLeave = new PageLeave();
   var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-  var sdkversion_placeholder$a = '1.25.1';
+  var sdkversion_placeholder$a = '1.25.2';
 
   function wrapPluginInitFn$9(plugin, name, lifeCycle) {
     if (name) {
@@ -10397,7 +10396,7 @@
     }
   };
 
-  var sdkversion_placeholder$b = '1.25.1';
+  var sdkversion_placeholder$b = '1.25.2';
 
   function wrapPluginInitFn$a(plugin, name, lifeCycle) {
     if (name) {
@@ -10430,7 +10429,7 @@
 
   var index$a = createPlugin$a(instance);
 
-  var sdkversion_placeholder$c = '1.25.1';
+  var sdkversion_placeholder$c = '1.25.2';
 
   function wrapPluginInitFn$b(plugin, name, lifeCycle) {
     if (name) {
@@ -10494,7 +10493,7 @@
   };
   var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-  var sdkversion_placeholder$d = '1.25.1';
+  var sdkversion_placeholder$d = '1.25.2';
 
   function wrapPluginInitFn$c(plugin, name, lifeCycle) {
     if (name) {
@@ -10731,7 +10730,7 @@
   var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
   var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder$e = '1.25.1';
+  var sdkversion_placeholder$e = '1.25.2';
 
   function wrapPluginInitFn$d(plugin, name, lifeCycle) {
     if (name) {
@@ -10795,7 +10794,7 @@
   };
   var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$f = '1.25.1';
+  var sdkversion_placeholder$f = '1.25.2';
 
   function wrapPluginInitFn$e(plugin, name, lifeCycle) {
     if (name) {
@@ -10848,7 +10847,7 @@
 
   var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-  var sdkversion_placeholder$g = '1.25.1';
+  var sdkversion_placeholder$g = '1.25.2';
 
   function wrapPluginInitFn$f(plugin, name, lifeCycle) {
     if (name) {
@@ -10949,7 +10948,7 @@
   };
   var index$f = createPlugin$f(DebugSender);
 
-  var sdkversion_placeholder$h = '1.25.1';
+  var sdkversion_placeholder$h = '1.25.2';
 
   function wrapPluginInitFn$g(plugin, name, lifeCycle) {
     if (name) {
@@ -11031,7 +11030,7 @@
 
   var index$g = createPlugin$g(JsappSender);
 
-  var sdkversion_placeholder$i = '1.25.1';
+  var sdkversion_placeholder$i = '1.25.2';
 
   function wrapPluginInitFn$h(plugin, name, lifeCycle) {
     if (name) {
@@ -11119,7 +11118,7 @@
   };
   var index$h = createPlugin$h(BatchSender);
 
-  var sdkversion_placeholder$j = '1.25.1';
+  var sdkversion_placeholder$j = '1.25.2';
 
   function wrapPluginInitFn$i(plugin, name, lifeCycle) {
     if (name) {
@@ -11205,7 +11204,7 @@
 
   var index$i = createPlugin$i(BeaconSender);
 
-  var sdkversion_placeholder$k = '1.25.1';
+  var sdkversion_placeholder$k = '1.25.2';
 
   function wrapPluginInitFn$j(plugin, name, lifeCycle) {
     if (name) {
@@ -11291,7 +11290,7 @@
 
   var index$j = createPlugin$j(AjaxSender);
 
-  var sdkversion_placeholder$l = '1.25.1';
+  var sdkversion_placeholder$l = '1.25.2';
 
   function wrapPluginInitFn$k(plugin, name, lifeCycle) {
     if (name) {
