@@ -35,4 +35,4 @@ sensors.init();
 ``` 
 
 ### 2. 其他方式  
-参考 [其他插件方式](https://manual.sensorsdata.cn/pages/viewpage.action?pageId=103022598)
+参考 [其他插件方式](https://github.com/sensorsdata/sa-sdk-javascript/blob/master/dist/web/plugin/other-plugin-readme.md)

@@ -8,10 +8,41 @@ Web JS SDK 支持针对特定渠道进行更精准的渠道匹配和向广告平
 
 ### 效果
 可以使用 `sensors.track(eventName)` 来对特定的事件进行渠道追溯。
-![image](https://manual.sensorsdata.cn/kbs/files/latest/22258345/52297738/1/1638338651000/image2021-12-1_14-4-10.png)
 
 >- 从站外进入渠道推广落地页、首次触发回传事件，记录事件并进行渠道匹配和回传。
->- 非首次触发回传事件，记录事件但不会进行渠道匹配及回传，直到下一次重新从站外进入渠道推广落地页，重新进行首次计算。
+>- 非首次触发回传事件，记录事件但不会进行渠道匹配及回传，直到下一次重新从站外进入渠道推广落地页，重新进行首次计算。 
+
+示例数据： 
+
+```js
+{
+    "distinct_id": "17838fda69c577-06233a8ff9a91a-7d7d326e-181760-17838fda69db9c",
+    "lib": {
+        "$lib": "js"
+        "$lib_method": "code"
+        "$lib_version": "1.16.6"
+    },
+    "properties": {
+        "$timezone_offset": -480,
+        "$screen_height": 568,
+        "$screen_width": 320,
+        "$lib": "js",
+        "$lib_version": "1.16.6",
+        "$latest_traffic_source_type":"直接流量",
+        "$latest_search_keyword":"未取到值_直接打开",
+        "$latest_referrer":"",
+        "_sa_channel_landing _url": "http://www.ls.com:8080/sdkCode/intergrated-test/sakchannel/index.html?channel_id=27878&sat_cf=1234",
+        "$is_channel_callback_event": true,
+        "$is_first_day":true,
+        "$url": "http://www.ls.com:8080/sdkCode/intergrated-test/sdkchannel/index.html?channel_id=27878&sat_cf=1234",
+        "$title": "test channel"
+    },
+    "anonymous_id": "17838fda69c577-06233a8f9a91a-7d7d326-181760-17838fda69db9c",
+    "type": "track",
+    "event": "ViewProduct",
+    "_track_id":"435539772"
+}
+```
 
 ## 集成
 ### ES Module 方式
