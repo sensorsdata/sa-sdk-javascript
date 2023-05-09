@@ -8131,6 +8131,14 @@
     var sd = null;
     var _ = null;
 
+    function sdWarn() {
+      sd.logger && sd.logger.msg.apply(sd.logger, arguments).level('warn').log();
+    }
+
+    function sdError() {
+      sd.logger && sd.logger.msg.apply(sd.logger, arguments).level('error').log();
+    }
+
     var heatmap_render = {
       originalHeatData: null,
       ajaxHeatData: null,
@@ -8483,7 +8491,7 @@
             error: err
           });
         } else {
-          sd.log('缺少web_url');
+          sdError('缺少web_url');
         }
       },
       setNoticeMap: function() {},
@@ -8827,7 +8835,7 @@
             }
           });
         } else {
-          sd.log('缺少web_url');
+          sdError('缺少web_url');
         }
       },
       processOriginalHeatData: function(data) {
@@ -8839,7 +8847,7 @@
               value.ele = ele[0];
             }
           } catch (e) {
-            sd.log('元素类名错误！', e);
+            sdError('元素类名错误！', e);
           }
         });
         return result;
@@ -9299,7 +9307,7 @@
               if (_.isObject(res) && res.error) {
                 obj.error(res);
               } else {
-                sd.log('AJAX 请求失败，转换为 JSONP 请求', res);
+                sdWarn('AJAX 请求失败，转换为 JSONP 请求', res);
                 _this.jsonp(obj);
               }
             },
@@ -9345,19 +9353,19 @@
                   error({
                     error: 'JSONP 点击数据解析异常'
                   });
-                  sd.log('解析数据异常', data);
+                  sdError('解析数据异常', data);
                 }
               } else {
                 if (data && _.isObject(data) && data.is_success === false) {
                   error({
                     error: data.error_msg
                   });
-                  sd.log('获取数据失败', data.error_msg);
+                  sdError('获取数据失败', data.error_msg);
                 } else {
                   error({
                     error: 'JSONP 数据结构异常'
                   });
-                  sd.log('获取数据异常', data);
+                  sdError('获取数据异常', data);
                 }
               }
             },
@@ -9466,11 +9474,11 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.25.3';
+      sd.heatmap_version = '1.25.4';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {
-          sd.log('选择器错误', val);
+          sdError('选择器错误', val);
           return [];
         }
         var sp = val.split(' ');
@@ -9488,7 +9496,7 @@
         try {
           return document.querySelectorAll(val);
         } catch (e) {
-          sd.log('错误', val);
+          sdError('错误', val);
           return [];
         }
       };

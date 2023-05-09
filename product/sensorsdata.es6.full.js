@@ -2954,6 +2954,69 @@ var W = {
   xhr: xhr
 };
 
+var logWriters = [];
+var saLogger = {
+  appendWriter: function(writer) {
+    logWriters.push(writer);
+  },
+  msg: function() {
+    var logCfg = {
+      module: '',
+      level: 'log',
+      brand: 'web-sdk',
+      content: null
+    };
+
+    logCfg.content = Array.prototype.slice.call(arguments);
+
+    var logObj = {
+      module: function(m) {
+        if (isString(m)) {
+          logCfg.module = m;
+        }
+        return this;
+      },
+      level: function(l) {
+        if (isString(l)) {
+          logCfg.level = l;
+        }
+        return this;
+      },
+      brand: function(b) {
+        if (isString(b)) {
+          logCfg.brand = b;
+        }
+        return this;
+      },
+      log: function() {
+        if (logCfg.content && logCfg.content.length) {
+          for (var i = 0; i < logWriters.length; i++) {
+            if (typeof logWriters[i] === 'function') {
+              try {
+                logWriters[i].call(null, logCfg);
+              } catch (e) {}
+            }
+          }
+        }
+        return this;
+      }
+    };
+    return logObj;
+  }
+};
+
+function sdLog() {
+  saLogger.msg.apply(saLogger, arguments).log();
+}
+
+function sdWarn() {
+  saLogger.msg.apply(saLogger, arguments).level('warn').log();
+}
+
+function sdError() {
+  saLogger.msg.apply(saLogger, arguments).level('error').log();
+}
+
 var sdPara = {};
 
 var defaultPara = {
@@ -3003,40 +3066,8 @@ var defaultPara = {
   app_js_bridge: false
 };
 
-function sdLog() {
-  if ((_sessionStorage.isSupport() && sessionStorage.getItem('sensorsdata_jssdk_debug') === 'true') || sdPara.show_log) {
-    if (isObject(arguments[0]) && (sdPara.show_log === true || sdPara.show_log === 'string' || sdPara.show_log === false)) {
-      arguments[0] = formatJsonString(arguments[0]);
-    }
-
-    if (typeof console === 'object' && console.log) {
-      try {
-        return console.log.apply(console, arguments);
-      } catch (e) {
-        console.log(arguments[0]);
-      }
-    }
-  }
-}
-
-function enableLocalLog() {
-  if (_sessionStorage.isSupport()) {
-    try {
-      sessionStorage.setItem('sensorsdata_jssdk_debug', 'true');
-    } catch (e) {
-      console.log('enableLocalLog error: ' + e.message);
-    }
-  }
-}
-
-function disableLocalLog() {
-  if (_sessionStorage.isSupport()) {
-    sessionStorage.removeItem('sensorsdata_jssdk_debug');
-  }
-}
-
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.25.3';
+var sdkversion_placeholder = '1.25.4';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -3336,14 +3367,14 @@ var debug = {
           return false;
         }
       } catch (error) {
-        sdLog('不支持 _.URL 方法');
+        sdWarn('不支持 _.URL 方法');
         return false;
       }
       return true;
     },
     serverUrl: function() {
       if (isString(sdPara.server_url) && sdPara.server_url !== '' && !this.protocolIsSame(sdPara.server_url, location.href)) {
-        sdLog('SDK 检测到您的数据发送地址和当前页面地址的协议不一致，建议您修改成一致的协议。\n因为：1、https 下面发送 http 的图片请求会失败。2、http 页面使用 https + ajax 方式发数据，在 ie9 及以下会丢失数据。');
+        sdWarn('SDK 检测到您的数据发送地址和当前页面地址的协议不一致，建议您修改成一致的协议。\n因为：1、https 下面发送 http 的图片请求会失败。2、http 页面使用 https + ajax 方式发数据，在 ie9 及以下会丢失数据。');
       }
     },
     ajax: function(url) {
@@ -3351,7 +3382,7 @@ var debug = {
         return false;
       }
       if (isString(url) && url !== '' && !this.protocolIsSame(url, location.href)) {
-        sdLog('SDK 检测到您的数据发送地址和当前页面地址的协议不一致，建议您修改成一致的协议。因为 http 页面使用 https + ajax 方式发数据，在 ie9 及以下会丢失数据。');
+        sdWarn('SDK 检测到您的数据发送地址和当前页面地址的协议不一致，建议您修改成一致的协议。因为 http 页面使用 https + ajax 方式发数据，在 ie9 及以下会丢失数据。');
       }
     }
   }
@@ -3424,7 +3455,7 @@ function getNewUserFlagKey(name_prefix, url) {
     try {
       sub = _URL(url).hostname;
     } catch (e) {
-      sdLog(e);
+      sdError(e);
     }
     if (typeof sub === 'string' && sub !== '') {
       sub = 'sajssdk_2015_' + sdPara.sdk_id + name_prefix + '_' + sub.replace(/\./g, '_');
@@ -3695,12 +3726,12 @@ function parseSuperProperties(data) {
         try {
           obj[key] = objVal(copyData);
           if (isFunction(obj[key])) {
-            sdLog('您的属性- ' + key + ' 格式不满足要求，我们已经将其删除');
+            sdWarn('您的属性- ' + key + ' 格式不满足要求，我们已经将其删除');
             delete obj[key];
           }
         } catch (e) {
           delete obj[key];
-          sdLog('您的属性- ' + key + ' 抛出了异常，我们已经将其删除');
+          sdWarn('您的属性- ' + key + ' 抛出了异常，我们已经将其删除');
         }
       }
     });
@@ -3897,7 +3928,7 @@ BatchSend.prototype = {
     if ((isString(sdPara.server_url) && sdPara.server_url !== '') || (isArray(sdPara.server_url) && sdPara.server_url.length)) {
       this.serverUrl = isArray(sdPara.server_url) ? sdPara.server_url[0] : sdPara.server_url;
     } else {
-      return sd.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
+      return sdError('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
     }
   },
 
@@ -4329,7 +4360,7 @@ var store = {
       try {
         sub = _URL(location.href).hostname;
       } catch (e) {
-        sd.log(e);
+        sdWarn(e);
       }
       if (typeof sub === 'string' && sub !== '') {
         sub = 'sa_jssdk_2015_' + sd.para.sdk_id + sub.replace(/\./g, '_');
@@ -4459,34 +4490,34 @@ var store = {
 
 var checkLog = {
   string: function(str) {
-    sdLog(str + ' must be string');
+    sdWarn(str + ' must be string');
   },
   emptyString: function(str) {
-    sdLog(str + '\'s is empty');
+    sdWarn(str + '\'s is empty');
   },
   regexTest: function(str) {
-    sdLog(str + ' is invalid');
+    sdWarn(str + ' is invalid');
   },
   idLength: function(str) {
-    sdLog(str + ' length is longer than ' + sdPara.max_id_length);
+    sdWarn(str + ' length is longer than ' + sdPara.max_id_length);
   },
   keyLength: function(str) {
-    sdLog(str + ' length is longer than ' + sdPara.max_key_length);
+    sdWarn(str + ' length is longer than ' + sdPara.max_key_length);
   },
   stringLength: function(str) {
-    sdLog(str + ' length is longer than ' + sdPara.max_string_length);
+    sdWarn(str + ' length is longer than ' + sdPara.max_string_length);
   },
   voidZero: function(str) {
-    sdLog(str + '\'s is undefined');
+    sdWarn(str + '\'s is undefined');
   },
   reservedLoginId: function(str) {
-    sdLog(str + ' is invalid');
+    sdWarn(str + ' is invalid');
   },
   reservedBind: function(str) {
-    sdLog(str + ' is invalid');
+    sdWarn(str + ' is invalid');
   },
   reservedUnbind: function(str) {
-    sdLog(str + ' is invalid');
+    sdWarn(str + ' is invalid');
   }
 };
 var ruleOption = {
@@ -4630,7 +4661,7 @@ var checkOption = {
         }, onComplete);
       });
     } else if (ruleOption.voidZero(p)) {
-      sdLog('properties可以没有，但有的话必须是对象');
+      sdWarn('properties可以没有，但有的话必须是对象');
     }
     return true;
   },
@@ -4638,7 +4669,7 @@ var checkOption = {
     if (!(p === undefined || !isObject(p) || isEmptyObject(p))) {
       this.properties.call(this, p);
     } else {
-      sdLog('properties必须是对象');
+      sdWarn('properties必须是对象');
     }
     return true;
   },
@@ -4771,7 +4802,7 @@ function strip_sa_properties(p, ignores) {
           try {
             temp.push(JSON.stringify(arrv));
           } catch (e) {
-            sdLog('您的数据-', k, v, '数组里值有错误,已将其删除');
+            sdWarn('您的数据-', k, v, '数组里值有错误,已将其删除');
           }
         }
       });
@@ -4785,10 +4816,10 @@ function strip_sa_properties(p, ignores) {
         p[k] = JSON.stringify(v);
       } catch (e) {
         delete p[k];
-        sdLog('您的数据-', k, v, '数据值有错误，已将其删除');
+        sdWarn('您的数据-', k, v, '数据值有错误，已将其删除');
       }
     } else if (!(isString(v) || isNumber(v) || isDate(v) || isBoolean(v) || isArray(v) || isFunction(v) || k === '$option' || isIgnoreIllegal)) {
-      sdLog('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
+      sdWarn('您的数据-', k, v, '-格式不满足要求，我们已经将其删除');
       delete p[k];
     }
   });
@@ -4797,7 +4828,7 @@ function strip_sa_properties(p, ignores) {
 
 function formatString(str, maxLen) {
   if (isNumber(maxLen) && str.length > maxLen) {
-    sdLog('字符串长度超过限制，已经做截取--' + str);
+    sdWarn('字符串长度超过限制，已经做截取--' + str);
     return str.slice(0, maxLen);
   } else {
     return str;
@@ -4819,9 +4850,9 @@ function filterReservedProperties(obj, ignore) {
     }
     if (index < 3) {
       delete obj[key];
-      sdLog('您的属性- ' + key + '是保留字段，我们已经将其删除');
+      sdWarn('您的属性- ' + key + '是保留字段，我们已经将其删除');
     } else {
-      sdLog('您的属性- ' + key + '是保留字段，请避免其作为属性名');
+      sdWarn('您的属性- ' + key + '是保留字段，请避免其作为属性名');
     }
   });
 }
@@ -4944,7 +4975,7 @@ vtrackBase.initUrl = function() {
   };
   var serverParse;
   if (!isHttpUrl(sd.para.server_url)) {
-    sd.log('----vcollect---server_url必须为有效 URL 字符串');
+    sdError('----vcollect---server_url必须为有效 URL 字符串');
     return false;
   }
   try {
@@ -4952,7 +4983,7 @@ vtrackBase.initUrl = function() {
     url_info.server_url.project = serverParse.searchParams.get('project') || 'default';
     url_info.server_url.host = serverParse.host;
   } catch (error) {
-    sd.log('----vcollect---server_url解析异常', error);
+    sdError('----vcollect---server_url解析异常', error);
     return false;
   }
 
@@ -4962,7 +4993,7 @@ vtrackBase.initUrl = function() {
     url_info.page_url.host = urlParse.hostname;
     url_info.page_url.pathname = urlParse.pathname;
   } catch (error) {
-    sd.log('----vcollect---页面地址解析异常', error);
+    sdError('----vcollect---页面地址解析异常', error);
     return false;
   }
   return url_info;
@@ -5084,7 +5115,7 @@ vtrackBase.getPropElInLi = function(li, list_selector) {
       return null;
     }
   } else {
-    sd.log('----custom---获取同级属性元素失败，selector信息异常', li_selector, list_selector);
+    sdWarn('----custom---获取同级属性元素失败，selector信息异常', li_selector, list_selector);
     return null;
   }
 };
@@ -5094,7 +5125,7 @@ vtrackBase.getProp = function(propConf, data) {
     return false;
   }
   if (!(isString(propConf.name) && propConf.name.length > 0)) {
-    sd.log('----vcustom----属性名不合法,属性抛弃', propConf.name);
+    sdWarn('----vcustom----属性名不合法,属性抛弃', propConf.name);
     return false;
   }
 
@@ -5112,11 +5143,11 @@ vtrackBase.getProp = function(propConf, data) {
         var closeli = sd.heatmap.getClosestLi(clickTarget);
         el = vtrackBase.getPropElInLi(closeli, propConf.list_selector);
       } else {
-        sd.log('----vcustom----点击元素获取异常，属性抛弃', propConf.name);
+        sdWarn('----vcustom----点击元素获取异常，属性抛弃', propConf.name);
         return false;
       }
     } else {
-      sd.log('----vcustom----属性配置异常，属性抛弃', propConf.name);
+      sdWarn('----vcustom----属性配置异常，属性抛弃', propConf.name);
       return false;
     }
 
@@ -5132,7 +5163,7 @@ vtrackBase.getProp = function(propConf, data) {
         value = getElementContent$1(el, el.tagName.toLowerCase());
       }
     } else {
-      sd.log('----vcustom----属性元素获取失败，属性抛弃', propConf.name);
+      sdWarn('----vcustom----属性元素获取失败，属性抛弃', propConf.name);
       return false;
     }
 
@@ -5140,16 +5171,16 @@ vtrackBase.getProp = function(propConf, data) {
       try {
         regResult = new RegExp(propConf.regular).exec(value);
       } catch (error) {
-        sd.log('----vcustom----正则处理失败，属性抛弃', propConf.name);
+        sdWarn('----vcustom----正则处理失败，属性抛弃', propConf.name);
         return false;
       }
 
       if (regResult === null) {
-        sd.log('----vcustom----属性规则处理，未匹配到结果,属性抛弃', propConf.name);
+        sdWarn('----vcustom----属性规则处理，未匹配到结果,属性抛弃', propConf.name);
         return false;
       } else {
         if (!(isArray(regResult) && isString(regResult[0]))) {
-          sd.log('----vcustom----正则处理异常，属性抛弃', propConf.name, regResult);
+          sdWarn('----vcustom----正则处理异常，属性抛弃', propConf.name, regResult);
           return false;
         }
         value = regResult[0];
@@ -5160,20 +5191,20 @@ vtrackBase.getProp = function(propConf, data) {
       result[propConf.name] = value;
     } else if (propConf.type === 'NUMBER') {
       if (value.length < 1) {
-        sd.log('----vcustom----未获取到数字内容，属性抛弃', propConf.name, value);
+        sdWarn('----vcustom----未获取到数字内容，属性抛弃', propConf.name, value);
         return false;
       }
       if (!isNaN(Number(value))) {
         result[propConf.name] = Number(value);
       } else {
-        sd.log('----vcustom----数字类型属性转换失败，属性抛弃', propConf.name, value);
+        sdWarn('----vcustom----数字类型属性转换失败，属性抛弃', propConf.name, value);
         return false;
       }
     }
 
     return result;
   } else {
-    sd.log('----vcustom----属性不支持此获取方式', propConf.name, propConf.method);
+    sdError('----vcustom----属性不支持此获取方式', propConf.name, propConf.method);
     return false;
   }
 };
@@ -5279,7 +5310,7 @@ var vapph5CustomProp = {
       try {
         data = JSON.parse(base64Decode(data));
       } catch (error) {
-        sd.log('getJSVisualProperties data parse error!');
+        sdError('getJSVisualProperties data parse error!');
       }
       if (isObject(data)) {
         var confs = data.sensorsdata_js_visual_properties;
@@ -5339,7 +5370,7 @@ var vapph5collect = {
         try {
           data = JSON.parse(base64Decode(data));
         } catch (error) {
-          sd.log('updateH5VisualConfig result parse error！');
+          sdError('updateH5VisualConfig result parse error！');
           return;
         }
         _this.updateConfigs(data);
@@ -5353,7 +5384,7 @@ var vapph5collect = {
         result = JSON.parse(base64Decode(result));
       } catch (error) {
         result = null;
-        sd.log('getAppVisualConfig result parse error！');
+        sdError('getAppVisualConfig result parse error！');
       }
     }
     return result;
@@ -5482,7 +5513,7 @@ var vtrackcollect = {
         apiParse._values.Path = '/config/visualized/Web.conf';
         info.api_url = apiParse.getUrl();
       } catch (error) {
-        sd.log('----vtrackcollect---API地址解析异常', error);
+        sdError('----vtrackcollect---API地址解析异常', error);
         return false;
       }
       this.url_info = info;
@@ -5498,7 +5529,7 @@ var vtrackcollect = {
       this.storageEnable = false;
     }
     if (!this.initUrl()) {
-      sd.log('----vtrackcustom----初始化失败，url信息解析失败');
+      sdError('----vtrackcustom----初始化失败，url信息解析失败');
       return false;
     }
 
@@ -5550,7 +5581,7 @@ var vtrackcollect = {
       } else if (code === 304) {
         serverData = _this.config;
       } else {
-        sd.log('----vtrackcustom----数据异常', code);
+        sdError('----vtrackcustom----数据异常', code);
         _this.updateConfig(serverData);
       }
       _this.updateStorage(serverData);
@@ -5558,7 +5589,7 @@ var vtrackcollect = {
     };
     var error = function(err) {
       _this.update_time = new Date().getTime();
-      sd.log('----vtrackcustom----配置拉取失败', err);
+      sdError('----vtrackcustom----配置拉取失败', err);
       _this.setNextFetch();
     };
     this.sendRequest(success, error);
@@ -6255,7 +6286,7 @@ var heatmap = {
         return true;
       }
     } catch (error) {
-      sd.log(error);
+      sdError('isCollectableDiv:' + error);
     }
     return false;
   },
@@ -6273,7 +6304,7 @@ var heatmap = {
         return this.getCollectableParent(parent, isVisualMode);
       }
     } catch (error) {
-      sd.log(error);
+      sdError('getCollectableParent:' + error);
     }
     return false;
   },
@@ -6649,7 +6680,7 @@ var commonWays = {
         } else if (isObject(sd.modules) && sd.modules[k]) {
           v(window.SensorsDataWebJSSDKPlugin[k]);
         } else {
-          sd.log(k + 'is not found,please check sensorsdata documents.');
+          sdWarn(k + 'is not found,please check sensorsdata documents.');
         }
       }
     });
@@ -6740,11 +6771,11 @@ function loginBody(obj, sendSignup) {
   if (!check({
       distinct_id: id
     })) {
-    sdLog('login id is invalid');
+    sdError('login id is invalid');
     return false;
   }
   if (id === store.getOriginDistinctId() && !firstId) {
-    sdLog('login id is equal to distinct_id');
+    sdError('login id is equal to distinct_id');
     return false;
   }
   if (isObject(store._state.identities) && store._state.identities.hasOwnProperty(name) && id === store._state.first_id) {
@@ -6907,7 +6938,7 @@ function initPara(para) {
       } else if (isObject(sd.para.heatmap.collect_tags.div)) {
         if (sd.para.heatmap.collect_tags.div.ignore_tags) {
           if (!isArray(sd.para.heatmap.collect_tags.div.ignore_tags)) {
-            sd.log('ignore_tags 参数必须是数组格式');
+            sdWarn('ignore_tags 参数必须是数组格式');
             sd.para.heatmap.collect_tags.div.ignore_tags = ignore_tags_default;
           }
         } else {
@@ -6979,24 +7010,23 @@ function quick() {
   } else if (typeof arg0 === 'function') {
     arg0.apply(sd, arg1);
   } else {
-    sd.log('quick方法中没有这个功能' + arg[0]);
+    sdWarn('quick方法中没有这个功能' + arg[0]);
   }
 }
 
 var nonameCount = 1;
 
 function use(plugin, option) {
-  var log = sd.log || function() {};
   if (!isString(plugin) && !isObject(plugin)) {
-    log('use\'s first arguments must be string or object.');
-    return false;
+    sdError('use\'s first arguments must be string or object.');
+    return;
   }
 
   var curPlugin;
   if (isObject(plugin)) {
     var m = sd.modules && sd.modules[plugin.plugin_name];
     if (m && m !== plugin) {
-      log(plugin.plugin_name + ' plugin_name is conflict with loaded plugin, sdk uses loaded plugin.');
+      sdWarn(plugin.name + ' is conflict with builtin plugin, and sdk uses builtin plugin.');
     }
     curPlugin = m || plugin;
   }
@@ -7010,9 +7040,8 @@ function use(plugin, option) {
       curPlugin = window.sensorsDataAnalytic201505.modules[plugin];
     }
   }
-
   if (!curPlugin || !isFunction(curPlugin.init)) {
-    log((plugin.plugin_name || plugin) + ' is not found or it\'s not a standard plugin. Please check sensorsdata official documents.');
+    sdWarn((plugin.plugin_name || plugin) + ' is not found or it\'s not a standard plugin. Please check sensorsdata official documents.');
     return curPlugin;
   }
 
@@ -7021,13 +7050,13 @@ function use(plugin, option) {
   }
 
   if (!curPlugin.plugin_name) {
-    log('warning: invalid plugin, plugin_name required.');
+    sdWarn('warning: invalid plugin, plugin_name required.');
   }
 
   if (!curPlugin.plugin_version) {
-    log('warning: invalid plugin, plugin version required.');
+    sdWarn('warning: invalid plugin, plugin version required.');
   } else if (curPlugin.plugin_version !== sd.lib_version) {
-    log('warning: plugin version not match SDK version. plugin may not work correctly. ');
+    sdWarn('warning: plugin version not match SDK version. plugin may not work correctly. ');
   }
 
   function initPlugin() {
@@ -7183,7 +7212,7 @@ function appendProfile(p, c) {
         p[key] = value;
       } else {
         delete p[key];
-        sd.log('appendProfile属性的值必须是字符串或者数组');
+        sdWarn('appendProfile属性的值必须是字符串或者数组');
       }
     });
     if (!isEmptyObject(p)) {
@@ -7224,7 +7253,7 @@ function incrementProfile(p, c) {
         c
       );
     } else {
-      sd.log('profile_increment的值只能是数字');
+      sdError('profile_increment的值只能是数字');
     }
   }
 }
@@ -7251,7 +7280,7 @@ function unsetProfile(p, c) {
       if (isString(v)) {
         temp[v] = true;
       } else {
-        sd.log('profile_unset给的数组里面的值必须时string,已经过滤掉', v);
+        sdWarn('profile_unset给的数组里面的值必须时string,已经过滤掉', v);
       }
     });
     saEvent.send({
@@ -7261,7 +7290,7 @@ function unsetProfile(p, c) {
       c
     );
   } else {
-    sd.log('profile_unset的参数是数组');
+    sdError('profile_unset的参数必须是数组');
   }
 }
 
@@ -7330,7 +7359,7 @@ function registerPage(obj) {
     })) {
     extend(pageInfo.currentProps, obj);
   } else {
-    sd.log('register输入的参数有误');
+    sdError('register输入的参数有误');
   }
 }
 
@@ -7359,7 +7388,7 @@ function register(props) {
     })) {
     store.setProps(props);
   } else {
-    sd.log('register输入的参数有误');
+    sdError('register输入的参数有误');
   }
 }
 
@@ -7369,7 +7398,7 @@ function registerOnce(props) {
     })) {
     store.setPropsOnce(props);
   } else {
-    sd.log('registerOnce输入的参数有误');
+    sdError('registerOnce输入的参数有误');
   }
 }
 
@@ -7380,7 +7409,7 @@ function registerSession(props) {
     })) {
     store.setSessionProps(props);
   } else {
-    sd.log('registerSession输入的参数有误');
+    sdError('registerSession输入的参数有误');
   }
 }
 
@@ -7391,7 +7420,7 @@ function registerSessionOnce(props) {
     })) {
     store.setSessionPropsOnce(props);
   } else {
-    sd.log('registerSessionOnce输入的参数有误');
+    sdError('registerSessionOnce输入的参数有误');
   }
 }
 
@@ -7524,11 +7553,9 @@ var functions = {
   logout: logout,
   getPresetProperties: getPresetProperties,
   readyState: readyState,
-  log: sdLog,
   debug: debug,
   on: eventEmitterFacade,
-  disableLocalLog: disableLocalLog,
-  enableLocalLog: enableLocalLog
+  log: sdLog
 };
 
 logger.setup(sdLog);
@@ -7577,7 +7604,7 @@ var bridge = {
     }
 
     if (sd.para.app_js_bridge.is_send === false) {
-      sd.log('设置了 is_send:false,如果打通失败，数据将被丢弃!');
+      sdWarn('设置了 is_send:false,如果打通失败，数据将被丢弃!');
     }
   },
   app_js_bridge_v1: function() {
@@ -7686,7 +7713,7 @@ function SDKJSBridge(callType) {
 
       return that.appCallJsCallback && that.appCallJsCallback.call(null, data);
     } catch (error) {
-      console.log('app 回调 js 异常', data);
+      sdError('app 回调 js 异常', data);
     }
   };
 }
@@ -7761,9 +7788,9 @@ function handleCommands(appData) {
       return sd.bridge.activeBridge.handleCommand(appData);
     }
   } catch (e) {
-    sd.log('Error: handle command exception:' + e);
+    sdError('Error: handle command exception:' + e);
   }
-  sd.log('数据发往App失败，App没有暴露bridge,type:' + appData.callType);
+  sdError('数据发往App失败，App没有暴露bridge,type:' + appData.callType);
   return false;
 }
 
@@ -7778,7 +7805,7 @@ function validateAppUrl(appUrl) {
       obj.hostname = url.hostname;
       obj.project = url.searchParams.get('project') || 'default';
     } catch (e) {
-      sd.log(e);
+      sdError('validateAppUrl:' + e);
     }
     return obj;
   }
@@ -7999,7 +8026,7 @@ var heatmapMode = {
               sa_jssdk_heatmap_render(sd, data, type, url);
               if (typeof console === 'object' && typeof console.log === 'function') {
                 if (!(sd.heatmap_version && sd.heatmap_version === sd.lib_version)) {
-                  console.log('heatmap.js与sensorsdata.js版本号不一致，可能存在风险!');
+                  sdWarn('heatmap.js与sensorsdata.js版本号不一致，可能存在风险!');
                 }
               }
             }
@@ -8010,7 +8037,7 @@ var heatmapMode = {
         url: sd.para.heatmap_url
       });
     } else {
-      sd.log('没有指定heatmap_url的路径');
+      sdError('没有指定heatmap_url的路径');
     }
   },
   isStorageHasKeyword: function() {
@@ -8090,7 +8117,7 @@ var vtrackMode = {
       if (isHttpUrl(value)) {
         return removeScriptProtocol(value);
       } else {
-        sd.log('可视化模式检测 URL 失败');
+        sdError('可视化模式检测 URL 失败');
         return false;
       }
     }
@@ -8140,7 +8167,7 @@ var vtrackMode = {
         );
       }
     } catch (e) {
-      sd.log('浏览器版本过低，不支持 postMessage API');
+      sdError('浏览器版本过低，不支持 postMessage API');
     }
   },
   notifyUser: function() {
@@ -8331,11 +8358,7 @@ function checkState() {
       }
 
       if (!sd.readyState.getState()) {
-        try {
-          console.error('请先初始化神策JS SDK');
-        } catch (e) {
-          sd.log(e);
-        }
+        sdError('请先初始化神策JS SDK');
         return;
       }
       return oldFunc.apply(sd, arguments);
@@ -8407,7 +8430,7 @@ function Stage(processDef) {
 
 Stage.prototype.process = function(proc, data) {
   if (!proc || !(proc in this.processDef)) {
-    sdLog('process [' + proc + '] is not supported');
+    sdError('process [' + proc + '] is not supported');
     return;
   }
 
@@ -8429,7 +8452,7 @@ Stage.prototype.process = function(proc, data) {
           return;
         }
       } catch (e) {
-        sdLog('interceptor error:' + e);
+        sdError('interceptor error:' + e);
       }
     }
   }
@@ -8649,6 +8672,8 @@ function implementCore(isRealImp) {
   for (var f in imp) {
     sd[f] = imp[f];
   }
+  sd.logger = saLogger;
+  sd.log = sdLog;
   sd._ = _;
   sd.on = eventEmitterFacade;
   sd.ee = ee;
@@ -8692,7 +8717,7 @@ if (is_compliance_enabled) {
   checkState();
 }
 
-var sdkversion_placeholder$1 = '1.25.3';
+var sdkversion_placeholder$1 = '1.25.4';
 
 function wrapPluginInitFn(plugin, name, lifeCycle) {
   if (name) {
@@ -8701,6 +8726,7 @@ function wrapPluginInitFn(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -8712,6 +8738,28 @@ function wrapPluginInitFn(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin(plugin, name, lifeCycle) {
@@ -8756,7 +8804,7 @@ var userEncryptDefault = {
 
 var index = createPlugin(userEncryptDefault);
 
-var sdkversion_placeholder$2 = '1.25.3';
+var sdkversion_placeholder$2 = '1.25.4';
 
 function wrapPluginInitFn$1(plugin, name, lifeCycle) {
   if (name) {
@@ -8765,6 +8813,7 @@ function wrapPluginInitFn$1(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$1(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -8776,6 +8825,28 @@ function wrapPluginInitFn$1(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$1(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$1(plugin, name, lifeCycle) {
@@ -8865,7 +8936,7 @@ var vbridge$1 = {
   }
 };
 
-var sdkversion_placeholder$3 = '1.25.3';
+var sdkversion_placeholder$3 = '1.25.4';
 
 function wrapPluginInitFn$2(plugin, name, lifeCycle) {
   if (name) {
@@ -8874,6 +8945,7 @@ function wrapPluginInitFn$2(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$2(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -8885,6 +8957,28 @@ function wrapPluginInitFn$2(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$2(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$2(plugin, name, lifeCycle) {
@@ -9014,7 +9108,7 @@ var vbridge$1$1 = {
   }
 };
 
-var sdkversion_placeholder$4 = '1.25.3';
+var sdkversion_placeholder$4 = '1.25.4';
 
 function wrapPluginInitFn$3(plugin, name, lifeCycle) {
   if (name) {
@@ -9023,6 +9117,7 @@ function wrapPluginInitFn$3(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$3(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -9034,6 +9129,28 @@ function wrapPluginInitFn$3(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$3(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$3(plugin, name, lifeCycle) {
@@ -9144,7 +9261,7 @@ function handleCommand$1(request) {
 }
 var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$5 = '1.25.3';
+var sdkversion_placeholder$5 = '1.25.4';
 
 function wrapPluginInitFn$4(plugin, name, lifeCycle) {
   if (name) {
@@ -9153,6 +9270,7 @@ function wrapPluginInitFn$4(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$4(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -9164,6 +9282,28 @@ function wrapPluginInitFn$4(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$4(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$4(plugin, name, lifeCycle) {
@@ -9339,7 +9479,7 @@ var Channel = {
 
 var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-var sdkversion_placeholder$6 = '1.25.3';
+var sdkversion_placeholder$6 = '1.25.4';
 
 function wrapPluginInitFn$5(plugin, name, lifeCycle) {
   if (name) {
@@ -9350,6 +9490,8 @@ function wrapPluginInitFn$5(plugin, name, lifeCycle) {
     var initFn = plugin.init;
 
     plugin.init = function(sd, option) {
+      wrapLogFn$5(sd, plugin, name);
+
       if (sd.readyState && sd.readyState.state >= 3 || !sd.on) {
         return initPlugin();
       }
@@ -9363,6 +9505,28 @@ function wrapPluginInitFn$5(plugin, name, lifeCycle) {
   }
 
   return plugin;
+}
+
+function wrapLogFn$5(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module(name + '' || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$5(plugin, name, lifeCycle) {
@@ -9625,7 +9789,7 @@ var SADeepLink = {
 };
 var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-var sdkversion_placeholder$7 = '1.25.3';
+var sdkversion_placeholder$7 = '1.25.4';
 
 function wrapPluginInitFn$6(plugin, name, lifeCycle) {
   if (name) {
@@ -9634,6 +9798,7 @@ function wrapPluginInitFn$6(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$6(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -9645,6 +9810,28 @@ function wrapPluginInitFn$6(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$6(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$6(plugin, name, lifeCycle) {
@@ -9752,7 +9939,7 @@ function handleCommand$2(request) {
 }
 var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$8 = '1.25.3';
+var sdkversion_placeholder$8 = '1.25.4';
 
 function wrapPluginInitFn$7(plugin, name, lifeCycle) {
   if (name) {
@@ -9761,6 +9948,7 @@ function wrapPluginInitFn$7(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$7(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -9772,6 +9960,28 @@ function wrapPluginInitFn$7(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$7(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$7(plugin, name, lifeCycle) {
@@ -9891,7 +10101,7 @@ function sendData$3(rqData, ctx) {
 }
 var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$9 = '1.25.3';
+var sdkversion_placeholder$9 = '1.25.4';
 
 function wrapPluginInitFn$8(plugin, name, lifeCycle) {
   if (name) {
@@ -9900,6 +10110,7 @@ function wrapPluginInitFn$8(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$8(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -9911,6 +10122,28 @@ function wrapPluginInitFn$8(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$8(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$8(plugin, name, lifeCycle) {
@@ -10183,7 +10416,7 @@ PageLeave.prototype.getPageLeaveProperties = function() {
 var pageLeave = new PageLeave();
 var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-var sdkversion_placeholder$a = '1.25.3';
+var sdkversion_placeholder$a = '1.25.4';
 
 function wrapPluginInitFn$9(plugin, name, lifeCycle) {
   if (name) {
@@ -10192,6 +10425,7 @@ function wrapPluginInitFn$9(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$9(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -10203,6 +10437,28 @@ function wrapPluginInitFn$9(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$9(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$9(plugin, name, lifeCycle) {
@@ -10388,7 +10644,7 @@ RegisterProperties.prototype.hookRegister = function(customFun) {
   }
 };
 
-var sdkversion_placeholder$b = '1.25.3';
+var sdkversion_placeholder$b = '1.25.4';
 
 function wrapPluginInitFn$a(plugin, name, lifeCycle) {
   if (name) {
@@ -10397,6 +10653,7 @@ function wrapPluginInitFn$a(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$a(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -10408,6 +10665,28 @@ function wrapPluginInitFn$a(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$a(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$a(plugin, name, lifeCycle) {
@@ -10421,7 +10700,7 @@ var instance = new RegisterProperties();
 
 var index$a = createPlugin$a(instance);
 
-var sdkversion_placeholder$c = '1.25.3';
+var sdkversion_placeholder$c = '1.25.4';
 
 function wrapPluginInitFn$b(plugin, name, lifeCycle) {
   if (name) {
@@ -10430,6 +10709,7 @@ function wrapPluginInitFn$b(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$b(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -10441,6 +10721,28 @@ function wrapPluginInitFn$b(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$b(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$b(plugin, name, lifeCycle) {
@@ -10485,7 +10787,7 @@ var RegisterPropertyPageHeight = {
 };
 var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-var sdkversion_placeholder$d = '1.25.3';
+var sdkversion_placeholder$d = '1.25.4';
 
 function wrapPluginInitFn$c(plugin, name, lifeCycle) {
   if (name) {
@@ -10494,6 +10796,7 @@ function wrapPluginInitFn$c(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$c(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -10505,6 +10808,28 @@ function wrapPluginInitFn$c(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$c(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$c(plugin, name, lifeCycle) {
@@ -10722,7 +11047,7 @@ siteLinker.init = function(sd, option) {
 var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
 var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder$e = '1.25.3';
+var sdkversion_placeholder$e = '1.25.4';
 
 function wrapPluginInitFn$d(plugin, name, lifeCycle) {
   if (name) {
@@ -10731,6 +11056,7 @@ function wrapPluginInitFn$d(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$d(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -10742,6 +11068,28 @@ function wrapPluginInitFn$d(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$d(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$d(plugin, name, lifeCycle) {
@@ -10786,7 +11134,7 @@ var utm = {
 };
 var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$f = '1.25.3';
+var sdkversion_placeholder$f = '1.25.4';
 
 function wrapPluginInitFn$e(plugin, name, lifeCycle) {
   if (name) {
@@ -10795,6 +11143,7 @@ function wrapPluginInitFn$e(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$e(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -10806,6 +11155,28 @@ function wrapPluginInitFn$e(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$e(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$e(plugin, name, lifeCycle) {
@@ -10839,7 +11210,7 @@ function getDisabled() {
 
 var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-var sdkversion_placeholder$g = '1.25.3';
+var sdkversion_placeholder$g = '1.25.4';
 
 function wrapPluginInitFn$f(plugin, name, lifeCycle) {
   if (name) {
@@ -10848,6 +11219,7 @@ function wrapPluginInitFn$f(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$f(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -10859,6 +11231,28 @@ function wrapPluginInitFn$f(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$f(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$f(plugin, name, lifeCycle) {
@@ -10940,7 +11334,7 @@ var DebugSender = {
 };
 var index$f = createPlugin$f(DebugSender);
 
-var sdkversion_placeholder$h = '1.25.3';
+var sdkversion_placeholder$h = '1.25.4';
 
 function wrapPluginInitFn$g(plugin, name, lifeCycle) {
   if (name) {
@@ -10949,6 +11343,7 @@ function wrapPluginInitFn$g(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$g(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -10960,6 +11355,28 @@ function wrapPluginInitFn$g(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$g(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$g(plugin, name, lifeCycle) {
@@ -11022,7 +11439,7 @@ var JsappSender = {
 
 var index$g = createPlugin$g(JsappSender);
 
-var sdkversion_placeholder$i = '1.25.3';
+var sdkversion_placeholder$i = '1.25.4';
 
 function wrapPluginInitFn$h(plugin, name, lifeCycle) {
   if (name) {
@@ -11031,6 +11448,7 @@ function wrapPluginInitFn$h(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$h(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -11042,6 +11460,28 @@ function wrapPluginInitFn$h(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$h(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$h(plugin, name, lifeCycle) {
@@ -11110,7 +11550,7 @@ var BatchSender = {
 };
 var index$h = createPlugin$h(BatchSender);
 
-var sdkversion_placeholder$j = '1.25.3';
+var sdkversion_placeholder$j = '1.25.4';
 
 function wrapPluginInitFn$i(plugin, name, lifeCycle) {
   if (name) {
@@ -11119,6 +11559,7 @@ function wrapPluginInitFn$i(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$i(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -11130,6 +11571,28 @@ function wrapPluginInitFn$i(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$i(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$i(plugin, name, lifeCycle) {
@@ -11196,7 +11659,7 @@ var BeaconSender = {
 
 var index$i = createPlugin$i(BeaconSender);
 
-var sdkversion_placeholder$k = '1.25.3';
+var sdkversion_placeholder$k = '1.25.4';
 
 function wrapPluginInitFn$j(plugin, name, lifeCycle) {
   if (name) {
@@ -11205,6 +11668,7 @@ function wrapPluginInitFn$j(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$j(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -11216,6 +11680,28 @@ function wrapPluginInitFn$j(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$j(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$j(plugin, name, lifeCycle) {
@@ -11282,7 +11768,7 @@ var AjaxSender = {
 
 var index$j = createPlugin$j(AjaxSender);
 
-var sdkversion_placeholder$l = '1.25.3';
+var sdkversion_placeholder$l = '1.25.4';
 
 function wrapPluginInitFn$k(plugin, name, lifeCycle) {
   if (name) {
@@ -11291,6 +11777,7 @@ function wrapPluginInitFn$k(plugin, name, lifeCycle) {
   if (lifeCycle && plugin.init) {
     var initFn = plugin.init;
     plugin.init = function(sd, option) {
+      wrapLogFn$k(sd, plugin, name);
       if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
         return initPlugin();
       }
@@ -11302,6 +11789,28 @@ function wrapPluginInitFn$k(plugin, name, lifeCycle) {
     };
   }
   return plugin;
+}
+
+function wrapLogFn$k(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
 }
 
 function createPlugin$k(plugin, name, lifeCycle) {
@@ -11328,7 +11837,7 @@ function sendData$9(requestData) {
 
 function sendInterceptor$2(requestData, context) {
   var server_url = requestData.server_url;
-  requestData.data = getSendUrl(server_url, requestData.data);
+  requestData.data = server_url && getSendUrl(server_url, requestData.data);
   if (_$b.isArray(server_url) && server_url.length) {
     _$b.each(server_url, function(surl) {
       requestData.callback = null;
@@ -11338,7 +11847,7 @@ function sendInterceptor$2(requestData, context) {
   } else if (typeof sd$d.para.server_url === 'string' && sd$d.para.server_url !== '') {
     sendData$9(requestData);
   } else {
-    sd$d.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
+    sd$d.logger && sd$d.logger.msg('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！').level('warn').log();
   }
   context.cancellationToken.stop();
 }
@@ -11374,10 +11883,192 @@ var ImageSender = {
 
 var index$k = createPlugin$k(ImageSender);
 
+function wrapPluginInitFn$l(plugin, name, lifeCycle) {
+  if (name) {
+    plugin.plugin_name = name;
+  }
+  if (lifeCycle && plugin.init) {
+    var initFn = plugin.init;
+    plugin.init = function(sd, option) {
+      wrapLogFn$l(sd, plugin, name);
+      if ((sd.readyState && sd.readyState.state >= 3) || !sd.on) {
+        return initPlugin();
+      }
+      sd.on(lifeCycle, initPlugin);
+
+      function initPlugin() {
+        initFn.call(plugin, sd, option);
+      }
+    };
+  }
+  return plugin;
+}
+
+function wrapLogFn$l(sd, plugin, name) {
+  plugin.log = function() {
+    levelLog('log', arguments);
+  };
+
+  plugin.warn = function() {
+    levelLog('warn', arguments);
+  };
+
+  plugin.error = function() {
+    levelLog('error', arguments);
+  };
+
+  function levelLog(level, args) {
+    if (sd.logger) {
+      sd.logger.msg.apply(sd.logger, args).module((name + '') || '').level(level).log();
+    } else {
+      sd.log && sd.log.apply(sd, args);
+    }
+  }
+}
+
+function createPlugin$l(plugin, name, lifeCycle) {
+  wrapPluginInitFn$l(plugin, name, lifeCycle);
+  plugin.plugin_version = sdkversion_placeholder;
+  return plugin;
+}
+
+var _sd$1 = null,
+  _$c = null,
+  _cacheLogs = [];
+var ConsoleLogger = {
+  init: function(sd) {
+    if (!sd) {
+      return;
+    }
+    _sd$1 = sd;
+    _$c = _sd$1._;
+    _sd$1.logger && _sd$1.logger.appendWriter(logWriter);
+
+    _sd$1.on &&
+      _sd$1.on('sdkAfterInitPara', function() {
+        for (var i = 0; i < _cacheLogs.length; i++) {
+          printLog(_cacheLogs[i]);
+        }
+        _cacheLogs = null;
+      });
+
+    _sd$1.on &&
+      _sd$1.on('sdkInitAPI', function() {
+        _sd$1.enableLocalLog = enableLocalLog;
+        _sd$1.disableLocalLog = disableLocalLog;
+      });
+  }
+};
+var consoleLogger = createPlugin$l(ConsoleLogger, 'ConsoleLogger');
+
+function logWriter(logArg) {
+  if (_cacheLogs === null) {
+    printLog(logArg);
+    return;
+  }
+  _cacheLogs.push(logArg);
+}
+
+function printLog(logArg) {
+  try {
+    if (logArg.level === 'log' && canLog()) {
+      writeLog(logArg);
+      return;
+    }
+
+    if (logArg.level === 'warn' && canWarn()) {
+      writeLog(logArg);
+      return;
+    }
+
+    if (logArg.level === 'error' && canError()) {
+      writeLog(logArg);
+      return;
+    }
+  } catch (e) {}
+}
+
+function canLog() {
+  if (isLocalLogEnabled()) {
+    return true;
+  }
+
+  return _sd$1.para.show_log === true || (_$c.isObject(_sd$1.para.show_log) && _sd$1.para.show_log.level === 'log');
+}
+
+function canWarn() {
+  if (isLocalLogEnabled()) {
+    return true;
+  }
+
+  return canLog() || (_$c.isObject(_sd$1.para.show_log) && _sd$1.para.show_log.level === 'warn');
+}
+
+function canError() {
+  if (isLocalLogEnabled()) {
+    return true;
+  }
+
+  if (_$c.isObject(_sd$1.para.show_log)) {
+    return _sd$1.para.show_log.level !== 'none';
+  }
+  return true;
+}
+
+function writeLog(logArg) {
+  var args = logArg.content;
+  var msg = _$c.isObject(args[0]) ? _$c.formatJsonString(args[0]) : args[0];
+  var head = getLogHead(logArg);
+  args[0] = head + (head.length > 0 ? ': ' : '') + msg;
+
+  try {
+    if (console) {
+      if (_$c.isFunction(console[logArg.level])) {
+        console[logArg.level].apply(console, args);
+      } else if (_$c.isObject(console[logArg.level])) {
+        console[logArg.level](args[0]);
+      }
+    }
+  } catch (e) {}
+}
+
+function getLogHead(logArg) {
+  var head = '',
+    module = '',
+    logPara = _sd$1.para.show_log;
+  if (!(_$c.isObject(logPara) && logPara.show_brand === false)) {
+    head += logArg.brand;
+  }
+  if (!(_$c.isObject(logPara) && logPara.show_level === false)) {
+    head += (head.length > 0 ? '-' : '') + logArg.level;
+  }
+  if (head.length > 0) {
+    head = '[' + head + ']';
+  }
+  if (!(_$c.isObject(logPara) && logPara.show_module === false)) {
+    module = logArg.module;
+  }
+  return head + module;
+}
+
+var debugTag = 'sensorsdata_jssdk_debug';
+
+function enableLocalLog() {
+  _$c.sessionStorage.isSupport() && sessionStorage.setItem(debugTag, 'true');
+}
+
+function disableLocalLog() {
+  _$c.sessionStorage.isSupport() && sessionStorage.removeItem(debugTag);
+}
+
+function isLocalLogEnabled() {
+  return _$c.sessionStorage.isSupport() && sessionStorage.getItem(debugTag) === 'true';
+}
+
 sd.modules = sd.modules || {};
 
-var builtinPlugins = [index$1, index$2, index$3, index$4, index$5, index$6, index$7, index$8, index$9, index$a, index$b, index$c, index$d, index$e, index$f, index$g, index$h, index$i, index$j, index$k];
-var autoUsePlugins = [index, index$d, index$e, index$g, index$f, index$2, index$6, index$3, index$7, index$h, index$i, index$j, index$k];
+var builtinPlugins = [consoleLogger, index$1, index$2, index$3, index$4, index$5, index$6, index$7, index$8, index$9, index$a, index$b, index$c, index$d, index$e, index$f, index$g, index$h, index$i, index$j, index$k];
+var autoUsePlugins = [consoleLogger, index, index$d, index$e, index$g, index$f, index$2, index$6, index$3, index$7, index$h, index$i, index$j, index$k];
 
 for (var i = 0; i < builtinPlugins.length; i++) {
   var p = builtinPlugins[i];
@@ -11395,7 +12086,7 @@ for (i = 0; i < autoUsePlugins.length; i++) {
   sd.use(autoUsePlugins[i]);
 }
 
-var _sd$1 = sd;
+var _sd$2 = sd;
 try {
   if (typeof window['sensorsDataAnalytic201505'] === 'string') {
     sd.para = window[sensorsDataAnalytic201505].para;
@@ -11407,18 +12098,12 @@ try {
   } else if (typeof window['sensorsDataAnalytic201505'] === 'undefined') {
     window['sensorsDataAnalytic201505'] = sd;
   } else {
-    _sd$1 = window['sensorsDataAnalytic201505'];
+    _sd$2 = window['sensorsDataAnalytic201505'];
   }
 } catch (err) {
-  if (typeof console === 'object' && console.log) {
-    try {
-      console.log(err);
-    } catch (e) {
-      sd.log(e);
-    }
-  }
+  sdError(err);
 }
 
-var sd$e = _sd$1;
+var sd$e = _sd$2;
 
 export default sd$e;
