@@ -6,8 +6,8 @@
 安卓 APP 内嵌 H5 打通插件使得内嵌 H5 页面行为数据通过 APP 进行发送，使得 H5页面 和 APP 数据达到用户统一。<br>
 对于嵌入 App 中 H5 页面，如果 App 也集成了神策分析的 SDK ，H5 页面数据可以通过 App 进行上报，会自动添加 App 获取到的预置属性。
 
-在使用打通插件后，同时还需要在 App 端进行打通配置，参考[安卓打通](https://manual.sensorsdata.cn/sa/2.4/sdk-android-7541696.html#SDK%E9%9B%86%E6%88%90%28Android%EF%BC%89-%E6%89%93%E9%80%9AApp%E4%B8%8EH5)。
-更多关于打通功能说明请查看[官网文档](https://manual.sensorsdata.cn/sa/2.4/app-h5-1573914.html)。
+在使用打通插件后，同时还需要在 App 端进行打通配置，参考[安卓打通](https://manual.sensorsdata.cn/sa/latest/sdk-android-7541696.html#id-%E9%9B%86%E6%88%90%E6%96%87%E6%A1%A3%EF%BC%88Android%EF%BC%89-%E6%89%93%E9%80%9AApp%E4%B8%8EH5)。
+更多关于打通功能说明请查看[官网文档](https://manual.sensorsdata.cn/sa/latest/app-h5-1573914.html)。
 
 ### 原理
 App SDK 暴露桥对象到浏览器控件 `window` 全局对象， JS SDK 通过该对象将上报数据发送给 App SDK。 App SDK 对数据进行处理及上报。

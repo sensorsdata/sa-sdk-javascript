@@ -3081,7 +3081,7 @@
   };
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.25.8';
+  var sdkversion_placeholder = '1.25.9';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3963,7 +3963,7 @@
               data.push(sendData);
             }
           }
-          this.request(data, tabStorage.data);
+          data.length && this.request(data, tabStorage.data);
         }
       }
     },
@@ -8767,7 +8767,7 @@
     checkState();
   }
 
-  var sdkversion_placeholder$1 = '1.25.8';
+  var sdkversion_placeholder$1 = '1.25.9';
 
   function wrapPluginInitFn(plugin, name, lifeCycle) {
     if (name) {
@@ -8854,7 +8854,7 @@
 
   var index = createPlugin(userEncryptDefault);
 
-  var sdkversion_placeholder$2 = '1.25.8';
+  var sdkversion_placeholder$2 = '1.25.9';
 
   function wrapPluginInitFn$1(plugin, name, lifeCycle) {
     if (name) {
@@ -8986,7 +8986,7 @@
     }
   };
 
-  var sdkversion_placeholder$3 = '1.25.8';
+  var sdkversion_placeholder$3 = '1.25.9';
 
   function wrapPluginInitFn$2(plugin, name, lifeCycle) {
     if (name) {
@@ -9158,7 +9158,7 @@
     }
   };
 
-  var sdkversion_placeholder$4 = '1.25.8';
+  var sdkversion_placeholder$4 = '1.25.9';
 
   function wrapPluginInitFn$3(plugin, name, lifeCycle) {
     if (name) {
@@ -9311,7 +9311,7 @@
   }
   var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$5 = '1.25.8';
+  var sdkversion_placeholder$5 = '1.25.9';
 
   function wrapPluginInitFn$4(plugin, name, lifeCycle) {
     if (name) {
@@ -9529,7 +9529,7 @@
 
   var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-  var sdkversion_placeholder$6 = '1.25.8';
+  var sdkversion_placeholder$6 = '1.25.9';
 
   function wrapPluginInitFn$5(plugin, name, lifeCycle) {
     if (name) {
@@ -9839,7 +9839,7 @@
   };
   var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-  var sdkversion_placeholder$7 = '1.25.8';
+  var sdkversion_placeholder$7 = '1.25.9';
 
   function wrapPluginInitFn$6(plugin, name, lifeCycle) {
     if (name) {
@@ -9989,7 +9989,7 @@
   }
   var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$8 = '1.25.8';
+  var sdkversion_placeholder$8 = '1.25.9';
 
   function wrapPluginInitFn$7(plugin, name, lifeCycle) {
     if (name) {
@@ -10151,7 +10151,7 @@
   }
   var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$9 = '1.25.8';
+  var sdkversion_placeholder$9 = '1.25.9';
 
   function wrapPluginInitFn$8(plugin, name, lifeCycle) {
     if (name) {
@@ -10467,7 +10467,7 @@
   var pageLeave = new PageLeave();
   var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-  var sdkversion_placeholder$a = '1.25.8';
+  var sdkversion_placeholder$a = '1.25.9';
 
   function wrapPluginInitFn$9(plugin, name, lifeCycle) {
     if (name) {
@@ -10695,7 +10695,7 @@
     }
   };
 
-  var sdkversion_placeholder$b = '1.25.8';
+  var sdkversion_placeholder$b = '1.25.9';
 
   function wrapPluginInitFn$a(plugin, name, lifeCycle) {
     if (name) {
@@ -10751,7 +10751,7 @@
 
   var index$a = createPlugin$a(instance);
 
-  var sdkversion_placeholder$c = '1.25.8';
+  var sdkversion_placeholder$c = '1.25.9';
 
   function wrapPluginInitFn$b(plugin, name, lifeCycle) {
     if (name) {
@@ -10838,7 +10838,7 @@
   };
   var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-  var sdkversion_placeholder$d = '1.25.8';
+  var sdkversion_placeholder$d = '1.25.9';
 
   function wrapPluginInitFn$c(plugin, name, lifeCycle) {
     if (name) {
@@ -11098,7 +11098,7 @@
   var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
   var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder$e = '1.25.8';
+  var sdkversion_placeholder$e = '1.25.9';
 
   function wrapPluginInitFn$d(plugin, name, lifeCycle) {
     if (name) {
@@ -11185,7 +11185,7 @@
   };
   var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$f = '1.25.8';
+  var sdkversion_placeholder$f = '1.25.9';
 
   function wrapPluginInitFn$e(plugin, name, lifeCycle) {
     if (name) {
@@ -11261,7 +11261,7 @@
 
   var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-  var sdkversion_placeholder$g = '1.25.8';
+  var sdkversion_placeholder$g = '1.25.9';
 
   function wrapPluginInitFn$f(plugin, name, lifeCycle) {
     if (name) {
@@ -11385,7 +11385,7 @@
   };
   var index$f = createPlugin$f(DebugSender);
 
-  var sdkversion_placeholder$h = '1.25.8';
+  var sdkversion_placeholder$h = '1.25.9';
 
   function wrapPluginInitFn$g(plugin, name, lifeCycle) {
     if (name) {
@@ -11490,7 +11490,7 @@
 
   var index$g = createPlugin$g(JsappSender);
 
-  var sdkversion_placeholder$i = '1.25.8';
+  var sdkversion_placeholder$i = '1.25.9';
 
   function wrapPluginInitFn$h(plugin, name, lifeCycle) {
     if (name) {
@@ -11601,7 +11601,7 @@
   };
   var index$h = createPlugin$h(BatchSender);
 
-  var sdkversion_placeholder$j = '1.25.8';
+  var sdkversion_placeholder$j = '1.25.9';
 
   function wrapPluginInitFn$i(plugin, name, lifeCycle) {
     if (name) {
@@ -11710,7 +11710,7 @@
 
   var index$i = createPlugin$i(BeaconSender);
 
-  var sdkversion_placeholder$k = '1.25.8';
+  var sdkversion_placeholder$k = '1.25.9';
 
   function wrapPluginInitFn$j(plugin, name, lifeCycle) {
     if (name) {
@@ -11819,7 +11819,7 @@
 
   var index$j = createPlugin$j(AjaxSender);
 
-  var sdkversion_placeholder$l = '1.25.8';
+  var sdkversion_placeholder$l = '1.25.9';
 
   function wrapPluginInitFn$k(plugin, name, lifeCycle) {
     if (name) {
@@ -11888,14 +11888,18 @@
 
   function sendInterceptor$2(requestData, context) {
     var server_url = requestData.server_url;
-    requestData.data = server_url && getSendUrl(server_url, requestData.data);
+    var dataToSend = requestData.data;
     if (_$b.isArray(server_url) && server_url.length) {
       _$b.each(server_url, function(surl) {
-        requestData.callback = null;
-        requestData.server_url = surl;
-        sendData$9(requestData);
+        if (surl) {
+          requestData.data = getSendUrl(surl, dataToSend);
+          requestData.callback = null;
+          requestData.server_url = surl;
+          sendData$9(requestData);
+        }
       });
-    } else if (typeof sd$d.para.server_url === 'string' && sd$d.para.server_url !== '') {
+    } else if (typeof server_url === 'string' && server_url !== '') {
+      requestData.data = getSendUrl(server_url, dataToSend);
       sendData$9(requestData);
     } else {
       sd$d.logger && sd$d.logger.msg('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！').level('warn').log();
