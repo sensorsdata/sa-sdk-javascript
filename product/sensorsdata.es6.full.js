@@ -3073,7 +3073,7 @@ var defaultPara = {
 };
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.25.9';
+var sdkversion_placeholder = '1.25.10';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -8759,7 +8759,7 @@ if (is_compliance_enabled) {
   checkState();
 }
 
-var sdkversion_placeholder$1 = '1.25.9';
+var sdkversion_placeholder$1 = '1.25.10';
 
 function wrapPluginInitFn(plugin, name, lifeCycle) {
   if (name) {
@@ -8846,7 +8846,7 @@ var userEncryptDefault = {
 
 var index = createPlugin(userEncryptDefault);
 
-var sdkversion_placeholder$2 = '1.25.9';
+var sdkversion_placeholder$2 = '1.25.10';
 
 function wrapPluginInitFn$1(plugin, name, lifeCycle) {
   if (name) {
@@ -8978,7 +8978,7 @@ var vbridge$1 = {
   }
 };
 
-var sdkversion_placeholder$3 = '1.25.9';
+var sdkversion_placeholder$3 = '1.25.10';
 
 function wrapPluginInitFn$2(plugin, name, lifeCycle) {
   if (name) {
@@ -9150,7 +9150,7 @@ var vbridge$1$1 = {
   }
 };
 
-var sdkversion_placeholder$4 = '1.25.9';
+var sdkversion_placeholder$4 = '1.25.10';
 
 function wrapPluginInitFn$3(plugin, name, lifeCycle) {
   if (name) {
@@ -9303,7 +9303,7 @@ function handleCommand$1(request) {
 }
 var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$5 = '1.25.9';
+var sdkversion_placeholder$5 = '1.25.10';
 
 function wrapPluginInitFn$4(plugin, name, lifeCycle) {
   if (name) {
@@ -9521,7 +9521,7 @@ var Channel = {
 
 var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-var sdkversion_placeholder$6 = '1.25.9';
+var sdkversion_placeholder$6 = '1.25.10';
 
 function wrapPluginInitFn$5(plugin, name, lifeCycle) {
   if (name) {
@@ -9831,7 +9831,7 @@ var SADeepLink = {
 };
 var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-var sdkversion_placeholder$7 = '1.25.9';
+var sdkversion_placeholder$7 = '1.25.10';
 
 function wrapPluginInitFn$6(plugin, name, lifeCycle) {
   if (name) {
@@ -9981,7 +9981,7 @@ function handleCommand$2(request) {
 }
 var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$8 = '1.25.9';
+var sdkversion_placeholder$8 = '1.25.10';
 
 function wrapPluginInitFn$7(plugin, name, lifeCycle) {
   if (name) {
@@ -10143,7 +10143,7 @@ function sendData$3(rqData, ctx) {
 }
 var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$9 = '1.25.9';
+var sdkversion_placeholder$9 = '1.25.10';
 
 function wrapPluginInitFn$8(plugin, name, lifeCycle) {
   if (name) {
@@ -10459,7 +10459,7 @@ PageLeave.prototype.getPageLeaveProperties = function() {
 var pageLeave = new PageLeave();
 var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-var sdkversion_placeholder$a = '1.25.9';
+var sdkversion_placeholder$a = '1.25.10';
 
 function wrapPluginInitFn$9(plugin, name, lifeCycle) {
   if (name) {
@@ -10687,7 +10687,7 @@ RegisterProperties.prototype.hookRegister = function(customFun) {
   }
 };
 
-var sdkversion_placeholder$b = '1.25.9';
+var sdkversion_placeholder$b = '1.25.10';
 
 function wrapPluginInitFn$a(plugin, name, lifeCycle) {
   if (name) {
@@ -10743,7 +10743,7 @@ var instance = new RegisterProperties();
 
 var index$a = createPlugin$a(instance);
 
-var sdkversion_placeholder$c = '1.25.9';
+var sdkversion_placeholder$c = '1.25.10';
 
 function wrapPluginInitFn$b(plugin, name, lifeCycle) {
   if (name) {
@@ -10830,7 +10830,7 @@ var RegisterPropertyPageHeight = {
 };
 var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-var sdkversion_placeholder$d = '1.25.9';
+var sdkversion_placeholder$d = '1.25.10';
 
 function wrapPluginInitFn$c(plugin, name, lifeCycle) {
   if (name) {
@@ -11090,7 +11090,7 @@ siteLinker.init = function(sd, option) {
 var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
 var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder$e = '1.25.9';
+var sdkversion_placeholder$e = '1.25.10';
 
 function wrapPluginInitFn$d(plugin, name, lifeCycle) {
   if (name) {
@@ -11177,7 +11177,7 @@ var utm = {
 };
 var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$f = '1.25.9';
+var sdkversion_placeholder$f = '1.25.10';
 
 function wrapPluginInitFn$e(plugin, name, lifeCycle) {
   if (name) {
@@ -11253,7 +11253,7 @@ function getDisabled() {
 
 var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-var sdkversion_placeholder$g = '1.25.9';
+var sdkversion_placeholder$g = '1.25.10';
 
 function wrapPluginInitFn$f(plugin, name, lifeCycle) {
   if (name) {
@@ -11377,7 +11377,7 @@ var DebugSender = {
 };
 var index$f = createPlugin$f(DebugSender);
 
-var sdkversion_placeholder$h = '1.25.9';
+var sdkversion_placeholder$h = '1.25.10';
 
 function wrapPluginInitFn$g(plugin, name, lifeCycle) {
   if (name) {
@@ -11482,7 +11482,7 @@ var JsappSender = {
 
 var index$g = createPlugin$g(JsappSender);
 
-var sdkversion_placeholder$i = '1.25.9';
+var sdkversion_placeholder$i = '1.25.10';
 
 function wrapPluginInitFn$h(plugin, name, lifeCycle) {
   if (name) {
@@ -11593,7 +11593,7 @@ var BatchSender = {
 };
 var index$h = createPlugin$h(BatchSender);
 
-var sdkversion_placeholder$j = '1.25.9';
+var sdkversion_placeholder$j = '1.25.10';
 
 function wrapPluginInitFn$i(plugin, name, lifeCycle) {
   if (name) {
@@ -11652,16 +11652,28 @@ function sendData$7(requestData) {
 }
 
 function sendInterceptor(requestData, context) {
-  if (sd$b.para.send_type === 'beacon') {
-    var server_url = requestData.server_url;
+  var customSendType = null;
+  var customServerUrl = null;
+
+  if (_$9.isObject(requestData.config)) {
+    customSendType = requestData.config.send_type;
+    customServerUrl = _$9.optimizeServerUrl(requestData.config.server_url);
+  }
+
+  var isBeacon = customSendType === 'beacon' || (!customSendType && sd$b.para.send_type === 'beacon');
+
+  if (isBeacon && _$9.isSupportBeaconSend()) {
+    var server_url = customServerUrl || requestData.server_url;
+    requestData.server_url = server_url;
     requestData.data = sd$b.kit.encodeTrackData(requestData.data);
+
     if (_$9.isArray(server_url) && server_url.length) {
       _$9.each(server_url, function(surl) {
         requestData.callback = null;
         requestData.server_url = surl;
         sendData$7(requestData);
       });
-    } else if (typeof sd$b.para.server_url === 'string' && sd$b.para.server_url !== '') {
+    } else if (typeof server_url === 'string' && server_url !== '') {
       sendData$7(requestData);
     } else {
       sd$b.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
@@ -11702,7 +11714,7 @@ var BeaconSender = {
 
 var index$i = createPlugin$i(BeaconSender);
 
-var sdkversion_placeholder$k = '1.25.9';
+var sdkversion_placeholder$k = '1.25.10';
 
 function wrapPluginInitFn$j(plugin, name, lifeCycle) {
   if (name) {
@@ -11761,16 +11773,28 @@ function sendData$8(requestData) {
 }
 
 function sendInterceptor$1(requestData, context) {
-  if (sd$c.para.send_type === 'ajax') {
-    var server_url = requestData.server_url;
+  var customSendType = null;
+  var customServerUrl = null;
+
+  if (_$a.isObject(requestData.config)) {
+    customSendType = requestData.config.send_type;
+    customServerUrl = _$a.optimizeServerUrl(requestData.config.server_url);
+  }
+
+  var isAjax = customSendType === 'ajax' || (!customSendType && sd$c.para.send_type === 'ajax');
+
+  if (isAjax && _$a.isSupportCors()) {
+    var server_url = customServerUrl || requestData.server_url;
+    requestData.server_url = server_url;
     requestData.data = sd$c.kit.encodeTrackData(requestData.data);
+
     if (_$a.isArray(server_url) && server_url.length) {
       _$a.each(server_url, function(surl) {
         requestData.callback = null;
         requestData.server_url = surl;
         sendData$8(requestData);
       });
-    } else if (typeof sd$c.para.server_url === 'string' && sd$c.para.server_url !== '') {
+    } else if (typeof server_url === 'string' && server_url !== '') {
       sendData$8(requestData);
     } else {
       sd$c.log('当前 server_url 为空或不正确，只在控制台打印日志，network 中不会发数据，请配置正确的 server_url！');
@@ -11811,7 +11835,7 @@ var AjaxSender = {
 
 var index$j = createPlugin$j(AjaxSender);
 
-var sdkversion_placeholder$l = '1.25.9';
+var sdkversion_placeholder$l = '1.25.10';
 
 function wrapPluginInitFn$k(plugin, name, lifeCycle) {
   if (name) {
@@ -11879,8 +11903,13 @@ function sendData$9(requestData) {
 }
 
 function sendInterceptor$2(requestData, context) {
-  var server_url = requestData.server_url;
+  var customServerUrl = null;
+  if (_$b.isObject(requestData.config)) {
+    customServerUrl = _$b.optimizeServerUrl(requestData.config.server_url);
+  }
+  var server_url = customServerUrl || requestData.server_url;
   var dataToSend = requestData.data;
+  requestData.server_url = server_url;
   if (_$b.isArray(server_url) && server_url.length) {
     _$b.each(server_url, function(surl) {
       if (surl) {
