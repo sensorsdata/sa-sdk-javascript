@@ -9421,7 +9421,7 @@
                 method: 'setUrl',
                 params: {
                   request_type: sessionStorage.getItem('sensors_heatmap_type') || '1',
-                  url: _.getUrl()
+                  url: _.getURL()
                 }
               },
               sd.para.web_url
@@ -9474,7 +9474,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.25.11';
+      sd.heatmap_version = '1.25.12';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {
