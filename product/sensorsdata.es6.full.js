@@ -3077,7 +3077,7 @@ defaultPara.white_list = {};
 defaultPara.white_list[location.host] = _URL(location.href).hostname;
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.25.15';
+var sdkversion_placeholder = '1.25.16';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -3950,7 +3950,10 @@ BatchSend.prototype = {
   },
 
   send: function() {
-    if (this.sendTimeStamp && now() - this.sendTimeStamp < sdPara.batch_send.datasend_timeout) return;
+    if (this.sendTimeStamp && now() - this.sendTimeStamp < sdPara.batch_send.send_interval) {
+      return false;
+    }
+
     var tabStorage = _localStorage.get(this.tabKey);
     if (tabStorage) {
       this.sendTimeStamp = now();
@@ -8764,7 +8767,7 @@ if (is_compliance_enabled) {
   checkState();
 }
 
-var sdkversion_placeholder$1 = '1.25.15';
+var sdkversion_placeholder$1 = '1.25.16';
 
 function wrapPluginInitFn(plugin, name, lifeCycle) {
   if (name) {
@@ -8851,7 +8854,7 @@ var userEncryptDefault = {
 
 var index = createPlugin(userEncryptDefault);
 
-var sdkversion_placeholder$2 = '1.25.15';
+var sdkversion_placeholder$2 = '1.25.16';
 
 function wrapPluginInitFn$1(plugin, name, lifeCycle) {
   if (name) {
@@ -8983,7 +8986,7 @@ var vbridge$1 = {
   }
 };
 
-var sdkversion_placeholder$3 = '1.25.15';
+var sdkversion_placeholder$3 = '1.25.16';
 
 function wrapPluginInitFn$2(plugin, name, lifeCycle) {
   if (name) {
@@ -9155,7 +9158,7 @@ var vbridge$1$1 = {
   }
 };
 
-var sdkversion_placeholder$4 = '1.25.15';
+var sdkversion_placeholder$4 = '1.25.16';
 
 function wrapPluginInitFn$3(plugin, name, lifeCycle) {
   if (name) {
@@ -9308,7 +9311,7 @@ function handleCommand$1(request) {
 }
 var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$5 = '1.25.15';
+var sdkversion_placeholder$5 = '1.25.16';
 
 function wrapPluginInitFn$4(plugin, name, lifeCycle) {
   if (name) {
@@ -9526,7 +9529,7 @@ var Channel = {
 
 var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-var sdkversion_placeholder$6 = '1.25.15';
+var sdkversion_placeholder$6 = '1.25.16';
 
 function wrapPluginInitFn$5(plugin, name, lifeCycle) {
   if (name) {
@@ -9840,7 +9843,7 @@ var SADeepLink = {
 };
 var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-var sdkversion_placeholder$7 = '1.25.15';
+var sdkversion_placeholder$7 = '1.25.16';
 
 function wrapPluginInitFn$6(plugin, name, lifeCycle) {
   if (name) {
@@ -9990,7 +9993,7 @@ function handleCommand$2(request) {
 }
 var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$8 = '1.25.15';
+var sdkversion_placeholder$8 = '1.25.16';
 
 function wrapPluginInitFn$7(plugin, name, lifeCycle) {
   if (name) {
@@ -10152,7 +10155,7 @@ function sendData$3(rqData, ctx) {
 }
 var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$9 = '1.25.15';
+var sdkversion_placeholder$9 = '1.25.16';
 
 function wrapPluginInitFn$8(plugin, name, lifeCycle) {
   if (name) {
@@ -10468,7 +10471,7 @@ PageLeave.prototype.getPageLeaveProperties = function() {
 var pageLeave = new PageLeave();
 var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-var sdkversion_placeholder$a = '1.25.15';
+var sdkversion_placeholder$a = '1.25.16';
 
 function wrapPluginInitFn$9(plugin, name, lifeCycle) {
   if (name) {
@@ -10696,7 +10699,7 @@ RegisterProperties.prototype.hookRegister = function(customFun) {
   }
 };
 
-var sdkversion_placeholder$b = '1.25.15';
+var sdkversion_placeholder$b = '1.25.16';
 
 function wrapPluginInitFn$a(plugin, name, lifeCycle) {
   if (name) {
@@ -10752,7 +10755,7 @@ var instance = new RegisterProperties();
 
 var index$a = createPlugin$a(instance);
 
-var sdkversion_placeholder$c = '1.25.15';
+var sdkversion_placeholder$c = '1.25.16';
 
 function wrapPluginInitFn$b(plugin, name, lifeCycle) {
   if (name) {
@@ -10839,7 +10842,7 @@ var RegisterPropertyPageHeight = {
 };
 var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-var sdkversion_placeholder$d = '1.25.15';
+var sdkversion_placeholder$d = '1.25.16';
 
 function wrapPluginInitFn$c(plugin, name, lifeCycle) {
   if (name) {
@@ -11099,7 +11102,7 @@ siteLinker.init = function(sd, option) {
 var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
 var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder$e = '1.25.15';
+var sdkversion_placeholder$e = '1.25.16';
 
 function wrapPluginInitFn$d(plugin, name, lifeCycle) {
   if (name) {
@@ -11186,7 +11189,7 @@ var utm = {
 };
 var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$f = '1.25.15';
+var sdkversion_placeholder$f = '1.25.16';
 
 function wrapPluginInitFn$e(plugin, name, lifeCycle) {
   if (name) {
@@ -11262,7 +11265,7 @@ function getDisabled() {
 
 var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-var sdkversion_placeholder$g = '1.25.15';
+var sdkversion_placeholder$g = '1.25.16';
 
 function wrapPluginInitFn$f(plugin, name, lifeCycle) {
   if (name) {
@@ -11386,7 +11389,7 @@ var DebugSender = {
 };
 var index$f = createPlugin$f(DebugSender);
 
-var sdkversion_placeholder$h = '1.25.15';
+var sdkversion_placeholder$h = '1.25.16';
 
 function wrapPluginInitFn$g(plugin, name, lifeCycle) {
   if (name) {
@@ -11491,7 +11494,7 @@ var JsappSender = {
 
 var index$g = createPlugin$g(JsappSender);
 
-var sdkversion_placeholder$i = '1.25.15';
+var sdkversion_placeholder$i = '1.25.16';
 
 function wrapPluginInitFn$h(plugin, name, lifeCycle) {
   if (name) {
@@ -11602,7 +11605,7 @@ var BatchSender = {
 };
 var index$h = createPlugin$h(BatchSender);
 
-var sdkversion_placeholder$j = '1.25.15';
+var sdkversion_placeholder$j = '1.25.16';
 
 function wrapPluginInitFn$i(plugin, name, lifeCycle) {
   if (name) {
@@ -11723,7 +11726,7 @@ var BeaconSender = {
 
 var index$i = createPlugin$i(BeaconSender);
 
-var sdkversion_placeholder$k = '1.25.15';
+var sdkversion_placeholder$k = '1.25.16';
 
 function wrapPluginInitFn$j(plugin, name, lifeCycle) {
   if (name) {
@@ -11844,7 +11847,7 @@ var AjaxSender = {
 
 var index$j = createPlugin$j(AjaxSender);
 
-var sdkversion_placeholder$l = '1.25.15';
+var sdkversion_placeholder$l = '1.25.16';
 
 function wrapPluginInitFn$k(plugin, name, lifeCycle) {
   if (name) {
