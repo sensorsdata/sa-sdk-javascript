@@ -3085,7 +3085,7 @@
   defaultPara.white_list[location.host] = _URL(location.href).hostname;
 
   var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder = '1.25.16';
+  var sdkversion_placeholder = '1.25.17';
   var domain_test_key = 'sensorsdata_domain_test';
 
   var IDENTITY_KEY = {
@@ -3887,25 +3887,113 @@
     return 'data=' + encodeURIComponent(dataStr) + '&ext=' + encodeURIComponent(crc);
   }
 
+  function addSinglePageEvent(callback) {
+    var current_url = location.href;
+    var historyPushState = window.history.pushState;
+    var historyReplaceState = window.history.replaceState;
+
+    if (isFunction(window.history.pushState)) {
+      window.history.pushState = function() {
+        historyPushState.apply(window.history, arguments);
+        callback(current_url);
+        current_url = location.href;
+      };
+    }
+
+    if (isFunction(window.history.replaceState)) {
+      window.history.replaceState = function() {
+        historyReplaceState.apply(window.history, arguments);
+        callback(current_url);
+        current_url = location.href;
+      };
+    }
+
+    var singlePageEvent;
+    if (window.document.documentMode) {
+      singlePageEvent = 'hashchange';
+    } else {
+      singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
+    }
+
+    addEvent(window, singlePageEvent, function() {
+      callback(current_url);
+      current_url = location.href;
+    });
+  }
+
+  var ee = {};
+
+  var spa = new EventEmitter();
+  ee.spa = spa;
+
+  ee.sdk = new EventEmitter();
+
+  ee.data = new EventEmitter();
+
+  ee.initSystemEvent = function() {
+    addSinglePageEvent(function(url) {
+      spa.emit('switch', url);
+    });
+  };
+
+  ee.EVENT_LIST = {
+    spaSwitch: ['spa', 'switch'],
+    sdkBeforeInit: ['sdk', 'beforeInit'],
+    sdkInitPara: ['sdk', 'initPara'],
+    sdkAfterInitPara: ['sdk', 'afterInitPara'],
+    sdkInitAPI: ['sdk', 'initAPI'],
+    sdkAfterInitAPI: ['sdk', 'afterInitAPI'],
+    sdkAfterInit: ['sdk', 'afterInit'],
+    sdkReady: ['sdk', 'ready'],
+    dataSendSuccess: ['data', 'sendSuccess'],
+    dataSendFail: ['data', 'sendFail']
+  };
+
+  function eventEmitterFacade(event_type, callback) {
+    var splitEvent = [];
+    if (typeof event_type === 'string' && event_type in ee.EVENT_LIST) {
+      splitEvent = ee.EVENT_LIST[event_type];
+      ee[splitEvent[0]].on(splitEvent[1], callback);
+    }
+  }
+
   var AjaxSend = function(para) {
     this.callback = para.callback;
     this.server_url = para.server_url;
     this.data = para.data;
+    this.origin_data = para.origin_data;
   };
 
   AjaxSend.prototype.start = function() {
     var me = this;
+    var time = new Date();
     ajax$1({
       url: this.server_url,
       type: 'POST',
-      data: this.data,
+      data: me.data,
       credentials: false,
       timeout: sdPara.datasend_timeout,
       cors: true,
-      success: function() {
+      success: function(resText, resStatus) {
+        ee.data.emit('sendSuccess', {
+          status: String(resStatus),
+          resText: resText,
+          type: 'ajax_single',
+          timeout_config: sdPara.datasend_timeout,
+          request_timeout: new Date() - time,
+          data: me.origin_data
+        });
         me.end();
       },
-      error: function() {
+      error: function(resText, resStatus) {
+        ee.data.emit('sendFail', {
+          status: String(resStatus),
+          resText: resText,
+          type: 'ajax_single',
+          timeout_config: sdPara.datasend_timeout,
+          request_timeout: new Date() - time,
+          data: me.origin_data
+        });
         me.end();
       }
     });
@@ -3994,6 +4082,7 @@
 
     request: function(data, dataKeys) {
       var self = this;
+      var time = new Date();
       ajax$1({
         url: this.serverUrl,
         type: 'POST',
@@ -4001,11 +4090,27 @@
         credentials: false,
         timeout: sdPara.batch_send.datasend_timeout,
         cors: true,
-        success: function() {
+        success: function(resText, resStatus) {
+          ee.data.emit('sendSuccess', {
+            status: String(resStatus),
+            resText: resText,
+            type: 'ajax_batch',
+            timeout_config: sdPara.batch_send.datasend_timeout,
+            request_timeout: new Date() - time,
+            data: data
+          });
           self.remove(dataKeys);
           self.sendTimeStamp = 0;
         },
-        error: function() {
+        error: function(resText, resStatus) {
+          ee.data.emit('sendFail', {
+            status: String(resStatus),
+            resText: resText,
+            type: 'ajax_batch',
+            timeout_config: sdPara.batch_send.datasend_timeout,
+            request_timeout: new Date() - time,
+            data: data
+          });
           self.sendTimeStamp = 0;
         }
       });
@@ -4384,7 +4489,7 @@
       if (sd.para.encrypt_cookie) {
         stateStr = sd.kit.userEncrypt(stateStr);
       }
-      saCookie.set(this.getCookieName(), stateStr, 73000, sd.para.cross_subdomain);
+      saCookie.set(this.getCookieName(), stateStr, 730, sd.para.cross_subdomain);
     },
     getCookieName: function() {
       var sub = '';
@@ -6728,73 +6833,6 @@
     }
   };
 
-  function addSinglePageEvent(callback) {
-    var current_url = location.href;
-    var historyPushState = window.history.pushState;
-    var historyReplaceState = window.history.replaceState;
-
-    if (isFunction(window.history.pushState)) {
-      window.history.pushState = function() {
-        historyPushState.apply(window.history, arguments);
-        callback(current_url);
-        current_url = location.href;
-      };
-    }
-
-    if (isFunction(window.history.replaceState)) {
-      window.history.replaceState = function() {
-        historyReplaceState.apply(window.history, arguments);
-        callback(current_url);
-        current_url = location.href;
-      };
-    }
-
-    var singlePageEvent;
-    if (window.document.documentMode) {
-      singlePageEvent = 'hashchange';
-    } else {
-      singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
-    }
-
-    addEvent(window, singlePageEvent, function() {
-      callback(current_url);
-      current_url = location.href;
-    });
-  }
-
-  var spa = new EventEmitter();
-  var sdk = new EventEmitter();
-  var ee = {};
-
-  ee.spa = spa;
-
-  ee.sdk = sdk;
-
-  ee.initSystemEvent = function() {
-    addSinglePageEvent(function(url) {
-      spa.emit('switch', url);
-    });
-  };
-
-  ee.EVENT_LIST = {
-    spaSwitch: ['spa', 'switch'],
-    sdkBeforeInit: ['sdk', 'beforeInit'],
-    sdkInitPara: ['sdk', 'initPara'],
-    sdkAfterInitPara: ['sdk', 'afterInitPara'],
-    sdkInitAPI: ['sdk', 'initAPI'],
-    sdkAfterInitAPI: ['sdk', 'afterInitAPI'],
-    sdkAfterInit: ['sdk', 'afterInit'],
-    sdkReady: ['sdk', 'ready']
-  };
-
-  function eventEmitterFacade(event_type, callback) {
-    var splitEvent = [];
-    if (typeof event_type === 'string' && event_type in ee.EVENT_LIST) {
-      splitEvent = ee.EVENT_LIST[event_type];
-      ee[splitEvent[0]].on(splitEvent[1], callback);
-    }
-  }
-
   function loginBody(obj, sendSignup) {
     var id = obj.id;
     var callback = obj.callback;
@@ -8620,6 +8658,7 @@
   kit.sendData = function(data, callback) {
     var data_config = searchConfigData(data.properties);
     var requestData = {
+      origin_data: data,
       server_url: sd.para.server_url,
       data: data,
       config: data_config || {},
@@ -8775,7 +8814,7 @@
     checkState();
   }
 
-  var sdkversion_placeholder$1 = '1.25.16';
+  var sdkversion_placeholder$1 = '1.25.17';
 
   function wrapPluginInitFn(plugin, name, lifeCycle) {
     if (name) {
@@ -8862,7 +8901,7 @@
 
   var index = createPlugin(userEncryptDefault);
 
-  var sdkversion_placeholder$2 = '1.25.16';
+  var sdkversion_placeholder$2 = '1.25.17';
 
   function wrapPluginInitFn$1(plugin, name, lifeCycle) {
     if (name) {
@@ -8994,7 +9033,7 @@
     }
   };
 
-  var sdkversion_placeholder$3 = '1.25.16';
+  var sdkversion_placeholder$3 = '1.25.17';
 
   function wrapPluginInitFn$2(plugin, name, lifeCycle) {
     if (name) {
@@ -9166,7 +9205,7 @@
     }
   };
 
-  var sdkversion_placeholder$4 = '1.25.16';
+  var sdkversion_placeholder$4 = '1.25.17';
 
   function wrapPluginInitFn$3(plugin, name, lifeCycle) {
     if (name) {
@@ -9319,7 +9358,7 @@
   }
   var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$5 = '1.25.16';
+  var sdkversion_placeholder$5 = '1.25.17';
 
   function wrapPluginInitFn$4(plugin, name, lifeCycle) {
     if (name) {
@@ -9537,7 +9576,7 @@
 
   var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-  var sdkversion_placeholder$6 = '1.25.16';
+  var sdkversion_placeholder$6 = '1.25.17';
 
   function wrapPluginInitFn$5(plugin, name, lifeCycle) {
     if (name) {
@@ -9851,7 +9890,7 @@
   };
   var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-  var sdkversion_placeholder$7 = '1.25.16';
+  var sdkversion_placeholder$7 = '1.25.17';
 
   function wrapPluginInitFn$6(plugin, name, lifeCycle) {
     if (name) {
@@ -10001,7 +10040,7 @@
   }
   var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$8 = '1.25.16';
+  var sdkversion_placeholder$8 = '1.25.17';
 
   function wrapPluginInitFn$7(plugin, name, lifeCycle) {
     if (name) {
@@ -10163,7 +10202,7 @@
   }
   var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$9 = '1.25.16';
+  var sdkversion_placeholder$9 = '1.25.17';
 
   function wrapPluginInitFn$8(plugin, name, lifeCycle) {
     if (name) {
@@ -10479,7 +10518,7 @@
   var pageLeave = new PageLeave();
   var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-  var sdkversion_placeholder$a = '1.25.16';
+  var sdkversion_placeholder$a = '1.25.17';
 
   function wrapPluginInitFn$9(plugin, name, lifeCycle) {
     if (name) {
@@ -10707,7 +10746,7 @@
     }
   };
 
-  var sdkversion_placeholder$b = '1.25.16';
+  var sdkversion_placeholder$b = '1.25.17';
 
   function wrapPluginInitFn$a(plugin, name, lifeCycle) {
     if (name) {
@@ -10763,7 +10802,7 @@
 
   var index$a = createPlugin$a(instance);
 
-  var sdkversion_placeholder$c = '1.25.16';
+  var sdkversion_placeholder$c = '1.25.17';
 
   function wrapPluginInitFn$b(plugin, name, lifeCycle) {
     if (name) {
@@ -10850,7 +10889,7 @@
   };
   var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-  var sdkversion_placeholder$d = '1.25.16';
+  var sdkversion_placeholder$d = '1.25.17';
 
   function wrapPluginInitFn$c(plugin, name, lifeCycle) {
     if (name) {
@@ -11110,7 +11149,7 @@
   var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
   var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-  var sdkversion_placeholder$e = '1.25.16';
+  var sdkversion_placeholder$e = '1.25.17';
 
   function wrapPluginInitFn$d(plugin, name, lifeCycle) {
     if (name) {
@@ -11197,7 +11236,7 @@
   };
   var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-  var sdkversion_placeholder$f = '1.25.16';
+  var sdkversion_placeholder$f = '1.25.17';
 
   function wrapPluginInitFn$e(plugin, name, lifeCycle) {
     if (name) {
@@ -11273,7 +11312,7 @@
 
   var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-  var sdkversion_placeholder$g = '1.25.16';
+  var sdkversion_placeholder$g = '1.25.17';
 
   function wrapPluginInitFn$f(plugin, name, lifeCycle) {
     if (name) {
@@ -11397,7 +11436,7 @@
   };
   var index$f = createPlugin$f(DebugSender);
 
-  var sdkversion_placeholder$h = '1.25.16';
+  var sdkversion_placeholder$h = '1.25.17';
 
   function wrapPluginInitFn$g(plugin, name, lifeCycle) {
     if (name) {
@@ -11502,7 +11541,7 @@
 
   var index$g = createPlugin$g(JsappSender);
 
-  var sdkversion_placeholder$i = '1.25.16';
+  var sdkversion_placeholder$i = '1.25.17';
 
   function wrapPluginInitFn$h(plugin, name, lifeCycle) {
     if (name) {
@@ -11613,7 +11652,7 @@
   };
   var index$h = createPlugin$h(BatchSender);
 
-  var sdkversion_placeholder$j = '1.25.16';
+  var sdkversion_placeholder$j = '1.25.17';
 
   function wrapPluginInitFn$i(plugin, name, lifeCycle) {
     if (name) {
@@ -11734,7 +11773,7 @@
 
   var index$i = createPlugin$i(BeaconSender);
 
-  var sdkversion_placeholder$k = '1.25.16';
+  var sdkversion_placeholder$k = '1.25.17';
 
   function wrapPluginInitFn$j(plugin, name, lifeCycle) {
     if (name) {
@@ -11855,7 +11894,7 @@
 
   var index$j = createPlugin$j(AjaxSender);
 
-  var sdkversion_placeholder$l = '1.25.16';
+  var sdkversion_placeholder$l = '1.25.17';
 
   function wrapPluginInitFn$k(plugin, name, lifeCycle) {
     if (name) {
