@@ -8130,6 +8130,7 @@
   (function() {
     var sd = null;
     var _ = null;
+    var origin_web_url = '';
 
     function sdWarn() {
       sd.logger && sd.logger.msg.apply(sd.logger, arguments).level('warn').log();
@@ -9224,7 +9225,7 @@
               return data[a];
             }
           });
-          eleContent.innerHTML = newStr;
+          eleContent.innerHTML = newStr.replace(/<\s*script\s*>/gi, '').replace(/<\s*\/\s*script\s*>/gi, '');
           me.showEffectBox(e, div, isShow);
           me.setContainer(div);
         }
@@ -9292,7 +9293,6 @@
       jsonp_timer: null,
       getServerData: {
         ajax: function(obj) {
-          var _this = this;
           _.ajax({
             url: obj.url.ajax,
             type: 'POST',
@@ -9307,16 +9307,14 @@
               if (_.isObject(res) && res.error) {
                 obj.error(res);
               } else {
-                sdWarn('AJAX 请求失败，转换为 JSONP 请求', res);
-                _this.jsonp(obj);
+                sdWarn('AJAX 请求失败，请查看神策分析跨域转发配置', res);
               }
             },
-            timeout: 5000
+            timeout: 10000
           });
         },
         start: function(config) {
-          var method = window.localStorage.getItem('sensors_heatmap_method');
-          if (method && method === 'jsonp') {
+          if (origin_web_url && _.isString(origin_web_url)) {
             this.jsonp(config);
           } else {
             this.ajax(config);
@@ -9325,7 +9323,6 @@
         jsonp: function(obj) {
           var success = function(data) {
               obj.success(data);
-              window.localStorage.setItem('sensors_heatmap_method', 'jsonp');
             },
             error = _.isFunction(obj.error) ? obj.error : function() {},
             timeout = obj.timeout || 8000;
@@ -9441,7 +9438,7 @@
             error: sd.errorMsg
           });
         }
-
+        origin_web_url = sd.para.web_url;
         var web_url = sd.para.web_url || null;
         if (!web_url && _.sessionStorage.isSupport() && sessionStorage.getItem && sessionStorage.getItem('sensors_heatmap_url')) {
           web_url = sessionStorage.getItem('sensors_heatmap_url') || null;
@@ -9474,7 +9471,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.25.24';
+      sd.heatmap_version = '1.26.1';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {
