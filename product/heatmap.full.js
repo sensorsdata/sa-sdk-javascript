@@ -8826,6 +8826,7 @@
               jsonp: this.requestType === 3 ? jsonpUrlParse2Value : jsonpUrlParse.getUrl()
             },
             success: function(data) {
+
               me.originalHeatData = me.processOriginalHeatData(data);
               me.bindEffect();
               me.calculateHeatData(data);
@@ -8934,7 +8935,7 @@
         data = usableData;
 
         _.each(data, function(obj) {
-          obj.value_fix = obj.values[0][0];
+          obj.value_fix = Number(obj.values[0][0]) || 0;
           dataPageTotal += obj.value_fix;
         });
 
@@ -8959,7 +8960,7 @@
             if (String(obj.top_values[0]) === 'null') {
               obj.data_top_value = '没有值';
             } else {
-              obj.data_top_value = String(obj.top_values[0]);
+              obj.data_top_value = String(obj.top_values[0]).replace(/[<>]/g, '');
             }
 
             var selector = _.querySelectorAll(obj.by_values[0]);
@@ -9225,7 +9226,7 @@
               return data[a];
             }
           });
-          eleContent.innerHTML = newStr.replace(/<\s*script\s*>/gi, '').replace(/<\s*\/\s*script\s*>/gi, '');
+          eleContent.innerHTML = newStr;
           me.showEffectBox(e, div, isShow);
           me.setContainer(div);
         }
@@ -9471,7 +9472,7 @@
 
     window.sa_jssdk_heatmap_render = function(se, data, type, url) {
       sd = se;
-      sd.heatmap_version = '1.26.1';
+      sd.heatmap_version = '1.26.2';
       _ = sd._;
       _.querySelectorAll = function(val) {
         if (typeof val !== 'string') {
