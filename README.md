@@ -26,11 +26,7 @@ SensorsAnalytics SDK 是国内第一家开源商用版用户行为采集 SDK，�
 
 | 推荐版本 | 版本链接 |
 | ------  | ------ |
-| v1.25.2 | https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.25.2  |
-| v1.23.5 | https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.23.5  |
-| v1.21.13| https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.21.13 |
-| v1.19.14| https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.19.14 |
-| v1.18.19| https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.18.19 |
+| v1.26.3 | https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.26.3  |
 
 ## 讨论
 
