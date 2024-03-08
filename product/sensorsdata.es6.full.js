@@ -3077,7 +3077,7 @@ defaultPara.white_list = {};
 defaultPara.white_list[location.host] = _URL(location.href).hostname;
 
 var source_channel_standard = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder = '1.26.6';
+var sdkversion_placeholder = '1.26.7';
 var domain_test_key = 'sensorsdata_domain_test';
 
 var IDENTITY_KEY = {
@@ -3221,9 +3221,10 @@ function isReferralTraffic(refererstring) {
   if (refererstring === '') {
     return true;
   }
-
   var topDomain = getCookieTopLevelDomain(null, domain_test_key);
-  return getHostname(refererstring).indexOf(topDomain) === -1 && topDomain !== '';
+  var hostname = getHostname(refererstring);
+  hostname = '.' + hostname;
+  return hostname.indexOf(topDomain) === -1 && topDomain !== '';
 }
 
 function getKeywordFromReferrer(referrerUrl, activeValue) {
@@ -3807,7 +3808,7 @@ function getEleInfo(obj) {
   }
 
   var target = obj.target;
-  var tagName = target.tagName.toLowerCase();
+  var tagName = isString(target.tagName) ? target.tagName.toLowerCase() : 'unknown';
 
   var props = {};
 
@@ -6148,6 +6149,9 @@ var heatmap = {
   getElementPath: function(element, ignoreID, rootElement) {
     var names = [];
     while (element.parentNode && isElement(element)) {
+      if (!isString(element.tagName)) {
+        return 'unknown';
+      }
       if (element.id && !ignoreID && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(element.id)) {
         names.unshift(element.tagName.toLowerCase() + '#' + element.id);
         break;
@@ -6169,7 +6173,7 @@ var heatmap = {
   getClosestLi: function(element) {
     var getClosest = function(elem, selector) {
       for (; elem && elem !== document && elem.nodeType === 1; elem = elem.parentNode) {
-        if (elem.tagName && isFunction(elem.tagName.toLowerCase) && elem.tagName.toLowerCase() === selector) {
+        if (elem.tagName && isString(elem.tagName) && elem.tagName.toLowerCase() === selector) {
           return elem;
         }
       }
@@ -6179,7 +6183,7 @@ var heatmap = {
   },
   getElementPosition: function(element, elementPath, ignoreID) {
     var closestLi = sd.heatmap.getClosestLi(element);
-    if (!closestLi || !isElement(element)) {
+    if (!closestLi || !isElement(element) || !isString(element.tagName)) {
       return null;
     }
     var tag = element.tagName.toLowerCase();
@@ -6245,6 +6249,9 @@ var heatmap = {
     return -1;
   },
   selector: function(el, notuseid) {
+    if (!el || !isElement(el) || !isString(el.tagName)) {
+      return '';
+    }
     var i = el.parentNode && 9 == el.parentNode.nodeType ? -1 : this.getDomIndex(el);
     if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && (!sd.para.heatmap || (sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id')) && !notuseid) {
       return '#' + el.getAttribute('id');
@@ -6253,8 +6260,8 @@ var heatmap = {
     }
   },
   getDomSelector: function(el, arr, notuseid) {
-    if (!el || !el.parentNode || !el.parentNode.children) {
-      return false;
+    if (!el || !el.parentNode || !el.parentNode.children || !isString(el.tagName)) {
+      return 'unknown';
     }
     arr = arr && arr.join ? arr : [];
     var name = el.nodeName.toLowerCase();
@@ -6263,7 +6270,9 @@ var heatmap = {
       return arr.join(' > ');
     }
     arr.unshift(this.selector(el, notuseid));
-    if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id' && !notuseid) return arr.join(' > ');
+    if (el.getAttribute && el.getAttribute('id') && /^[A-Za-z][-A-Za-z0-9_:.]*$/.test(el.getAttribute('id')) && sd.para.heatmap && sd.para.heatmap.element_selector !== 'not_use_id' && !notuseid) {
+      return arr.join(' > ');
+    }
     return this.getDomSelector(el.parentNode, arr, notuseid);
   },
   na: function() {
@@ -6411,7 +6420,7 @@ var heatmap = {
           if (target.children[i].nodeType !== 1) {
             continue;
           }
-          var tag = target.children[i].tagName.toLowerCase();
+          var tag = isString(target.children[i].tagName) ? target.children[i].tagName.toLowerCase() : 'unknown';
           var max_level = sd.para && sd.para.heatmap && sd.para.heatmap.collect_tags && sd.para.heatmap.collect_tags.div && sd.para.heatmap.collect_tags.div.max_level;
           if ((tag === 'div' && max_level > 1) || this.isStyleTag(tag, isVisualMode)) {
             if (!this.isCollectableDiv(target.children[i], isVisualMode)) {
@@ -6431,7 +6440,9 @@ var heatmap = {
   getCollectableParent: function(target, isVisualMode) {
     try {
       var parent = target.parentNode;
+
       var parentName = parent ? parent.tagName.toLowerCase() : '';
+
       if (parentName === 'body') {
         return false;
       }
@@ -6563,7 +6574,7 @@ var heatmap = {
         if (!target || !target.parentNode || !target.parentNode.children) {
           return false;
         }
-        var parent_ele = target.parentNode.tagName.toLowerCase();
+        var parent_ele = isString(target.parentNode.tagName) ? target.parentNode.tagName.toLowerCase() : 'unknown';
         if (parent_ele === 'a' || parent_ele === 'button') {
           that.start(ev, target.parentNode, parent_ele);
         } else {
@@ -6579,7 +6590,10 @@ var heatmap = {
         }
         var target = ev.target || ev.srcElement;
         var theTarget = sd.heatmap.getTargetElement(target, e);
-        if (theTarget) {
+        if (!isElement(theTarget) && !isString(target.tagName)) {
+          return false;
+        }
+        if (isElement(theTarget) && isString(theTarget.tagName)) {
           that.start(ev, theTarget, theTarget.tagName.toLowerCase());
         } else if (isElement(target) && target.tagName.toLowerCase() === 'div' && isObject(sd.para.heatmap) && sd.para.heatmap.get_vtrack_config && unlimitedDiv.events.length > 0) {
           if (unlimitedDiv.isTargetEle(target)) {
@@ -8216,8 +8230,8 @@ var vtrackMode = {
         }
         if (event.data.data.userURL && location.href.match(/sa-visual-mode=true/)) {
           var valid_url = event.data.data.userURL;
-          if (valid_url) {
-            window.location.href = encodeURI(valid_url);
+          if (isString(valid_url)) {
+            window.location.href = encodeURI(valid_url.replace(/javascript:/, ''));
           }
         } else {
           vtrackMode.loadVtrack();
@@ -8835,7 +8849,7 @@ if (is_compliance_enabled) {
   checkState();
 }
 
-var sdkversion_placeholder$1 = '1.26.6';
+var sdkversion_placeholder$1 = '1.26.7';
 
 function wrapPluginInitFn(plugin, name, lifeCycle) {
   if (name) {
@@ -8922,7 +8936,7 @@ var userEncryptDefault = {
 
 var index = createPlugin(userEncryptDefault);
 
-var sdkversion_placeholder$2 = '1.26.6';
+var sdkversion_placeholder$2 = '1.26.7';
 
 function wrapPluginInitFn$1(plugin, name, lifeCycle) {
   if (name) {
@@ -9054,7 +9068,7 @@ var vbridge$1 = {
   }
 };
 
-var sdkversion_placeholder$3 = '1.26.6';
+var sdkversion_placeholder$3 = '1.26.7';
 
 function wrapPluginInitFn$2(plugin, name, lifeCycle) {
   if (name) {
@@ -9124,6 +9138,7 @@ function initBridge() {
   anBridge = window.SensorsData_APP_New_H5_Bridge;
   anTrack = anBridge && anBridge.sensorsdata_track;
   anServerUrl = anTrack && anBridge.sensorsdata_get_server_url && anBridge.sensorsdata_get_server_url();
+  log('---test---fail---', !sd$1, sd$1.bridge.activeBridge, !anServerUrl);
 
   if (!sd$1 || sd$1.bridge.activeBridge || !anServerUrl) {
     return;
@@ -9133,6 +9148,7 @@ function initBridge() {
 
   if (sd$1.para.app_js_bridge && !sd$1.para.app_js_bridge.is_mui) {
     sd$1.bridge.is_verify_success = anServerUrl && sd$1.bridge.validateAppUrl(anServerUrl);
+    log('---test---bridge-verify-', sd$1.bridge.is_verify_success);
   }
 
   sd$1.bridge.bridge_info = {
@@ -9143,7 +9159,7 @@ function initBridge() {
   };
 
   if (!sd$1.para.app_js_bridge) {
-    log('app_js_bridge is not configured, data will not be sent by android bridge.');
+    log('---test---app_js_bridge is not configured, data will not be sent by android bridge.');
     return;
   }
 
@@ -9153,24 +9169,30 @@ function initBridge() {
       entry: sendData
     }
   });
-
-  log('Android bridge inits succeed.');
 }
 
 function sendData(rqData, ctx) {
+  log('---test---datasend-', sd$1.bridge.is_verify_success);
+
   if (sd$1.para.app_js_bridge.is_mui || rqData.data.type === 'item_set' || rqData.data.type === 'item_delete') {
     return rqData;
   }
 
   var callback = rqData.callback;
   if (sd$1.bridge.is_verify_success) {
-    anTrack && anTrack.call(anBridge, JSON.stringify(_$1.extend({
-      server_url: sd$1.para.server_url
-    }, rqData.data)));
+    log('---test---bridge-verify-success---', rqData.data);
+
+    if (anTrack) {
+      anTrack.call(anBridge, JSON.stringify(_$1.extend({
+        server_url: sd$1.para.server_url
+      }, rqData.data)));
+    }
+
     _$1.isFunction(callback) && callback();
     ctx.cancellationToken.cancel();
     return rqData;
   }
+  log('---test---bridge-verify-fail-----', sd$1.bridge.is_verify_success);
 
   if (sd$1.para.app_js_bridge.is_send) {
     sd$1.debug.apph5({
@@ -9226,7 +9248,7 @@ var vbridge$1$1 = {
   }
 };
 
-var sdkversion_placeholder$4 = '1.26.6';
+var sdkversion_placeholder$4 = '1.26.7';
 
 function wrapPluginInitFn$3(plugin, name, lifeCycle) {
   if (name) {
@@ -9294,10 +9316,13 @@ var AndroidObsoleteBridge = {
 };
 
 function initBridge$1() {
+  log$1('ObsoleteBridge---test---init---');
+
   anBridge$1 = window.SensorsData_APP_JS_Bridge;
   anTrack$1 = anBridge$1 && anBridge$1.sensorsdata_track;
   anVerify = anBridge$1 && anBridge$1.sensorsdata_verify;
   anVisualVerify = anBridge$1 && anBridge$1.sensorsdata_visual_verify;
+  log$1('ObsoleteBridge-', sd$2.bridge.activeBridge, anVerify, anTrack$1, anVisualVerify);
 
   if (!sd$2 || sd$2.bridge.activeBridge || !(anVerify || anTrack$1 || anVisualVerify)) {
     return;
@@ -9310,6 +9335,7 @@ function initBridge$1() {
     verifyOk = anVisualVerify.call(anBridge$1, JSON.stringify({
       server_url: sd$2.para.server_url
     })) ? true : false;
+    log$1('ObsoleteBridge---called-return', verifyOk);
   }
 
   sd$2.bridge.bridge_info = {
@@ -9334,6 +9360,8 @@ function initBridge$1() {
 }
 
 function sendData$1(rqData, ctx) {
+  log$1('ObsoleteBridge---senddata');
+
   if (sd$2.para.app_js_bridge.is_mui || rqData.data.type === 'item_set' || rqData.data.type === 'item_delete') {
     return rqData;
   }
@@ -9342,6 +9370,8 @@ function sendData$1(rqData, ctx) {
     var success = anVerify && anVerify.call(anBridge$1, JSON.stringify(_$2.extend({
       server_url: sd$2.para.server_url
     }, rqData.data)));
+    log$1('ObsoleteBridge---anVerify-success', success);
+
     if (success) {
       _$2.isFunction(callback) && callback();
       ctx.cancellationToken.cancel();
@@ -9359,6 +9389,7 @@ function sendData$1(rqData, ctx) {
     ctx.cancellationToken.cancel();
     return rqData;
   }
+  log$1('ObsoleteBridge---is-send-old-way', sd$2.para.app_js_bridge.is_send);
 
   anTrack$1 && anTrack$1.call(anBridge$1, JSON.stringify(_$2.extend({
     server_url: sd$2.para.server_url
@@ -9369,17 +9400,21 @@ function sendData$1(rqData, ctx) {
 }
 
 function handleCommand$1(request) {
+  log$1('ObsoleteBridge---handleCommadn');
+
   var callType = request.callType;
   if (callType in vbridge$1$1.commands) {
+    log$1('ObsoleteBridge---', callType, vbridge$1$1.commands);
     return vbridge$1$1.commands[callType](request, anBridge$1);
   }
   if (anBridge$1 && _$2.isFunction(anBridge$1.sensorsdata_js_call_app)) {
+    log$1('ObsoleteBridge---handleCommadn-abridge');
     return anBridge$1.sensorsdata_js_call_app(JSON.stringify(request));
   }
 }
 var index$3 = createPlugin$3(AndroidObsoleteBridge, 'AndroidObsoleteBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$5 = '1.26.6';
+var sdkversion_placeholder$5 = '1.26.7';
 
 function wrapPluginInitFn$4(plugin, name, lifeCycle) {
   if (name) {
@@ -9597,7 +9632,7 @@ var Channel = {
 
 var index$4 = createPlugin$4(Channel, 'SensorsChannel', 'sdkAfterInitAPI');
 
-var sdkversion_placeholder$6 = '1.26.6';
+var sdkversion_placeholder$6 = '1.26.7';
 
 function wrapPluginInitFn$5(plugin, name, lifeCycle) {
   if (name) {
@@ -9911,7 +9946,7 @@ var SADeepLink = {
 };
 var index$5 = createPlugin$5(SADeepLink, 'Deeplink', 'sdkReady');
 
-var sdkversion_placeholder$7 = '1.26.6';
+var sdkversion_placeholder$7 = '1.26.7';
 
 function wrapPluginInitFn$6(plugin, name, lifeCycle) {
   if (name) {
@@ -10061,7 +10096,7 @@ function handleCommand$2(request) {
 }
 var index$6 = createPlugin$6(IOSBridge, 'IOSBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$8 = '1.26.6';
+var sdkversion_placeholder$8 = '1.26.7';
 
 function wrapPluginInitFn$7(plugin, name, lifeCycle) {
   if (name) {
@@ -10223,7 +10258,7 @@ function sendData$3(rqData, ctx) {
 }
 var index$7 = createPlugin$7(IOSObsoleteBridge, 'IOSObsoleteBridge', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$9 = '1.26.6';
+var sdkversion_placeholder$9 = '1.26.7';
 
 function wrapPluginInitFn$8(plugin, name, lifeCycle) {
   if (name) {
@@ -10531,7 +10566,7 @@ PageLeave.prototype.getPageLeaveProperties = function() {
 var pageLeave = new PageLeave();
 var index$8 = createPlugin$8(pageLeave, 'PageLeave', 'sdkReady');
 
-var sdkversion_placeholder$a = '1.26.6';
+var sdkversion_placeholder$a = '1.26.7';
 
 function wrapPluginInitFn$9(plugin, name, lifeCycle) {
   if (name) {
@@ -10759,7 +10794,7 @@ RegisterProperties.prototype.hookRegister = function(customFun) {
   }
 };
 
-var sdkversion_placeholder$b = '1.26.6';
+var sdkversion_placeholder$b = '1.26.7';
 
 function wrapPluginInitFn$a(plugin, name, lifeCycle) {
   if (name) {
@@ -10815,7 +10850,7 @@ var instance = new RegisterProperties();
 
 var index$a = createPlugin$a(instance);
 
-var sdkversion_placeholder$c = '1.26.6';
+var sdkversion_placeholder$c = '1.26.7';
 
 function wrapPluginInitFn$b(plugin, name, lifeCycle) {
   if (name) {
@@ -10902,7 +10937,7 @@ var RegisterPropertyPageHeight = {
 };
 var index$b = createPlugin$b(RegisterPropertyPageHeight, 'RegisterPropertyPageHeight', 'sdkReady');
 
-var sdkversion_placeholder$d = '1.26.6';
+var sdkversion_placeholder$d = '1.26.7';
 
 function wrapPluginInitFn$c(plugin, name, lifeCycle) {
   if (name) {
@@ -11162,7 +11197,7 @@ siteLinker.init = function(sd, option) {
 var index$c = createPlugin$c(siteLinker, 'SiteLinker', 'sdkReady');
 
 var source_channel_standard$1 = 'utm_source utm_medium utm_campaign utm_content utm_term';
-var sdkversion_placeholder$e = '1.26.6';
+var sdkversion_placeholder$e = '1.26.7';
 
 function wrapPluginInitFn$d(plugin, name, lifeCycle) {
   if (name) {
@@ -11249,7 +11284,7 @@ var utm = {
 };
 var index$d = createPlugin$d(utm, 'Utm', 'sdkAfterInitPara');
 
-var sdkversion_placeholder$f = '1.26.6';
+var sdkversion_placeholder$f = '1.26.7';
 
 function wrapPluginInitFn$e(plugin, name, lifeCycle) {
   if (name) {
@@ -11325,7 +11360,7 @@ function getDisabled() {
 
 var index$e = createPlugin$e(disableSDKPlugin, 'DisableSDK', 'sdkInitAPI');
 
-var sdkversion_placeholder$g = '1.26.6';
+var sdkversion_placeholder$g = '1.26.7';
 
 function wrapPluginInitFn$f(plugin, name, lifeCycle) {
   if (name) {
@@ -11449,7 +11484,7 @@ var DebugSender = {
 };
 var index$f = createPlugin$f(DebugSender);
 
-var sdkversion_placeholder$h = '1.26.6';
+var sdkversion_placeholder$h = '1.26.7';
 
 function wrapPluginInitFn$g(plugin, name, lifeCycle) {
   if (name) {
@@ -11554,7 +11589,7 @@ var JsappSender = {
 
 var index$g = createPlugin$g(JsappSender);
 
-var sdkversion_placeholder$i = '1.26.6';
+var sdkversion_placeholder$i = '1.26.7';
 
 function wrapPluginInitFn$h(plugin, name, lifeCycle) {
   if (name) {
@@ -11665,7 +11700,7 @@ var BatchSender = {
 };
 var index$h = createPlugin$h(BatchSender);
 
-var sdkversion_placeholder$j = '1.26.6';
+var sdkversion_placeholder$j = '1.26.7';
 
 function wrapPluginInitFn$i(plugin, name, lifeCycle) {
   if (name) {
@@ -11786,7 +11821,7 @@ var BeaconSender = {
 
 var index$i = createPlugin$i(BeaconSender);
 
-var sdkversion_placeholder$k = '1.26.6';
+var sdkversion_placeholder$k = '1.26.7';
 
 function wrapPluginInitFn$j(plugin, name, lifeCycle) {
   if (name) {
@@ -11907,7 +11942,7 @@ var AjaxSender = {
 
 var index$j = createPlugin$j(AjaxSender);
 
-var sdkversion_placeholder$l = '1.26.6';
+var sdkversion_placeholder$l = '1.26.7';
 
 function wrapPluginInitFn$k(plugin, name, lifeCycle) {
   if (name) {
