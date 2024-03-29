@@ -1,6 +1,8 @@
 .DS_Store
 git.properties
 
+/product
+
 ### Intellij ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm
 
