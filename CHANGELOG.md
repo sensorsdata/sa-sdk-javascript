@@ -1,9 +1,15 @@
+## 1.26.9（2024-3-29）
+1. 优化   
+   - 给测试 cookie 加上了可用 secure 的标记。
+   - 去除可视化属性功能中用到的提示，包括带有 sensorsdata.cn 的帮助文档链接。
+   - 去除了 cookie 中的 device_id ，减少了 cookie 的大小。
+   - 去除了发布的源码文件
+
 ## 1.26.8（2024-3-25）
 1. 修复
    - 可视化 iframe 存在的 javascript: 导致的 xss 问题。
 2. 优化   
    - ID3 废弃 loginWithKey，内外层匿名 ID 保持一致，identify 默认是加 true 的效果。
-   - 去除可视化属性功能中用到的提示，包括带有 sensorsdata.cn 的帮助文档链接
 
 ## 1.26.7（2024-3-8）
 1. 修复
