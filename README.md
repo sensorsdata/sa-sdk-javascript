@@ -1,4 +1,4 @@
-[![神策数据](https://opensource.sensorsdata.cn/wp-content/uploads/logo.png)](https://www.sensorsdata.cn/)
+[神策数据](https://www.sensorsdata.cn/)
 <br><br>
 
 [![License](https://img.shields.io/github/license/sensorsdata/sa-sdk-javascript.svg)](https://github.com/sensorsdata/sa-sdk-javascript/blob/master/LICENSE)
@@ -28,24 +28,6 @@ SensorsAnalytics SDK 是国内第一家开源商用版用户行为采集 SDK，�
 | ------  | ------ |
 | v1.26.3 | https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.26.3  |
 
-## 讨论
-
-| 扫码加入神策数据开源社区 QQ 群<br>群号：785122381 | 扫码加入神策数据开源社区微信群 |
-| ------ | ------ |
-|![ QQ 讨论群](https://opensource.sensorsdata.cn/wp-content/uploads/ContentCommonPic_1.png) | ![ 微信讨论群 ](https://opensource.sensorsdata.cn/wp-content/uploads/ContentCommonPic_2.png) |
-
-## 公众号
-
-| 扫码关注<br>神策数据开源社区 | 扫码关注<br>神策数据开源社区服务号 |
-| ------ | ------ |
-|![ 微信订阅号 ](https://opensource.sensorsdata.cn/wp-content/uploads/ContentCommonPic_3.png) | ![ 微信服务号 ](https://opensource.sensorsdata.cn/wp-content/uploads/ContentCommonPic_4.png) |
-
-
-## 新书推荐
-
-| 《ASM 全埋点开发实战》 | 《数据驱动：从方法到实践》 | 《Android 全埋点解决方案》 | 《iOS 全埋点解决方案》
-| ------ | ------ | ------ | ------ |
-| [![《ASM 全埋点开发实战》](https://opensource.sensorsdata.cn/wp-content/uploads/ASM-全埋点thumbnail_1.jpg)](https://item.jd.com/14058352.html) | [![《数据驱动：从方法到实践》](https://opensource.sensorsdata.cn/wp-content/uploads/data_driven_book_1.jpg)](https://item.jd.com/12322322.html) | [![《Android 全埋点解决方案》](https://opensource.sensorsdata.cn/wp-content/uploads/Android-全埋点thumbnail_1.png)](https://item.jd.com/12574672.html) | [![《iOS 全埋点解决方案》](https://opensource.sensorsdata.cn/wp-content/uploads/iOS-全埋点thumbnail_1.png)](https://item.jd.com/12867068.html)
 
 ## License
 
