@@ -15,32 +15,15 @@
 SensorsAnalytics SDK 是国内第一家开源商用版用户行为采集 SDK，目前支持代码埋点、全埋点、App 点击图、可视化全埋点等。目前已累计有 1500 多家付费客户，2500+ 的 App 集成使用，作为 App 数据采集利器，致力于帮助客户挖掘更多的商业价值，为其精准运营和业务支撑提供了可靠的数据来源。其采集全面而灵活、性能良好，并一直保持稳定的迭代，经受住了时间和客户的考验。
 
 ## 使用说明
+
 使用方法请参考文档 https://manual.sensorsdata.cn/sa/latest/tech_sdk_client_web-7548149.html  
 如有疑问请联系邮箱 shengyonggen@sensorsdata.cn  
 注意 SDK 可能不完全向前兼容，请查看版本更新说明 [CHANGELOG.md](CHANGELOG.md) ，如果有说明不兼容的话，需要升级神策分析对应的版本    
 
 ## 更新日志
+
 请参见 [CHANGELOG.md](CHANGELOG.md)
-
-## 推荐版本
-
-| 推荐版本 | 版本链接 |
-| ------  | ------ |
-| v1.26.3 | https://github.com/sensorsdata/sa-sdk-javascript/releases/tag/v1.26.3  |
-
 
 ## License
 
-Copyright 2015－2023 Sensors Data Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+[License 协议](LICENSE)

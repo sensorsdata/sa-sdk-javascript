@@ -1,3 +1,6 @@
+## 1.27.3（2025-3-24）
+1. AB 插件新增支持属性筛选
+
 ## 1.27.2（2025-1-14）
 1. 新增配置 properties_priority: 3 使得 register 的属性优先级大于 registerPage
 
