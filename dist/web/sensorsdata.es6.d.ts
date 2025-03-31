@@ -5,6 +5,7 @@ declare namespace sensors {
   function quick(name: string, p?: any, t?: any, c?: any): any;
 
   function identify(id: string, isSave?: boolean): any;
+  function resetAnonymousIdentity(id: string): void;
   function login(id: string, callback?: any): void;
   function logout(isChangeId?: boolean): void;
 
