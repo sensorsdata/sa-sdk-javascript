@@ -8,6 +8,8 @@ declare namespace sensors {
   function resetAnonymousIdentity(id: string): void;
   function login(id: string, callback?: any): void;
   function logout(isChangeId?: boolean): void;
+  function bind(bindKey: string, bindValue: string): void;
+  function unbind(itemName: string, itemValue: string): void;
 
   function setOnceProfile(prop: object, c?: any): void;
   function setProfile(prop: object, c?: any): void;
@@ -17,7 +19,13 @@ declare namespace sensors {
   function unsetProfile(prop: object, c?: any): void;
 
   function registerPage(obj: object): void;
+  function clearPageRegister(arr: any): void;
+  function clearAllRegister(arr: object): void;
 
+  function deleteItem(type: string, id: string): void;
+  function setItem(type: string, id: string, p: object): void;
+
+  function registerPropertyPlugin(arg: any): void;
   function getPresetProperties(): any;
 }
 // 当项目中是通过 script 标签的 src 来加载神策 SDK 时，可以注释掉下面 export 这行代码
