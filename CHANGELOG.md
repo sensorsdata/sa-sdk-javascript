@@ -1,3 +1,9 @@
+## 1.27.12（2026-5-6）
+1. 新增 sensors.on('data:assembled',function(data){console.log(data)})。监听数据组装完成。此功能和 registerPropertyPlugin 类似，但时机会晚一些。data 是引用，修改会导致发送的数据实时改变，谨慎修改 data，可以先做深拷贝。 
+2. 可视化全埋点 postMessage 增加白名单验证。可以配置 vtrack_allow_origins:['http://sss.com'] 参数来指定允许的来源列表。
+3. 优化部分 ios 机型下使用非标的 file 协议运行 SDK 时候，有报错的问题。
+
+
 ## 1.27.11（2025-9-8）
 1. 新增 indexedDB 插件
 
