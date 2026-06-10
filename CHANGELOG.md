@@ -1,3 +1,7 @@
+## 1.27.13(2026-6-10)
+1. 优化 _debug_web_msg ，增加具体的事件和属性信息，帮助客户研发定位修复方向
+2. 优化插件 ga-forward-sensorsdata ，把 item 改成事件发送
+
 ## 1.27.12（2026-5-6）
 1. 新增 sensors.on('data:assembled',function(data){console.log(data)})。监听数据组装完成。此功能和 registerPropertyPlugin 类似，但时机会晚一些。data 是引用，修改会导致发送的数据实时改变，谨慎修改 data，可以先做深拷贝。 
 2. 可视化全埋点 postMessage 增加白名单验证。可以配置 vtrack_allow_origins:['http://sss.com'] 参数来指定允许的来源列表。
