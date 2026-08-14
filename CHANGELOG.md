@@ -1,3 +1,6 @@
+## 1.27.14(2026-8-14)
+1. 修复 SDK 在 iframe 下非同域页面执行（此时浏览器认为跨域不允许设置 cookie）,且此时设置了 SameSite='None',secure = true 后（此时浏览器认为可以设置 cookie），神策 Web SDK 里的 distinct_id 每次刷新都会切换的 bug。
+
 ## 1.27.13(2026-6-10)
 1. 优化 _debug_web_msg ，增加具体的事件和属性信息，帮助客户研发定位修复方向
 2. 优化插件 ga-forward-sensorsdata ，把 item 改成事件发送
