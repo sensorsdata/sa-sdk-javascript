@@ -1,10 +1,14 @@
 {
   "name": "sa-sdk-javascript",
-  "version": "1.27.15",
+  "version": "1.28.1",
   "description": "official sensorsdata javascript sdk",
   "main": "dist/web/sensorsdata.js",
   "scripts": {
-    "build": "echo \"Error: no test specified\" && exit 1"
+    "build": "echo \"Error: no test specified\" && exit 1",
+    "test": "nyc --reporter=text-summary --reporter=text babel-tape-runner unit-test/sensorsdata._.test.js unit-test/sensorsdata.test.js",
+    "test:bridge": "nyc --reporter=text-summary --reporter=text babel-tape-runner unit-test/sensorsdata.AndroidBridge.test.js unit-test/sensorsdata.IosBridge.test.js",
+    "test:all": "nyc --reporter=text-summary --reporter=text babel-tape-runner unit-test/demo.js unit-test/sensorsdata._.test.js unit-test/sensorsdata.AndroidBridge.test.js unit-test/sensorsdata.IosBridge.test.js unit-test/sensorsdata.test.js",
+    "test:single": "babel-tape-runner"
   },
   "repository": {
     "type": "git",

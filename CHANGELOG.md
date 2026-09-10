@@ -1,3 +1,6 @@
+## 1.28.1(2026-9-9)
+1. 新增 /dist/v-storage/sensorsdata.js ，去除了 cookie，只用 localStorage 实现。不过这个版本一些 cookie 相关的功能都用不了，例如 latest，首日，首次，部分插件。
+
 ## 1.27.15(2026-8-31)
 1. 去除 pageleave 插件中的 unload API（浏览器已经废弃）。 
 
