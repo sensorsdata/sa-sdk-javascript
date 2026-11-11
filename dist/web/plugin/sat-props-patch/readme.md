@@ -29,3 +29,4 @@ sensors.use(satPropsPatch);
 - 需 WEB SDK 1.22.9 以上版本支持。
 - 请联系技术顾问确认是否使用该插件! 该插件非 SDK 通用功能，仅限在 SAT 特定环境下使用。
 - 插件功能为修改 channel 插件上报属性值，独立该插件使用无效。必须搭配 channel 插件或者 wechat-webview-channel 插件使用，且必须放前两者后面。
+- **2026-11 更新（SCB-326396）**：channel 插件已直接产出 `$ad_landing_page_url` / `$sa_channel_landing_url_error`（读取旧 cookie 时自动迁移），使用 channel 插件时**无需再搭配本插件**；本插件目前仅在搭配 wechat-webview-channel 插件（`_latest_wx_*` 属性替换）时需要。

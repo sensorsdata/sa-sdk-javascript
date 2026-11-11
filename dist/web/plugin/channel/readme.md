@@ -31,7 +31,7 @@ Web JS SDK 支持针对特定渠道进行更精准的渠道匹配和向广告平
         "$latest_traffic_source_type":"直接流量",
         "$latest_search_keyword":"未取到值_直接打开",
         "$latest_referrer":"",
-        "_sa_channel_landing _url": "http://www.ls.com:8080/sdkCode/intergrated-test/sakchannel/index.html?channel_id=27878&sat_cf=1234",
+        "$ad_landing_page_url": "http://www.ls.com:8080/sdkCode/intergrated-test/sakchannel/index.html?channel_id=27878&sat_cf=1234",
         "$is_channel_callback_event": true,
         "$is_first_day":true,
         "$url": "http://www.ls.com:8080/sdkCode/intergrated-test/sdkchannel/index.html?channel_id=27878&sat_cf=1234",
@@ -55,8 +55,20 @@ sensors.use(SensorsChannel);
 新增事件：`$ChannelLinkReaching`，该事件表示渠道链接落地。
 <br>
 
-- 新增属性：`_sa_channel_landing_url`，落地页地址。
-- 新增属性：`_sa_channel_landing_url_error`，落地页取值异常信息。
+- 新增属性：`$ad_landing_page_url`，落地页地址。
+- 新增属性：`$sa_channel_landing_url_error`，落地页取值异常信息。
+
+### 属性名变更说明（2026-11，SCB-326396）
+
+历史版本本插件产出 `_sa_channel_landing_url` / `_sa_channel_landing_url_error`（`_` 前缀），需搭配 `sat-props-patch` 插件在上报时替换为 `$` 前缀（且 `_sa_channel_landing_url` 实际映射为 `$ad_landing_page_url`）。现插件直接产出 `$` 前缀属性：
+
+| 历史属性名（_ 前缀） | 现属性名（$ 前缀） |
+| --- | --- |
+| `_sa_channel_landing_url` | `$ad_landing_page_url` |
+| `_sa_channel_landing_url_error` | `$sa_channel_landing_url_error` |
+
+- 上报属性名与"channel + sat-props-patch"组合的最终产出**完全一致**，使用 channel 插件时**无需再搭配 sat-props-patch**。
+- 存量用户 cookie（`sensorsdata2015jssdkchannel`）中的 `_` 前缀属性在读取时会自动迁移为 `$` 前缀，平滑升级、数据不断档。
 
 ## ⚠️ 注意
 
