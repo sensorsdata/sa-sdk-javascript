@@ -1,0 +1,64 @@
+name: Publish npm
+run-name: npm ${{ inputs.tag || github.event.release.tag_name }} (${{ inputs.request_id || 'release' }})
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, for example v1.28.2
+        required: true
+        type: string
+      request_id:
+        description: Optional identifier used by the local release command
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'sensorsdata/sa-sdk-javascript'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      # Load the publisher from this workflow revision, including when publishing an older tag.
+      - name: Check out publishing tools
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: automation
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11.21.0 --ignore-scripts --registry=https://registry.npmjs.org/
+
+      - name: Verify published GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node automation/.github/scripts/npm-publish.cjs --verify-release
+
+      - name: Check out the exact release tag
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          path: artifact
+          persist-credentials: false
+
+      - name: Publish built artifacts with npm Trusted Publishing
+        run: node automation/.github/scripts/npm-publish.cjs artifact
