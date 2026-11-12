@@ -81,7 +81,22 @@ function verifyRelease(tag) {
   assert(release.tag_name === tag && !release.draft, 'An existing public GitHub Release is required');
 }
 
-function publish(source, tag) {
+async function waitForPublishedPackage(readDist, integrity, { attempts = 61, intervalMs = 5000 } = {}) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const uploaded = readDist();
+    if (uploaded) {
+      assert.equal(uploaded.integrity, integrity, 'Published package integrity verification failed');
+      return;
+    }
+    if (attempt + 1 < attempts) {
+      console.log('npm is still processing the uploaded package; waiting for registry availability...');
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+  throw new Error('npm accepted the upload but the version is still unavailable after 5 minutes. Check npm processing status and rerun this workflow to verify it.');
+}
+
+async function publish(source, tag) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sa-npm-publish-'));
   try {
     const { pkg, packed, tarball, snapshot, npmTag } = preparePackage(source, temp, tag);
@@ -91,8 +106,7 @@ function publish(source, tag) {
       console.log(`${pkg.name}@${pkg.version} is already published with identical contents; skipping.`);
     } else {
       run('npm', ['publish', tarball, '--provenance', '--ignore-scripts', '--access=public', '--tag', npmTag, `--registry=${REGISTRY}`], snapshot, false, true);
-      const uploaded = registryDist(pkg, snapshot);
-      assert(uploaded?.integrity === packed.integrity, 'Published package integrity verification failed');
+      await waitForPublishedPackage(() => registryDist(pkg, snapshot), packed.integrity);
     }
     if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Published [${pkg.name}@${pkg.version}](https://www.npmjs.com/package/${pkg.name}/v/${pkg.version}) from ${tag}.\n`);
   } finally {
@@ -101,14 +115,14 @@ function publish(source, tag) {
 }
 
 if (require.main === module) {
-  try {
+  (async () => {
     assert(process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_REPOSITORY === REPO, 'Run this publisher through the configured GitHub Actions workflow');
     if (process.argv[2] === '--verify-release') verifyRelease(process.env.RELEASE_TAG);
-    else publish(path.resolve(process.argv[2] || '.'), process.env.RELEASE_TAG);
-  } catch (error) {
+    else await publish(path.resolve(process.argv[2] || '.'), process.env.RELEASE_TAG);
+  })().catch((error) => {
     console.error(error.message);
     process.exitCode = 1;
-  }
+  });
 }
 
-module.exports = { preparePackage, publish, verifyRelease, validateTag };
+module.exports = { preparePackage, publish, verifyRelease, validateTag, waitForPublishedPackage };
